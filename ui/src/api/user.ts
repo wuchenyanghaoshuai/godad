@@ -1,0 +1,46 @@
+// 用户相关API服务
+import { http } from './http'
+import { API_CONFIG } from './config'
+import type {
+  User,
+  UserUpdateRequest,
+  ChangePasswordRequest,
+  ApiResponse,
+  PaginatedResponse,
+  ListParams
+} from './types'
+
+// 用户API服务类
+export class UserApi {
+  // 获取用户个人信息
+  static async getProfile(): Promise<ApiResponse<User>> {
+    return http.get<User>(API_CONFIG.ENDPOINTS.USER.PROFILE)
+  }
+
+  // 更新用户个人信息
+  static async updateProfile(data: UserUpdateRequest): Promise<ApiResponse<User>> {
+    return http.put<User>(API_CONFIG.ENDPOINTS.USER.UPDATE_PROFILE, data)
+  }
+
+  // 修改密码
+  static async changePassword(data: ChangePasswordRequest): Promise<ApiResponse<null>> {
+    return http.put<null>(API_CONFIG.ENDPOINTS.USER.CHANGE_PASSWORD, data)
+  }
+
+  // 获取用户公开信息
+  static async getPublicInfo(userId: number): Promise<ApiResponse<User>> {
+    return http.get<User>(`${API_CONFIG.ENDPOINTS.USER.PUBLIC_INFO}/${userId}`)
+  }
+
+  // 获取用户列表（管理员功能）
+  static async getUserList(params?: ListParams): Promise<ApiResponse<PaginatedResponse<User>>> {
+    return http.get<PaginatedResponse<User>>('/user/list', params)
+  }
+
+  // 检查昵称是否可用
+  static async checkNickname(nickname: string): Promise<ApiResponse<{ nickname: string; exists: boolean; available: boolean }>> {
+    return http.get<{ nickname: string; exists: boolean; available: boolean }>(
+      `${API_CONFIG.ENDPOINTS.USER.CHECK_NICKNAME}?nickname=${encodeURIComponent(nickname)}`
+    )
+  }
+}
