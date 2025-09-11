@@ -317,10 +317,6 @@ const handleClickOutside = (event: Event) => {
 // 组件挂载时
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  // Debug: Log user info
-  console.log('Navbar mounted, user info:', authStore.user)
-  console.log('Is authenticated:', authStore.isAuthenticated)
-  console.log('Is admin:', authStore.isAdmin)
 })
 
 // 组件卸载时

@@ -19,6 +19,9 @@ func AutoMigrate(db *gorm.DB) error {
 		&Favorite{},
 		&Upload{},
 		&PasswordReset{},
+		&Follow{},
+		&Like{},
+		&Tag{},
 	)
 
 	if err != nil {
@@ -93,6 +96,12 @@ func createIndexes(db *gorm.DB) error {
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_password_resets_expires_at ON password_resets(expires_at)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_password_resets_created_at ON password_resets(created_at)")
 
+	// 关注表索引
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_follows_follower_id ON follows(follower_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_follows_followee_id ON follows(followee_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_follows_created_at ON follows(created_at)")
+	db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_follows_unique ON follows(follower_id, followee_id) WHERE deleted_at IS NULL")
+
 	return nil
 }
 
@@ -114,6 +123,10 @@ func createForeignKeys(db *gorm.DB) error {
 
 	// 上传表外键
 	db.Exec("ALTER TABLE uploads ADD CONSTRAINT fk_uploads_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
+
+	// 关注表外键
+	db.Exec("ALTER TABLE follows ADD CONSTRAINT fk_follows_follower FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
+	db.Exec("ALTER TABLE follows ADD CONSTRAINT fk_follows_followee FOREIGN KEY (followee_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
 
 	return nil
 }

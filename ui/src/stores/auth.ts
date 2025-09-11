@@ -28,7 +28,6 @@ export const useAuthStore = defineStore('auth', () => {
         const storedUser = AuthUtils.getStoredUser()
         if (storedUser) {
           user.value = storedUser
-          console.log('Loaded user from localStorage:', storedUser)
         }
         
         // 然后从API获取最新用户信息
@@ -48,12 +47,10 @@ export const useAuthStore = defineStore('auth', () => {
       error.value = null
       
       const response = await AuthApi.getCurrentUser()
-      console.log('API response user data:', response.data)
       user.value = response.data
       
       // 保存到本地存储
       AuthUtils.saveUser(response.data)
-      console.log('User saved to localStorage, role:', response.data.role)
     } catch (err) {
       error.value = err instanceof Error ? err.message : '获取用户信息失败'
       console.error('getCurrentUser failed:', err)

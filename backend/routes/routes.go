@@ -42,6 +42,7 @@ func SetupRoutes() *gin.Engine {
 				"comment":  "/api/comment",
 				"category": "/api/category",
 				"upload":   "/api/upload",
+				"follow":   "/api/follows",
 			},
 		})
 	})
@@ -53,6 +54,7 @@ func SetupRoutes() *gin.Engine {
 	SetupCommentRoutes(router)  // 评论路由
 	SetupUploadRoutes(router)   // 上传路由
 	SetupAdminRoutes(router)    // 管理员路由
+	SetupFollowRoutes(router)   // 关注路由
 	
 	// 设置点赞路由
 	likeService := services.NewLikeService(config.GetDB())

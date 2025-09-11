@@ -73,20 +73,47 @@
           </div>
 
           <!-- 作者和发布信息 -->
-          <div class="flex items-center space-x-4 mb-6 pb-6 border-b border-gray-200">
-            <div class="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-sm">
-              <UserIcon class="h-6 w-6 text-white" />
+          <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-200">
+            <div class="flex items-center space-x-4">
+              <div class="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-sm">
+                <UserIcon class="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <div class="font-medium text-gray-900">
+                  {{ article.author?.username || '匿名用户' }}
+                </div>
+                <div class="text-sm text-gray-500">
+                  发布于 {{ formatDate(article.created_at) }}
+                  <span v-if="article.updated_at !== article.created_at">
+                    · 更新于 {{ formatDate(article.updated_at) }}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div>
-              <div class="font-medium text-gray-900">
-                {{ article.author?.username || '匿名用户' }}
-              </div>
-              <div class="text-sm text-gray-500">
-                发布于 {{ formatDate(article.created_at) }}
-                <span v-if="article.updated_at !== article.created_at">
-                  · 更新于 {{ formatDate(article.updated_at) }}
-                </span>
-              </div>
+            
+            <!-- 关注按钮 -->
+            <div v-if="showFollowButton" class="flex items-center space-x-2">
+              <button
+                v-if="!isFollowing"
+                @click="followAuthor"
+                :disabled="isFollowLoading"
+                class="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <HeartIcon class="h-4 w-4 mr-1" />
+                <span v-if="isFollowLoading">关注中...</span>
+                <span v-else>关注</span>
+              </button>
+              
+              <button
+                v-else
+                @click="unfollowAuthor"
+                :disabled="isFollowLoading"
+                class="flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <HeartIcon class="h-4 w-4 mr-1 fill-current" />
+                <span v-if="isFollowLoading">处理中...</span>
+                <span v-else>已关注</span>
+              </button>
             </div>
           </div>
 
@@ -336,9 +363,11 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { ArticleApi } from '@/api/article'
 import { CategoryApi } from '@/api/category'
+import { FollowApi } from '@/api/follow'
 import type { Article, Category } from '@/api/types'
 import CommentSection from '@/components/CommentSection.vue'
 import Navbar from '@/components/Navbar.vue'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
@@ -354,12 +383,24 @@ const isLiking = ref(false)
 const isLiked = ref(false)
 const imageLoadError = ref(false)
 const showComments = ref(false)
+const { toast } = useToast()
+
+// 关注相关状态
+const isFollowing = ref(false)
+const isFollowLoading = ref(false)
 
 // 计算属性
 const canEdit = computed(() => {
   return authStore.isAuthenticated && 
          article.value && 
          (authStore.user?.id === article.value.author_id || authStore.isAdmin)
+})
+
+// 显示关注按钮的条件：用户已登录且文章存在且不是自己的文章
+const showFollowButton = computed(() => {
+  return authStore.isAuthenticated && 
+         article.value && 
+         authStore.user?.id !== article.value.author_id
 })
 
 // 获取分类名称
@@ -453,6 +494,47 @@ const shareArticle = () => {
   }
 }
 
+// 关注作者
+const followAuthor = async () => {
+  if (!article.value?.author_id) return
+  
+  try {
+    isFollowLoading.value = true
+    const response = await FollowApi.followUser(article.value.author_id)
+    
+    if (response.code === 200) {
+      isFollowing.value = true
+    }
+  } catch (error: any) {
+    // 如果是已经关注的错误，更新状态但不显示错误
+    if (error.message && error.message.includes('already following')) {
+      isFollowing.value = true
+    } else {
+      toast.error(error.message || '关注失败，请稍后重试')
+    }
+  } finally {
+    isFollowLoading.value = false
+  }
+}
+
+// 取消关注作者
+const unfollowAuthor = async () => {
+  if (!article.value?.author_id) return
+  
+  try {
+    isFollowLoading.value = true
+    const response = await FollowApi.unfollowUser(article.value.author_id)
+    
+    if (response.code === 200) {
+      isFollowing.value = false
+    }
+  } catch (error: any) {
+    toast.error(error.message || '取消关注失败，请稍后重试')
+  } finally {
+    isFollowLoading.value = false
+  }
+}
+
 // 删除文章
 const deleteArticle = async () => {
   if (!article.value || !confirm('确定要删除这篇文章吗？此操作不可恢复。')) return
@@ -518,15 +600,25 @@ const loadArticle = async () => {
     
     // 获取点赞状态 - 无论用户是否登录都尝试获取，让后端来判断
     try {
-      console.log('获取点赞状态..., 认证状态:', authStore.isAuthenticated, '用户信息:', authStore.user)
       const likeStatusResponse = await ArticleApi.getLikeStatus(articleId)
-      console.log('点赞状态API响应:', likeStatusResponse)
       isLiked.value = likeStatusResponse.data?.is_liked || false
-      console.log('设置点赞状态:', isLiked.value)
     } catch (error) {
-      console.error('获取点赞状态失败:', error)
       // 如果API调用失败，默认设置为未点赞
       isLiked.value = false
+    }
+    
+    // 获取关注状态 - 如果用户已登录且不是自己的文章
+    if (authStore.isAuthenticated && article.value.author_id && authStore.user?.id !== article.value.author_id) {
+      try {
+        const followStatusResponse = await FollowApi.checkFollowStatus(article.value.author_id)
+        // 后端直接返回 {"is_following": true}，不包装在data中
+        isFollowing.value = followStatusResponse.is_following || false
+      } catch (error) {
+        // 如果API调用失败，默认设置为未关注
+        isFollowing.value = false
+      }
+    } else {
+      isFollowing.value = false
     }
     
     // 加载相关文章
@@ -616,30 +708,40 @@ watch(
       relatedArticles.value = []
       showComments.value = false
       isLiked.value = false
+      isFollowing.value = false
       // 重新加载数据
       loadArticle()
     }
   }
 )
 
-// 监听认证状态变化，重新加载点赞状态
+// 监听认证状态变化，重新加载点赞状态和关注状态
 watch(
   () => authStore.isAuthenticated,
   (newVal) => {
-    console.log('认证状态变化:', newVal, '当前文章:', article.value?.id)
     if (article.value) {
       // 无论登录还是登出都重新获取点赞状态，让后端判断
-      console.log('认证状态变化，重新获取点赞状态')
       ArticleApi.getLikeStatus(article.value.id)
         .then(response => {
-          console.log('重新获取的点赞状态:', response)
           isLiked.value = response.data?.is_liked || false
-          console.log('更新点赞状态为:', isLiked.value)
         })
         .catch(error => {
-          console.error('获取点赞状态失败:', error)
           isLiked.value = false
         })
+      
+      // 重新获取关注状态
+      if (newVal && article.value.author_id && authStore.user?.id !== article.value.author_id) {
+        FollowApi.checkFollowStatus(article.value.author_id)
+          .then(response => {
+            // 后端直接返回 {"is_following": true}，不包装在data中
+            isFollowing.value = response.is_following || false
+          })
+          .catch(error => {
+            isFollowing.value = false
+          })
+      } else {
+        isFollowing.value = false
+      }
     }
   }
 )

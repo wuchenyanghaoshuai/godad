@@ -362,7 +362,6 @@ const submitArticle = async () => {
     const response = await ArticleApi.createArticle(submitData)
     
     if (response.data) {
-      toast.success(form.value.status === 'published' ? '文章发布成功！' : '草稿保存成功！')
       // 跳转到文章详情页
       router.push(`/articles/${response.data.id}`)
     } else {

@@ -13,6 +13,25 @@ export interface User {
   updated_at: string
 }
 
+// 关注相关类型
+export interface FollowStats {
+  following_count: number
+  followers_count: number
+}
+
+export interface FollowUser extends User {
+  is_mutual_follow?: boolean
+  is_following?: boolean
+}
+
+export interface FollowListResponse {
+  users: FollowUser[]
+  total: number
+  page: number
+  limit: number
+  pages: number
+}
+
 // 用户注册请求
 export interface UserRegisterRequest {
   username: string

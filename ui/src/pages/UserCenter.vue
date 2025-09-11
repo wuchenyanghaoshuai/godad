@@ -54,6 +54,22 @@
                     :class="roleClasses">
                 {{ roleText }}
               </span>
+              
+              <!-- 关注统计信息 -->
+              <div class="flex justify-center space-x-6 mt-4 pt-4 border-t border-gray-200">
+                <div class="text-center cursor-pointer hover:text-pink-600 transition-colors" @click="activeTab = 'following'">
+                  <div class="text-lg font-semibold">{{ followingCount }}</div>
+                  <div class="text-xs text-gray-500">关注</div>
+                </div>
+                <div class="text-center cursor-pointer hover:text-pink-600 transition-colors" @click="activeTab = 'followers'">
+                  <div class="text-lg font-semibold">{{ followersCount }}</div>
+                  <div class="text-xs text-gray-500">粉丝</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-lg font-semibold">{{ articlesCount }}</div>
+                  <div class="text-xs text-gray-500">文章</div>
+                </div>
+              </div>
             </div>
 
             <!-- 导航菜单 -->
@@ -269,6 +285,149 @@
               </div>
             </div>
 
+            <!-- 我的关注 -->
+            <div v-else-if="activeTab === 'following'" class="p-6">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-medium text-gray-900">我的关注 ({{ followingCount }})</h3>
+              </div>
+              
+              <div v-if="isLoadingFollows" class="text-center py-12">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto"></div>
+                <p class="text-gray-500 mt-2">加载中...</p>
+              </div>
+              
+              <!-- 关注列表 -->
+              <div v-else-if="followingList.length > 0" class="space-y-4">
+                <div v-for="user in followingList" :key="user.id" class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-pink-400 to-orange-400 flex items-center justify-center">
+                      <img v-if="user.avatar" :src="user.avatar" :alt="user.username" class="w-full h-full object-cover">
+                      <span v-else class="text-white font-semibold">{{ user.username.charAt(0).toUpperCase() }}</span>
+                    </div>
+                    <div>
+                      <h4 class="font-medium text-gray-900">{{ user.nickname || user.username }}</h4>
+                      <p class="text-sm text-gray-500">@{{ user.username }}</p>
+                      <p v-if="user.bio" class="text-sm text-gray-600 mt-1">{{ user.bio }}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <span v-if="user.is_mutual_follow" class="text-xs bg-pink-100 text-pink-600 px-2 py-1 rounded-full">互关</span>
+                    <button 
+                      @click="unfollowUser(user.id)"
+                      class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+                    >
+                      取消关注
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 空状态 -->
+              <div v-else class="text-center py-12 text-gray-500">
+                <HeartIcon class="h-12 w-12 mx-auto mb-4" />
+                <p>您还没有关注任何人</p>
+                <p class="text-sm mt-2">去发现更多有趣的用户吧</p>
+              </div>
+            </div>
+
+            <!-- 我的粉丝 -->
+            <div v-else-if="activeTab === 'followers'" class="p-6">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-medium text-gray-900">我的粉丝 ({{ followersCount }})</h3>
+              </div>
+              
+              <div v-if="isLoadingFollows" class="text-center py-12">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto"></div>
+                <p class="text-gray-500 mt-2">加载中...</p>
+              </div>
+              
+              <!-- 粉丝列表 -->
+              <div v-else-if="followersList.length > 0" class="space-y-4">
+                <div v-for="user in followersList" :key="user.id" class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-pink-400 to-orange-400 flex items-center justify-center">
+                      <img v-if="user.avatar" :src="user.avatar" :alt="user.username" class="w-full h-full object-cover">
+                      <span v-else class="text-white font-semibold">{{ user.username.charAt(0).toUpperCase() }}</span>
+                    </div>
+                    <div>
+                      <h4 class="font-medium text-gray-900">{{ user.nickname || user.username }}</h4>
+                      <p class="text-sm text-gray-500">@{{ user.username }}</p>
+                      <p v-if="user.bio" class="text-sm text-gray-600 mt-1">{{ user.bio }}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <span v-if="user.is_mutual_follow" class="text-xs bg-pink-100 text-pink-600 px-2 py-1 rounded-full">互关</span>
+                    <button 
+                      v-if="!user.is_following" 
+                      @click="followUser(user.id)"
+                      class="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm"
+                    >
+                      回关
+                    </button>
+                    <button 
+                      v-else 
+                      @click="unfollowUser(user.id)"
+                      class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+                    >
+                      取消关注
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 空状态 -->
+              <div v-else class="text-center py-12 text-gray-500">
+                <UsersIcon class="h-12 w-12 mx-auto mb-4" />
+                <p>还没有人关注您</p>
+                <p class="text-sm mt-2">发布有趣的内容来吸引更多关注吧</p>
+              </div>
+            </div>
+
+            <!-- 互相关注 -->
+            <div v-else-if="activeTab === 'mutual'" class="p-6">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-medium text-gray-900">互相关注 ({{ mutualCount }})</h3>
+              </div>
+              
+              <div v-if="isLoadingFollows" class="text-center py-12">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto"></div>
+                <p class="text-gray-500 mt-2">加载中...</p>
+              </div>
+              
+              <!-- 互关列表 -->
+              <div v-else-if="mutualFollowsList.length > 0" class="space-y-4">
+                <div v-for="user in mutualFollowsList" :key="user.id" class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-r from-pink-400 to-orange-400 flex items-center justify-center">
+                      <img v-if="user.avatar" :src="user.avatar" :alt="user.username" class="w-full h-full object-cover">
+                      <span v-else class="text-white font-semibold">{{ user.username.charAt(0).toUpperCase() }}</span>
+                    </div>
+                    <div>
+                      <h4 class="font-medium text-gray-900">{{ user.nickname || user.username }}</h4>
+                      <p class="text-sm text-gray-500">@{{ user.username }}</p>
+                      <p v-if="user.bio" class="text-sm text-gray-600 mt-1">{{ user.bio }}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xs bg-pink-100 text-pink-600 px-3 py-2 rounded-full font-medium">💕 互相关注</span>
+                    <button 
+                      @click="unfollowUser(user.id)"
+                      class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+                    >
+                      取消关注
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 空状态 -->
+              <div v-else class="text-center py-12 text-gray-500">
+                <HeartIcon class="h-12 w-12 mx-auto mb-4 text-pink-300" />
+                <p>还没有互相关注的用户</p>
+                <p class="text-sm mt-2">关注其他用户，等待他们回关吧</p>
+              </div>
+            </div>
+
             <!-- 设置 -->
             <div v-else-if="activeTab === 'settings'" class="p-6">
               <h3 class="text-lg font-medium text-gray-900 mb-6">账户设置</h3>
@@ -352,13 +511,16 @@ import {
   FileTextIcon,
   SettingsIcon,
   LogOutIcon,
-  CameraIcon
+  CameraIcon,
+  UsersIcon,
+  HeartIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import AvatarModal from '../components/AvatarModal.vue'
 import { useToast } from '../composables/useToast'
 import { UserApi } from '../api/user'
 import { ArticleApi } from '../api/article'
+import { FollowApi } from '../api/follow'
 import type { ImageUploadResponse, Article } from '../api/types'
 
 // 路由
@@ -377,6 +539,16 @@ const isChangingPassword = ref(false)
 // 文章相关
 const myArticles = ref<Article[]>([])
 const isLoadingArticles = ref(false)
+
+// 关注相关数据
+const followingCount = ref(0)
+const followersCount = ref(0)
+const mutualCount = ref(0)
+const articlesCount = ref(0)
+const followingList = ref<any[]>([])
+const followersList = ref<any[]>([])
+const mutualFollowsList = ref<any[]>([])
+const isLoadingFollows = ref(false)
 const articlesError = ref('')
 
 // 用户信息
@@ -409,6 +581,9 @@ const roleClasses = computed(() => {
 const menuItems = [
   { key: 'profile', label: '个人信息', icon: UserIcon },
   { key: 'articles', label: '我的文章', icon: FileTextIcon },
+  { key: 'following', label: '我的关注', icon: HeartIcon },
+  { key: 'followers', label: '我的粉丝', icon: UsersIcon },
+  { key: 'mutual', label: '互相关注', icon: HeartIcon },
   { key: 'settings', label: '设置', icon: SettingsIcon }
 ]
 
@@ -601,10 +776,137 @@ const getStatusClass = (status: number) => {
   }
 }
 
-// 监听activeTab变化，切换到文章标签时加载文章
+// 加载关注统计信息
+const loadFollowStats = async () => {
+  try {
+    const response = await FollowApi.getFollowStats()
+    console.log('Follow stats response:', response)
+    // 检查响应结构
+    if (response && response.data) {
+      followingCount.value = response.data.following_count || 0
+      followersCount.value = response.data.followers_count || 0
+    } else {
+      // 如果直接是数据对象
+      followingCount.value = response.following_count || 0
+      followersCount.value = response.followers_count || 0
+    }
+  } catch (error) {
+    console.error('加载关注统计失败:', error)
+  }
+}
+
+// 加载关注列表
+const loadFollowing = async () => {
+  try {
+    isLoadingFollows.value = true
+    const response = await FollowApi.getFollowing({ page: 1, limit: 50 })
+    console.log('Following response:', response)
+    // 检查响应结构
+    if (response && response.data && response.data.users) {
+      followingList.value = response.data.users
+    } else if (response && response.users) {
+      followingList.value = response.users
+    } else {
+      followingList.value = []
+    }
+  } catch (error) {
+    console.error('加载关注列表失败:', error)
+    toast.error('加载关注列表失败')
+  } finally {
+    isLoadingFollows.value = false
+  }
+}
+
+// 加载粉丝列表
+const loadFollowers = async () => {
+  try {
+    isLoadingFollows.value = true
+    const response = await FollowApi.getFollowers({ page: 1, limit: 50 })
+    console.log('Followers response:', response)
+    // 检查响应结构
+    if (response && response.data && response.data.users) {
+      followersList.value = response.data.users
+    } else if (response && response.users) {
+      followersList.value = response.users
+    } else {
+      followersList.value = []
+    }
+  } catch (error) {
+    console.error('加载粉丝列表失败:', error)
+    toast.error('加载粉丝列表失败')
+  } finally {
+    isLoadingFollows.value = false
+  }
+}
+
+// 取消关注
+const unfollowUser = async (userId) => {
+  try {
+    await FollowApi.unfollowUser(userId)
+    toast.success('取消关注成功')
+    // 重新加载数据
+    await loadFollowStats()
+    if (activeTab.value === 'following') {
+      await loadFollowing()
+    }
+  } catch (error) {
+    console.error('取消关注失败:', error)
+    toast.error('取消关注失败')
+  }
+}
+
+// 关注用户
+const followUser = async (userId) => {
+  try {
+    await FollowApi.followUser(userId)
+    toast.success('关注成功')
+    // 重新加载数据
+    await loadFollowStats()
+    if (activeTab.value === 'followers') {
+      await loadFollowers()
+    }
+  } catch (error) {
+    console.error('关注失败:', error)
+    toast.error('关注失败')
+  }
+}
+
+// 加载互相关注列表
+const loadMutualFollows = async () => {
+  try {
+    isLoadingFollows.value = true
+    const response = await FollowApi.getMutualFollows({ page: 1, limit: 50 })
+    // 检查响应结构
+    if (response && response.data && response.data.users) {
+      mutualFollowsList.value = response.data.users
+      mutualCount.value = response.data.total || response.data.users.length
+    } else if (response && response.users) {
+      mutualFollowsList.value = response.users
+      mutualCount.value = response.total || response.users.length
+    } else {
+      mutualFollowsList.value = []
+      mutualCount.value = 0
+    }
+  } catch (error) {
+    console.error('加载互关列表失败:', error)
+    toast.error('加载互关列表失败')
+    mutualFollowsList.value = []
+    mutualCount.value = 0
+  } finally {
+    isLoadingFollows.value = false
+  }
+}
+
+// 监听activeTab变化，根据标签加载不同数据
 watch(activeTab, (newTab) => {
   if (newTab === 'articles') {
     loadMyArticles()
+  } else if (newTab === 'following') {
+    loadFollowing()
+  } else if (newTab === 'followers') {
+    loadFollowers()
+  } else if (newTab === 'mutual') {
+    loadMutualFollows()
   }
 })
 
@@ -617,6 +919,7 @@ onMounted(() => {
   }
   
   initUserInfo()
+  loadFollowStats()
   
   // 如果默认是文章标签，立即加载文章
   if (activeTab.value === 'articles') {
