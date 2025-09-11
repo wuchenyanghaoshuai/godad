@@ -328,18 +328,30 @@ const loadCategories = async (reset = false) => {
   error.value = ''
   
   try {
-    const response = await CategoryApi.getCategoryList({
+    console.log('正在调用 CategoryApi.getAdminCategoryList...')
+    const response = await CategoryApi.getAdminCategoryList({
       page: currentPage.value,
       page_size: pageSize.value,
       keyword: searchKeyword.value || undefined
     })
     
+    console.log('API 响应:', response)
+    
+    // 处理分页响应格式
     if (response.data && Array.isArray(response.data)) {
       categories.value = response.data
-      totalCategories.value = response.data.length
+      // 如果response有total属性则使用，否则使用data长度
+      totalCategories.value = response.total || response.data.length
+      console.log('成功加载分类数据 (格式1):', categories.value.length, '个分类')
+    } else if (response && response.data && Array.isArray(response.data.data)) {
+      // 处理嵌套的分页响应格式
+      categories.value = response.data.data
+      totalCategories.value = response.data.total || response.data.data.length
+      console.log('成功加载分类数据 (格式2):', categories.value.length, '个分类')
     } else {
       categories.value = []
       totalCategories.value = 0
+      console.log('未找到分类数据，响应格式:', typeof response.data, response.data)
     }
   } catch (err: any) {
     error.value = err.message || '获取分类列表失败'
@@ -469,6 +481,8 @@ const formatDate = (dateString: string) => {
 
 // 组件挂载时加载数据
 onMounted(() => {
+  console.log('现在切换到分类管理了')
+  console.log('开始加载分类数据...')
   loadCategories()
 })
 </script>

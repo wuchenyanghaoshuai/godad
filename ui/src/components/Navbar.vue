@@ -166,18 +166,6 @@
                     <PlusIcon class="h-4 w-4 mr-3" />
                     发布文章
                   </router-link>
-                  <div class="flex items-center px-4 py-2 text-sm text-blue-600">
-                    <CogIcon class="h-4 w-4 mr-3" />
-                    测试菜单项
-                  </div>
-                  <router-link
-                    to="/management-dashboard"
-                    class="flex items-center px-4 py-2 text-sm text-purple-700 hover:bg-purple-50 hover:text-purple-800 transition-colors"
-                    @click="showUserMenu = false"
-                  >
-                    <CogIcon class="h-4 w-4 mr-3" />
-                    后台管理
-                  </router-link>
                   <button
                     @click="handleLogout"
                     class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"

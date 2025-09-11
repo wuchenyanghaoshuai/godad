@@ -478,7 +478,9 @@
               v-model="categoryForm.slug"
               type="text"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="留空将自动生成"
             >
+            <p class="text-xs text-gray-500 mt-1">用于URL的英文标识，留空时将根据分类名称自动生成</p>
           </div>
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-2">描述</label>
@@ -698,10 +700,25 @@ const toggleUserStatus = async (user) => {
 // 加载分类列表
 const loadCategories = async () => {
   try {
-    const response = await http.get('/categories')
-    categories.value = response.data.categories || []
+    console.log('AdminDashboard: 开始加载分类数据...')
+    const response = await http.get('/admin/categories')
+    console.log('AdminDashboard: API 响应:', response)
+    
+    // 处理分页响应格式
+    if (response.data && Array.isArray(response.data)) {
+      categories.value = response.data
+      console.log('AdminDashboard: 成功加载分类数据 (格式1):', categories.value.length, '个分类')
+    } else if (response && response.data && Array.isArray(response.data.data)) {
+      // 处理嵌套的分页响应格式
+      categories.value = response.data.data
+      console.log('AdminDashboard: 成功加载分类数据 (格式2):', categories.value.length, '个分类')
+    } else {
+      categories.value = []
+      console.log('AdminDashboard: 未找到分类数据，响应格式:', typeof response.data, response.data)
+    }
   } catch (error) {
-    console.error('加载分类列表失败:', error)
+    console.error('AdminDashboard: 加载分类列表失败:', error)
+    categories.value = []
   }
 }
 
@@ -718,6 +735,16 @@ const editCategory = (category) => {
 // 提交分类表单
 const submitCategory = async () => {
   try {
+    // 如果没有填写 slug，自动从 name 生成
+    if (!categoryForm.slug && categoryForm.name) {
+      categoryForm.slug = categoryForm.name
+        .toLowerCase()
+        .replace(/\s+/g, '-')  // 空格替换为连字符
+        .replace(/[^\w\-\u4e00-\u9fa5]/g, '') // 只保留字母、数字、连字符和中文
+        .replace(/--+/g, '-')  // 多个连字符合并为一个
+        .replace(/^-|-$/g, '') // 去除首尾连字符
+    }
+    
     if (showCreateCategoryModal.value) {
       await http.post('/admin/categories', categoryForm)
     } else {

@@ -48,15 +48,30 @@ export const API_CONFIG = {
       DELETE: '/articles',
       PUBLISH: '/articles',
       UNPUBLISH: '/articles',
-      MY: '/articles/my',
-      LIKE: '/articles'
+      MY: '/articles/my'
+    },
+
+    // 点赞相关
+    LIKE: {
+      TOGGLE: '/likes/toggle',
+      STATUS: '/likes/status',
+      MY: '/likes/my',
+      BATCH_STATUS: '/likes/batch-status',
+      LIST: '/likes/list',
+      POPULAR: '/likes/popular'
     },
     
     // 评论相关
     COMMENT: {
-      LIST: '/comment/list',
-      CREATE: '/comment/create',
-      DELETE: '/comment/delete'
+      LIST: '/comments',
+      ARTICLE_COMMENTS: '/article-comments',
+      CREATE: '/comments',
+      UPDATE: '/comments',
+      DELETE: '/comments',
+      MY: '/comments/my',
+      LIKE: '/comments',
+      UNLIKE: '/comments',
+      REPLIES: '/comments/replies'
     },
     
     // 分类相关

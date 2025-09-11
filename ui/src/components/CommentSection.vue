@@ -99,6 +99,8 @@
         :key="comment.id"
         :comment="comment"
         :article-id="props.articleId"
+        :depth="0"
+        :max-depth="3"
         @reply-added="handleReplyAdded"
         @comment-deleted="handleCommentDeleted"
         @like="handleLike"
@@ -207,11 +209,34 @@ const handleReplyAdded = (reply: Comment) => {
 
 // 处理评论删除
 const handleCommentDeleted = (commentId: number) => {
-  // 从列表中移除评论
-  const index = comments.value.findIndex(c => c.id === commentId)
-  if (index > -1) {
-    comments.value.splice(index, 1)
+  // 首先尝试从主评论中查找
+  const mainCommentIndex = comments.value.findIndex(c => c.id === commentId)
+  if (mainCommentIndex > -1) {
+    // 如果是主评论，直接删除
+    comments.value.splice(mainCommentIndex, 1)
     totalComments.value--
+  } else {
+    // 如果不是主评论，说明是回复，从各个主评论的回复中查找并删除
+    let found = false
+    for (const comment of comments.value) {
+      if (comment.replies) {
+        const replyIndex = comment.replies.findIndex(r => r.id === commentId)
+        if (replyIndex > -1) {
+          comment.replies.splice(replyIndex, 1)
+          // 更新回复数量
+          if (comment.reply_count !== undefined && comment.reply_count > 0) {
+            comment.reply_count--
+          }
+          found = true
+          break
+        }
+      }
+    }
+    
+    // 如果删除的是回复，总评论数也要减少
+    if (found) {
+      totalComments.value--
+    }
   }
   
   // 触发事件

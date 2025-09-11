@@ -1,6 +1,6 @@
 <template>
   <div class="rich-text-editor">
-    <div class="editor-toolbar border-b border-gray-200 p-2 sm:p-3 flex flex-wrap gap-1 sm:gap-2">
+    <div ref="toolbarRef" class="editor-toolbar border-b border-gray-200 p-2 sm:p-3 flex flex-wrap gap-1 sm:gap-2">
       <!-- 格式化按钮 -->
       <div class="flex gap-0.5 sm:gap-1">
         <button
@@ -299,6 +299,7 @@ const emit = defineEmits<Emits>()
 
 // 响应式数据
 const editorRef = ref<HTMLElement>()
+const toolbarRef = ref<HTMLElement>()
 const content = ref('')
 const sourceContent = ref('')
 const sourceMode = ref(false)
@@ -366,6 +367,61 @@ watch(content, (newValue) => {
   emit('change', newValue)
 })
 
+// 动态调整工具栏sticky位置
+const adjustToolbarPosition = () => {
+  if (toolbarRef.value) {
+    // 获取导航栏的实际高度
+    const navbar = document.querySelector('nav')
+    if (navbar) {
+      const navbarHeight = navbar.offsetHeight
+      
+      // 使用CSS变量设置top值
+      toolbarRef.value.style.setProperty('--toolbar-top', `${navbarHeight}px`)
+      toolbarRef.value.style.setProperty('--toolbar-top-mobile', `${navbarHeight}px`)
+      
+      // 添加一些调试信息
+      console.log(`工具栏位置调整: navbar高度=${navbarHeight}px`)
+    } else {
+      // 如果找不到导航栏，使用默认值
+      console.warn('未找到导航栏元素，使用默认sticky位置')
+      toolbarRef.value.style.setProperty('--toolbar-top', '4rem')
+      toolbarRef.value.style.setProperty('--toolbar-top-mobile', '3.5rem')
+    }
+  }
+}
+
+// 检测工具栏是否处于sticky状态
+const checkStickyState = () => {
+  if (toolbarRef.value) {
+    const rect = toolbarRef.value.getBoundingClientRect()
+    const navbar = document.querySelector('nav')
+    const navbarHeight = navbar ? navbar.offsetHeight : 64
+    
+    // 如果工具栏距离顶部的距离等于导航栏高度，说明处于sticky状态
+    const isSticky = Math.abs(rect.top - navbarHeight) < 2
+    
+    if (isSticky) {
+      toolbarRef.value.classList.add('is-sticky')
+    } else {
+      toolbarRef.value.classList.remove('is-sticky')
+    }
+  }
+}
+
+// 检查sticky支持并提供降级方案
+const checkStickySupport = () => {
+  // 检查浏览器是否支持sticky定位
+  const testElement = document.createElement('div')
+  testElement.style.position = 'sticky'
+  const supportsSticky = testElement.style.position === 'sticky'
+  
+  if (!supportsSticky) {
+    console.warn('浏览器不支持sticky定位，工具栏可能无法固定')
+  }
+  
+  return supportsSticky
+}
+
 // 生命周期
 onMounted(() => {
   nextTick(() => {
@@ -381,6 +437,20 @@ onMounted(() => {
         sourceContent.value = props.modelValue
       }
     }
+    
+    // 检查sticky支持
+    checkStickySupport()
+    
+    // 动态调整工具栏位置
+    adjustToolbarPosition()
+    
+    // 监听窗口大小变化和滚动事件
+    window.addEventListener('resize', adjustToolbarPosition)
+    window.addEventListener('scroll', checkStickyState)
+    
+    // 延迟调整，确保页面完全加载
+    setTimeout(adjustToolbarPosition, 100)
+    setTimeout(adjustToolbarPosition, 500)
   })
 })
 
@@ -390,6 +460,9 @@ onBeforeUnmount(() => {
     editorRef.value.removeEventListener('mouseup', saveSelection)
     editorRef.value.removeEventListener('keyup', saveSelection)
   }
+  // 清理事件监听器
+  window.removeEventListener('resize', adjustToolbarPosition)
+  window.removeEventListener('scroll', checkStickyState)
 })
 
 // 方法
@@ -549,7 +622,44 @@ const toggleSourceMode = () => {
 .rich-text-editor {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  overflow: hidden;
+  /* overflow: hidden; 移除这个，它阻止了sticky定位 */
+}
+
+.editor-toolbar {
+  @apply bg-white shadow-sm sticky z-30;
+  top: 80px; /* 导航栏高度大约80px，固定在其下方 */
+}
+
+/* 增强的粘性效果 */
+.editor-toolbar.is-sticky {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .editor-toolbar {
+    /* 移动端降低top值 */
+    top: var(--toolbar-top-mobile, 3.5rem);
+  }
+}
+
+/* 确保工具栏内容不被遮挡 */
+.editor-toolbar::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.editor-toolbar.is-sticky::before {
+  opacity: 1;
 }
 
 .toolbar-btn {
@@ -613,10 +723,6 @@ const toggleSourceMode = () => {
 
 /* 移动端优化 */
 @media (max-width: 640px) {
-  .editor-toolbar {
-    @apply sticky top-0 bg-white z-10;
-  }
-  
   .toolbar-btn {
     @apply min-w-[32px] min-h-[32px] flex items-center justify-center;
   }

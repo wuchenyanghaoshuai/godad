@@ -14,6 +14,7 @@ import SearchPage from '@/pages/SearchPage.vue'
 import NotFoundPage from '@/pages/NotFoundPage.vue'
 import AboutView from '@/views/AboutView.vue'
 import AdminDashboard from '@/pages/AdminDashboard.vue'
+import AdminLoginPage from '@/pages/AdminLoginPage.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -61,6 +62,12 @@ const router = createRouter({
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
       component: () => import('../views/AboutView.vue'),
+    },
+    {
+      path: '/admin/login',
+      name: 'AdminLogin',
+      component: AdminLoginPage,
+      meta: { requiresGuest: true }
     },
     {
       path: '/management-dashboard',
@@ -130,10 +137,18 @@ router.beforeEach(async (to, from, next) => {
     
     // 需要认证的路由
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-      next({
-        path: '/login',
-        query: { redirect: to.fullPath }
-      })
+      // 管理员路由跳转到管理员登录页面
+      if (to.meta.requiresAdmin) {
+        next({
+          path: '/admin/login',
+          query: { redirect: to.fullPath }
+        })
+      } else {
+        next({
+          path: '/login',
+          query: { redirect: to.fullPath }
+        })
+      }
       return
     }
     

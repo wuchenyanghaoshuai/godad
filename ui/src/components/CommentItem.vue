@@ -32,7 +32,7 @@
         </div>
         
         <!-- 操作按钮 -->
-        <div class="flex items-center space-x-3 sm:space-x-4">
+        <div class="flex items-center space-x-3 sm:space-x-4 mb-4">
           <!-- 点赞按钮 -->
           <button
             v-if="authStore.isAuthenticated"
@@ -50,7 +50,7 @@
           
           <!-- 回复按钮 -->
           <button
-            v-if="authStore.isAuthenticated"
+            v-if="authStore.isAuthenticated && depth < maxDepth"
             @click="toggleReply"
             class="flex items-center space-x-1 text-xs sm:text-sm text-gray-500 hover:text-gray-700 transition-all duration-200 px-2 py-1 rounded-lg hover:bg-gray-50"
           >
@@ -70,7 +70,7 @@
         </div>
         
         <!-- 回复输入框 -->
-        <div v-if="showReplyInput" class="mt-3 sm:mt-4">
+        <div v-if="showReplyInput" class="mb-4 bg-gray-50 p-3 rounded-lg">
           <div class="flex items-start space-x-2 sm:space-x-3">
             <img
               :src="authStore.user?.avatar || '/default-avatar.png'"
@@ -83,7 +83,7 @@
                 placeholder="写下您的回复..."
                 rows="2"
                 maxlength="500"
-                class="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-gray-50 focus:bg-white transition-colors"
+                class="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-white transition-colors"
               ></textarea>
               <div class="flex flex-col sm:flex-row sm:items-center justify-between mt-2 space-y-2 sm:space-y-0">
                 <div class="text-xs text-gray-500">
@@ -115,48 +115,50 @@
           </div>
         </div>
         
-        <!-- 子评论 -->
-        <div v-if="comment.replies && comment.replies.length > 0" class="mt-3 sm:mt-4 space-y-2 sm:space-y-3">
+        <!-- 子评论区域 -->
+        <div v-if="hasReplies" class="space-y-3">
+          <!-- 显示前3层子评论 -->
           <div
-            v-for="reply in comment.replies"
+            v-for="reply in visibleReplies"
             :key="reply.id"
-            class="flex items-start space-x-2 sm:space-x-3 bg-gradient-to-r from-gray-50 to-blue-50 p-2 sm:p-3 rounded-lg border border-gray-100 hover:shadow-sm transition-all duration-200"
+            :class="[
+              'border-l-2 border-gray-100 pl-4',
+              depth >= 2 ? 'ml-2' : 'ml-4'
+            ]"
           >
-            <img
-              :src="reply.user.avatar || '/default-avatar.png'"
-              :alt="reply.user.username"
-              class="w-5 h-5 sm:w-6 sm:h-6 rounded-full object-cover flex-shrink-0 border border-gray-200"
+            <CommentItem
+              :comment="reply"
+              :article-id="props.articleId"
+              :depth="depth + 1"
+              :max-depth="maxDepth"
+              @reply-added="handleReplyAdded"
+              @comment-deleted="handleCommentDeleted"
+              @like="handleLike"
             />
-            <div class="flex-1 min-w-0">
-              <div class="flex flex-wrap items-center gap-1 sm:gap-2">
-                <span class="font-medium text-xs sm:text-sm text-gray-900">{{ reply.user.username }}</span>
-                <span v-if="reply.user.role === 'admin'" class="px-1.5 py-0.5 text-xs bg-gradient-to-r from-pink-100 to-purple-100 text-pink-800 rounded-full border border-pink-200">
-                  管理员
-                </span>
-                <span class="text-xs text-gray-500">{{ formatDate(reply.created_at) }}</span>
-              </div>
-              <p class="mt-1 text-xs sm:text-sm text-gray-700 leading-relaxed">{{ reply.content }}</p>
-              <div class="flex items-center space-x-3 sm:space-x-4 mt-2">
-                <button
-                  @click="$emit('like', reply.id)"
-                  :class="[
-                    'flex items-center space-x-1 text-xs transition-all duration-200 px-2 py-1 rounded-lg hover:bg-white/50',
-                    reply.is_liked ? 'text-pink-600 bg-pink-50' : 'text-gray-500 hover:text-pink-600'
-                  ]"
-                >
-                  <HeartIcon :class="['h-3 w-3', reply.is_liked ? 'fill-current' : '']" />
-                  <span class="font-medium">{{ reply.likes || 0 }}</span>
-                </button>
-                <button
-                  v-if="canDeleteReply(reply)"
-                  @click="$emit('comment-deleted', reply.id)"
-                  class="flex items-center space-x-1 text-xs text-gray-500 hover:text-red-600 transition-all duration-200 px-2 py-1 rounded-lg hover:bg-red-50"
-                >
-                  <TrashIcon class="h-3 w-3" />
-                  <span>删除</span>
-                </button>
-              </div>
-            </div>
+          </div>
+          
+          <!-- 展开更多回复按钮 -->
+          <div v-if="hasHiddenReplies" class="ml-4">
+            <button
+              @click="toggleShowMore"
+              class="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-800 transition-colors px-2 py-1 rounded-lg hover:bg-blue-50"
+            >
+              <ChevronDownIcon v-if="!showingMore" class="h-4 w-4" />
+              <ChevronUpIcon v-else class="h-4 w-4" />
+              <span>
+                {{ showingMore ? '收起回复' : `展开更多回复 (${hiddenRepliesCount}条)` }}
+              </span>
+            </button>
+          </div>
+          
+          <!-- 当达到最大深度时的提示 -->
+          <div v-if="depth >= maxDepth && authStore.isAuthenticated" class="ml-4">
+            <button
+              @click="replyToParent"
+              class="text-xs text-gray-600 hover:text-blue-600 transition-colors px-2 py-1 rounded-lg hover:bg-gray-50"
+            >
+              回复到上一级
+            </button>
           </div>
         </div>
       </div>
@@ -170,7 +172,9 @@ import {
   HeartIcon,
   MessageCircleIcon,
   TrashIcon,
-  LoaderIcon
+  LoaderIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { CommentApi } from '@/api/comment'
@@ -180,15 +184,21 @@ import type { Comment, CommentCreateRequest } from '@/api/types'
 interface Props {
   comment: Comment
   articleId: number
+  depth?: number
+  maxDepth?: number
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  depth: 0,
+  maxDepth: 3
+})
 
 // 组件事件
 interface Emits {
   (e: 'reply-added', reply: Comment): void
   (e: 'comment-deleted', commentId: number): void
   (e: 'like', commentId: number): void
+  (e: 'reply-to-parent', parentId: number): void
 }
 
 const emit = defineEmits<Emits>()
@@ -200,6 +210,7 @@ const authStore = useAuthStore()
 const showReplyInput = ref(false)
 const replyContent = ref('')
 const isReplying = ref(false)
+const showingMore = ref(false)
 
 // 计算属性
 const canDelete = computed(() => {
@@ -207,11 +218,30 @@ const canDelete = computed(() => {
   return authStore.isAdmin || authStore.user?.id === props.comment.user?.id
 })
 
-// 检查是否可以删除回复
-const canDeleteReply = (reply: Comment) => {
-  if (!authStore.isAuthenticated) return false
-  return authStore.isAdmin || authStore.user?.id === reply.user?.id
-}
+const hasReplies = computed(() => {
+  return props.comment.replies && props.comment.replies.length > 0
+})
+
+const visibleReplies = computed(() => {
+  if (!hasReplies.value) return []
+  
+  const replies = props.comment.replies
+  if (showingMore.value) {
+    return replies
+  }
+  
+  // 默认显示前3条回复
+  return replies.slice(0, 3)
+})
+
+const hasHiddenReplies = computed(() => {
+  return hasReplies.value && props.comment.replies.length > 3
+})
+
+const hiddenRepliesCount = computed(() => {
+  if (!hasHiddenReplies.value) return 0
+  return props.comment.replies.length - 3
+})
 
 // 格式化日期
 const formatDate = (dateString: string) => {
@@ -260,11 +290,12 @@ const submitReply = async () => {
     const replyData: CommentCreateRequest = {
        content: replyContent.value.trim(),
        article_id: props.articleId,
-       parent_id: props.comment.id
+       parent_id: props.comment.parent_id || props.comment.id // 如果当前是子评论，回复到其父评论
      }
      
      const reply = await CommentApi.createComment(replyData)
      
+     // 添加到当前评论的回复中
      if (!props.comment.replies) {
        props.comment.replies = []
      }
@@ -289,6 +320,16 @@ const submitReply = async () => {
   }
 }
 
+// 回复到上一级（当达到最大深度时）
+const replyToParent = () => {
+  emit('reply-to-parent', props.comment.parent_id || props.comment.id)
+}
+
+// 切换显示更多回复
+const toggleShowMore = () => {
+  showingMore.value = !showingMore.value
+}
+
 // 点赞评论
 const handleLike = async () => {
   if (!authStore.isAuthenticated) {
@@ -297,6 +338,16 @@ const handleLike = async () => {
   
   // 直接传递给父组件处理
   emit('like', props.comment.id)
+}
+
+// 处理子评论的回复添加
+const handleReplyAdded = (reply: Comment) => {
+  emit('reply-added', reply)
+}
+
+// 处理评论删除
+const handleCommentDeleted = (commentId: number) => {
+  emit('comment-deleted', commentId)
 }
 
 // 删除评论
@@ -313,6 +364,7 @@ const handleDelete = async () => {
     
   } catch (error) {
     console.error('删除评论失败:', error)
+    alert('删除失败：' + (error.message || '未知错误'))
   }
 }
 </script>
@@ -320,11 +372,5 @@ const handleDelete = async () => {
 <style scoped>
 .comment-item {
   @apply relative;
-}
-
-.comment-item:not(:last-child)::after {
-  content: '';
-  @apply absolute left-5 top-12 w-px h-full bg-gray-100;
-  z-index: -1;
 }
 </style>

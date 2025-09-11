@@ -10,9 +10,14 @@ import type {
 
 // 分类API服务类
 export class CategoryApi {
-  // 获取分类列表
+  // 获取分类列表（普通用户）
   static async getCategoryList(params?: ListParams): Promise<ApiResponse<Category[]>> {
     return http.get<Category[]>(API_CONFIG.ENDPOINTS.CATEGORY.LIST, params)
+  }
+
+  // 获取分类列表（管理员）
+  static async getAdminCategoryList(params?: ListParams): Promise<ApiResponse<Category[]>> {
+    return http.get<Category[]>('/admin/categories', params)
   }
 
   // 获取分类详情

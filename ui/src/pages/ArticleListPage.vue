@@ -131,19 +131,43 @@
               </span>
             </div>
             
-            <!-- 文章元信息 -->
-            <div class="flex items-center justify-between text-sm text-gray-500">
-              <div class="flex items-center space-x-3 sm:space-x-4">
-                <span class="flex items-center hover:text-blue-600 transition-colors">
-                  <EyeIcon class="h-4 w-4 mr-1" />
-                  {{ article.view_count || 0 }}
-                </span>
-                <span class="flex items-center hover:text-red-500 transition-colors">
-                  <HeartIcon class="h-4 w-4 mr-1" />
-                  {{ article.like_count || 0 }}
-                </span>
+            <!-- 文章交互区 -->
+            <div class="flex items-center justify-between">
+              <!-- 互动按钮 -->
+              <div class="flex items-center space-x-2">
+                <!-- 浏览量 -->
+                <div class="flex items-center px-2.5 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-100 transition-all duration-300">
+                  <EyeIcon class="h-3.5 w-3.5 mr-1" />
+                  <span>{{ article.view_count || 0 }}</span>
+                </div>
+                
+                <!-- 点赞 -->
+                <button class="flex items-center px-2.5 py-1.5 bg-red-50 text-red-700 rounded-full text-xs font-medium hover:bg-red-100 hover:scale-105 transition-all duration-300 group" @click.stop="quickLike(article)">
+                  <HeartIcon class="h-3.5 w-3.5 mr-1 group-hover:scale-110 transition-transform" />
+                  <span>{{ article.like_count || 0 }}</span>
+                </button>
+                
+                <!-- 评论 -->
+                <div class="flex items-center px-2.5 py-1.5 bg-green-50 text-green-700 rounded-full text-xs font-medium hover:bg-green-100 transition-all duration-300">
+                  <MessageCircleIcon class="h-3.5 w-3.5 mr-1" />
+                  <span>{{ article.comment_count || 0 }}</span>
+                </div>
               </div>
-              <span class="text-xs sm:text-sm">{{ formatDate(article.created_at) }}</span>
+              
+              <!-- 日期和快速操作 -->
+              <div class="flex items-center space-x-2">
+                <span class="text-xs text-gray-500">{{ formatDate(article.created_at) }}</span>
+                
+                <!-- 快速收藏按钮 -->
+                <button class="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-amber-500 transition-all duration-300 group" @click.stop="quickBookmark(article)">
+                  <StarIcon class="h-4 w-4 group-hover:scale-110 transition-transform" />
+                </button>
+                
+                <!-- 快速分享按钮 -->
+                <button class="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-blue-500 transition-all duration-300 group" @click.stop="quickShare(article)">
+                  <ShareIcon class="h-4 w-4 group-hover:scale-110 group-hover:rotate-12 transition-transform" />
+                </button>
+              </div>
             </div>
           </div>
         </article>
@@ -214,7 +238,8 @@ import {
   MessageCircleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  ShareIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { ArticleApi } from '@/api/article'
@@ -377,6 +402,59 @@ const handleImageError = (event: Event, article: any) => {
   console.warn('封面图片加载失败:', article.cover_image)
   // 标记这个文章的图片加载失败
   article._imageError = true
+}
+
+// 快速点赞
+const quickLike = async (article: Article) => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login')
+    return
+  }
+  
+  try {
+    // 这里应该调用点赞API，暂时模拟
+    console.log('快速点赞文章:', article.title)
+    // await ArticleApi.likeArticle(article.id)
+    // 暂时增加点赞数用于演示
+    article.like_count = (article.like_count || 0) + 1
+  } catch (error) {
+    console.error('点赞失败:', error)
+  }
+}
+
+// 快速收藏
+const quickBookmark = async (article: Article) => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login')
+    return
+  }
+  
+  try {
+    console.log('快速收藏文章:', article.title)
+    // 这里应该调用收藏API
+    // await BookmarkApi.bookmarkArticle(article.id)
+  } catch (error) {
+    console.error('收藏失败:', error)
+  }
+}
+
+// 快速分享
+const quickShare = (article: Article) => {
+  const shareUrl = `${window.location.origin}/articles/${article.id}`
+  
+  if (navigator.share) {
+    navigator.share({
+      title: article.title,
+      text: article.summary || article.content?.substring(0, 100),
+      url: shareUrl
+    })
+  } else {
+    // 复制链接到剪贴板
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      console.log('链接已复制到剪贴板')
+      // 这里可以显示一个提示消息
+    })
+  }
 }
 
 // 组件挂载时加载数据

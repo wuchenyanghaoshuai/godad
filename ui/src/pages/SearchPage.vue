@@ -128,11 +128,11 @@
                 </div>
                 <div class="flex items-center space-x-1">
                   <EyeIcon class="h-3 w-3" />
-                  <span>{{ article.views || 0 }}</span>
+                  <span>{{ article.view_count || 0 }}</span>
                 </div>
                 <div class="flex items-center space-x-1">
                   <HeartIcon class="h-3 w-3" />
-                  <span>{{ article.likes || 0 }}</span>
+                  <span>{{ article.like_count || 0 }}</span>
                 </div>
                 <div class="flex items-center space-x-1">
                   <MessageCircleIcon class="h-3 w-3" />

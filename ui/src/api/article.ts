@@ -57,14 +57,20 @@ export class ArticleApi {
     return http.post<null>(`${API_CONFIG.ENDPOINTS.ARTICLE.DETAIL}/${id}/view`)
   }
 
-  // 点赞文章
-  static async likeArticle(id: number): Promise<ApiResponse<null>> {
-    return http.post<null>(`${API_CONFIG.ENDPOINTS.ARTICLE.LIKE}/${id}/like`)
+  // 切换点赞状态 (点赞/取消点赞)
+  static async toggleLike(id: number): Promise<ApiResponse<any>> {
+    return http.post<any>(API_CONFIG.ENDPOINTS.LIKE.TOGGLE, {
+      target_type: 'article',
+      target_id: id
+    })
   }
 
-  // 取消点赞文章
-  static async unlikeArticle(id: number): Promise<ApiResponse<null>> {
-    return http.delete<null>(`${API_CONFIG.ENDPOINTS.ARTICLE.LIKE}/${id}/like`)
+  // 获取点赞状态
+  static async getLikeStatus(id: number): Promise<ApiResponse<any>> {
+    return http.get<any>(API_CONFIG.ENDPOINTS.LIKE.STATUS, {
+      target_type: 'article',
+      target_id: id
+    })
   }
 
   // 获取相关文章推荐

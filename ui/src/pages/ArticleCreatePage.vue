@@ -134,6 +134,7 @@
             v-model="form.cover_image"
             :multiple="false"
             :max-size="5"
+            :article-title="form.title || 'new-article'"
             @upload-success="handleCoverUpload"
             @upload-error="handleUploadError"
           />
@@ -152,6 +153,7 @@
               v-model="form.content"
               placeholder="请输入文章内容..."
               :min-height="400"
+              :article-title="form.title || 'new-article'"
               @change="handleContentChange"
             />
           </div>
