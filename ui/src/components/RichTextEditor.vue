@@ -1,37 +1,37 @@
 <template>
   <div>
-    <div ref="toolbarRef" class="editor-toolbar px-3 py-3 sm:px-4 sm:py-3 flex flex-wrap gap-2 sm:gap-2">
+    <div ref="toolbarRef" class="editor-toolbar px-3 py-2 sm:px-4 sm:py-2 flex items-center gap-1 sm:gap-1.5 overflow-x-auto">
       <!-- 格式化按钮 -->
       <div class="flex gap-0.5 sm:gap-1">
         <button
           type="button"
           @click="execCommand('bold')"
           :class="['toolbar-btn', isActive('bold') && 'active']"
-          title="粗体"
+          data-tooltip="粗体"
         >
-          <BoldIcon class="h-3 w-3 sm:h-4 sm:w-4" />
+          <BoldIcon class="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           @click="execCommand('italic')"
           :class="['toolbar-btn', isActive('italic') && 'active']"
-          title="斜体"
+          data-tooltip="斜体"
         >
-          <ItalicIcon class="h-3 w-3 sm:h-4 sm:w-4" />
+          <ItalicIcon class="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           @click="execCommand('underline')"
           :class="['toolbar-btn', isActive('underline') && 'active']"
-          title="下划线"
+          data-tooltip="下划线"
         >
-          <UnderlineIcon class="h-3 w-3 sm:h-4 sm:w-4" />
+          <UnderlineIcon class="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           @click="execCommand('strikeThrough')"
           :class="['toolbar-btn', isActive('strikeThrough') && 'active']"
-          title="删除线"
+          data-tooltip="删除线"
         >
           <span class="text-xs font-bold">S</span>
         </button>
@@ -46,7 +46,7 @@
             type="color"
             @change="changeTextColor($event)"
             class="w-8 h-6 border rounded cursor-pointer"
-            title="文字颜色"
+            data-tooltip="文字颜色"
             value="#000000"
           />
         </div>
@@ -55,7 +55,7 @@
             type="color"
             @change="changeBackgroundColor($event)"
             class="w-8 h-6 border rounded cursor-pointer"
-            title="背景颜色"
+            data-tooltip="背景颜色"
             value="#ffff00"
           />
         </div>
@@ -69,7 +69,7 @@
           type="button"
           @click="execCommand('justifyLeft')"
           :class="['toolbar-btn', isActive('justifyLeft') && 'active']"
-          title="左对齐"
+          data-tooltip="左对齐"
         >
           <span class="text-xs">⬅</span>
         </button>
@@ -77,7 +77,7 @@
           type="button"
           @click="execCommand('justifyCenter')"
           :class="['toolbar-btn', isActive('justifyCenter') && 'active']"
-          title="居中"
+          data-tooltip="居中"
         >
           <span class="text-xs">⬌</span>
         </button>
@@ -85,7 +85,7 @@
           type="button"
           @click="execCommand('justifyRight')"
           :class="['toolbar-btn', isActive('justifyRight') && 'active']"
-          title="右对齐"
+          data-tooltip="右对齐"
         >
           <span class="text-xs">➡</span>
         </button>
@@ -98,7 +98,7 @@
         <select
           @change="formatHeading($event)"
           class="toolbar-select"
-          title="标题"
+          data-tooltip="标题"
         >
           <option value="">正文</option>
           <option value="h1">标题 1</option>
@@ -115,17 +115,17 @@
           type="button"
           @click="execCommand('insertUnorderedList')"
           :class="['toolbar-btn', isActive('insertUnorderedList') && 'active']"
-          title="无序列表"
+          data-tooltip="无序列表"
         >
-          <ListIcon class="h-3 w-3 sm:h-4 sm:w-4" />
+          <ListIcon class="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           @click="execCommand('insertOrderedList')"
           :class="['toolbar-btn', isActive('insertOrderedList') && 'active']"
-          title="有序列表"
+          data-tooltip="有序列表"
         >
-          <ListOrderedIcon class="h-3 w-3 sm:h-4 sm:w-4" />
+          <ListOrderedIcon class="h-3.5 w-3.5" />
         </button>
       </div>
       
@@ -137,17 +137,17 @@
           type="button"
           @click="insertLink"
           class="toolbar-btn"
-          title="插入链接"
+          data-tooltip="插入链接"
         >
-          <LinkIcon class="h-3 w-3 sm:h-4 sm:w-4" />
+          <LinkIcon class="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           @click="showImageUpload = true"
           class="toolbar-btn"
-          title="插入图片"
+          data-tooltip="插入图片"
         >
-          <ImageIcon class="h-3 w-3 sm:h-4 sm:w-4" />
+          <ImageIcon class="h-3.5 w-3.5" />
         </button>
       </div>
       
@@ -159,17 +159,17 @@
           type="button"
           @click="execCommand('removeFormat')"
           class="toolbar-btn"
-          title="清除格式"
+          data-tooltip="清除格式"
         >
-          <EraserIcon class="h-3 w-3 sm:h-4 sm:w-4" />
+          <EraserIcon class="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           @click="toggleSourceMode"
           :class="['toolbar-btn', sourceMode && 'active']"
-          title="源码模式"
+          data-tooltip="源码模式"
         >
-          <CodeIcon class="h-3 w-3 sm:h-4 sm:w-4" />
+          <CodeIcon class="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
@@ -369,32 +369,22 @@ watch(content, (newValue) => {
   emit('change', newValue)
 })
 
-// 动态调整工具栏位置
-const adjustToolbarPosition = () => {
-  if (toolbarRef.value) {
-    // 获取导航栏的实际高度
-    const navbar = document.querySelector('nav')
-    const navbarHeight = navbar ? navbar.offsetHeight : 64
-    
-    // 设置CSS变量，工具栏紧贴导航栏底部
-    toolbarRef.value.style.setProperty('--navbar-height', `${navbarHeight}px`)
-  }
-}
-
 // 检测工具栏是否处于sticky状态
 const checkStickyState = () => {
   if (toolbarRef.value) {
     const rect = toolbarRef.value.getBoundingClientRect()
-    const navbar = document.querySelector('nav')
-    const navbarHeight = navbar ? navbar.offsetHeight : 64
+    const editorContainer = toolbarRef.value.parentElement
     
-    // 如果工具栏距离顶部的距离等于导航栏高度，说明处于sticky状态
-    const isSticky = Math.abs(rect.top - navbarHeight) < 2
-    
-    if (isSticky) {
-      toolbarRef.value.classList.add('is-sticky')
-    } else {
-      toolbarRef.value.classList.remove('is-sticky')
+    if (editorContainer) {
+      const containerRect = editorContainer.getBoundingClientRect()
+      // 如果工具栏固定在容器顶部，说明处于sticky状态
+      const isSticky = rect.top <= containerRect.top + 5
+      
+      if (isSticky) {
+        toolbarRef.value.classList.add('is-sticky')
+      } else {
+        toolbarRef.value.classList.remove('is-sticky')
+      }
     }
   }
 }
@@ -432,16 +422,11 @@ onMounted(() => {
     // 检查sticky支持
     checkStickySupport()
     
-    // 动态调整工具栏位置
-    adjustToolbarPosition()
+    // 监听滚动事件以检测sticky状态
+    window.addEventListener('scroll', checkStickyState)
     
-    // 监听窗口大小变化和滚动事件
-    window.addEventListener('resize', adjustToolbarPosition)
-    window.addEventListener('scroll', adjustToolbarPosition)
-    
-    // 延迟调整，确保页面完全加载
-    setTimeout(adjustToolbarPosition, 100)
-    setTimeout(adjustToolbarPosition, 500)
+    // 延迟检测，确保页面完全加载
+    setTimeout(checkStickyState, 100)
   })
 })
 
@@ -452,8 +437,7 @@ onBeforeUnmount(() => {
     editorRef.value.removeEventListener('keyup', saveSelection)
   }
   // 清理事件监听器
-  window.removeEventListener('resize', adjustToolbarPosition)
-  window.removeEventListener('scroll', adjustToolbarPosition)
+  window.removeEventListener('scroll', checkStickyState)
 })
 
 // 方法
@@ -555,6 +539,9 @@ const formatHeading = (e: Event) => {
 }
 
 const insertLink = () => {
+  // 先检查是否有选中的文字
+  const selectedText = window.getSelection()?.toString()
+  
   const inputUrl = prompt('请输入链接地址:')
   if (inputUrl && inputUrl.trim()) {
     let url = inputUrl.trim()
@@ -569,8 +556,52 @@ const insertLink = () => {
       }
     }
     
-    const text = window.getSelection()?.toString() || inputUrl.trim()
-    execCommand('insertHTML', `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`)
+    let linkText = selectedText
+    
+    // 如果没有选中文字，询问用户要显示的文字
+    if (!selectedText || selectedText.trim() === '') {
+      const displayText = prompt('请输入要显示的链接文字:', getDomainFromUrl(inputUrl.trim()))
+      linkText = displayText && displayText.trim() ? displayText.trim() : getDomainFromUrl(inputUrl.trim())
+    }
+    
+    execCommand('insertHTML', `<a href="${url}" target="_blank" rel="noopener noreferrer" class="editor-link">${linkText}</a>`)
+  }
+}
+
+// 从URL提取域名作为默认显示文字
+const getDomainFromUrl = (url: string): string => {
+  try {
+    // 处理不带协议的URL
+    let processedUrl = url
+    if (!url.match(/^https?:\/\//)) {
+      processedUrl = `https://${url}`
+    }
+    
+    const urlObj = new URL(processedUrl)
+    let domain = urlObj.hostname
+    
+    // 移除 www. 前缀
+    domain = domain.replace(/^www\./, '')
+    
+    // 对于常见网站，返回更友好的名称
+    const friendlyNames: { [key: string]: string } = {
+      'baidu.com': '百度',
+      'google.com': 'Google',
+      'github.com': 'GitHub',
+      'stackoverflow.com': 'Stack Overflow',
+      'zhihu.com': '知乎',
+      'juejin.cn': '掘金',
+      'csdn.net': 'CSDN',
+      'bilibili.com': '哔哩哔哩',
+      'youtube.com': 'YouTube',
+      'twitter.com': 'Twitter',
+      'weibo.com': '微博'
+    }
+    
+    return friendlyNames[domain] || domain
+  } catch {
+    // 如果URL解析失败，返回原始文本
+    return url
   }
 }
 
@@ -625,22 +656,31 @@ const toggleSourceMode = () => {
 .rich-text-editor {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  /* overflow: hidden; 移除这个，它阻止了sticky定位 */
+  max-height: 80vh; /* 限制编辑器最大高度 */
+  overflow: hidden; /* 让内容区域可滚动 */
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-content {
+  flex: 1;
+  overflow-y: auto; /* 内容区域可滚动 */
+  max-height: calc(80vh - 60px); /* 减去工具栏高度 */
 }
 
 .editor-toolbar {
-  @apply bg-gray-50/90 backdrop-blur-sm z-40;
+  @apply bg-white/95 backdrop-blur-sm z-50;
   position: sticky;
-  top: var(--navbar-height, 64px);
-  border: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  top: 0;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all 0.2s ease;
-  margin: 0 -24px; /* 负边距突破父容器的padding限制 */
-  padding: 6px 24px;
-  width: calc(100% + 48px); /* 补偿负边距 */
-  /* 确保内容不被裁剪 */
+  margin: 0;
+  padding: 6px 12px;
+  width: 100%;
   overflow: visible;
-  min-height: 48px;
+  min-height: 40px;
 }
 
 /* 工具栏处于sticky状态时的增强效果 */
@@ -653,8 +693,8 @@ const toggleSourceMode = () => {
 /* 响应式调整 */
 @media (max-width: 768px) {
   .editor-toolbar {
-    /* 移动端使用相同的navbar-height变量 */
-    top: var(--navbar-height, 56px);
+    padding: 4px 8px;
+    min-height: 36px;
   }
 }
 
@@ -676,16 +716,17 @@ const toggleSourceMode = () => {
 }
 
 .toolbar-btn {
-  @apply px-2 py-2 sm:px-3 sm:py-2 rounded hover:bg-white/70 transition-all text-xs sm:text-sm;
+  @apply px-1.5 py-1.5 sm:px-2 sm:py-1.5 rounded hover:bg-white/70 transition-all text-xs;
   border: 1px solid transparent;
   color: #6b7280;
-  min-height: 36px; /* 增加高度确保文本不被截断 */
-  height: 36px;
+  min-height: 28px;
+  height: 28px;
+  min-width: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1.2; /* 确保文本行高正常 */
-  white-space: nowrap; /* 防止文本换行 */
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .toolbar-btn:hover {
@@ -698,16 +739,15 @@ const toggleSourceMode = () => {
 }
 
 .toolbar-select {
-  @apply px-2 py-2 sm:px-3 sm:py-2 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-400;
+  @apply px-2 py-1 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-400;
   border: 1px solid transparent;
   background: rgba(255, 255, 255, 0.7);
   color: #6b7280;
-  min-height: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  line-height: 1.2;
+  min-height: 28px;
+  height: 28px;
+  line-height: 1;
   white-space: nowrap;
+  font-size: 11px;
 }
 
 .toolbar-select:hover {
@@ -754,24 +794,131 @@ const toggleSourceMode = () => {
   @apply mb-2;
 }
 
-.editor-area a {
-  @apply text-blue-600 underline;
+/* 使用:deep()来穿透scoped样式，作用于动态插入的链接 */
+.editor-area :deep(a) {
+  @apply text-blue-600;
+  text-decoration: underline !important;
+  text-decoration-color: rgba(37, 99, 235, 0.6) !important;
+  text-underline-offset: 2px !important;
+  color: #2563eb !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  font-weight: 500 !important;
+  position: relative !important;
+}
+
+.editor-area :deep(a:hover) {
+  @apply text-blue-800;
+  background-color: rgba(37, 99, 235, 0.1) !important;
+  text-decoration-color: #1e40af !important;
+  border-radius: 3px !important;
+  padding: 2px 4px !important;
+  margin: 0 -2px !important;
+}
+
+/* 为链接添加小图标 */
+.editor-area :deep(a.editor-link::after) {
+  content: '🔗' !important;
+  display: inline !important;
+  margin-left: 2px !important;
+  font-size: 0.8em !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.editor-area :deep(a.editor-link:hover::after) {
+  opacity: 1 !important;
+}
+
+/* 外部链接图标的替代方案，使用CSS实现的小箭头 */
+.editor-area :deep(a[target="_blank"]::before) {
+  content: '' !important;
+  display: inline-block !important;
+  width: 0 !important;
+  height: 0 !important;
+  border-left: 3px solid currentColor !important;
+  border-top: 3px solid transparent !important;
+  border-bottom: 3px solid transparent !important;
+  margin-right: 3px !important;
+  opacity: 0.6 !important;
+  vertical-align: middle !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.editor-area :deep(a[target="_blank"]:hover::before) {
+  opacity: 1 !important;
 }
 
 .editor-area img {
   @apply max-w-full h-auto rounded;
 }
 
+/* 自定义tooltip样式 - 立即显示 */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]:hover::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.1s ease-in-out;
+  margin-top: 4px;
+  pointer-events: none;
+}
+
+[data-tooltip]:hover::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-bottom-color: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  margin-top: -4px;
+  pointer-events: none;
+}
+
+/* 隐藏默认tooltip */
+[data-tooltip]::before,
+[data-tooltip]::after {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.1s ease-in-out, visibility 0.1s ease-in-out;
+}
+
 /* 移动端优化 */
 @media (max-width: 640px) {
   .toolbar-btn {
-    @apply min-w-[36px] min-h-[36px] flex items-center justify-center;
-    height: 36px;
+    min-width: 24px;
+    min-height: 24px;
+    height: 24px;
+    padding: 2px;
   }
   
   .toolbar-select {
-    @apply min-h-[36px];
-    height: 36px;
+    min-height: 24px;
+    height: 24px;
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+  
+  /* 移动端不显示tooltip，避免干扰触摸操作 */
+  [data-tooltip]:hover::before,
+  [data-tooltip]:hover::after {
+    display: none;
   }
 }
 </style>

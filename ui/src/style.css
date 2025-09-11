@@ -28,3 +28,75 @@ input, textarea {
   color: inherit;
 }
 
+/* 全局文章内容链接样式 */
+.article-content a,
+.prose a,
+[class*="article"] a,
+[class*="content"] a {
+  color: #2563eb !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgba(37, 99, 235, 0.6) !important;
+  text-underline-offset: 2px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  font-weight: 500 !important;
+  position: relative !important;
+}
+
+.article-content a:hover,
+.prose a:hover,
+[class*="article"] a:hover,
+[class*="content"] a:hover {
+  color: #1e40af !important;
+  background-color: rgba(37, 99, 235, 0.1) !important;
+  text-decoration-color: #1e40af !important;
+  border-radius: 3px !important;
+  padding: 2px 4px !important;
+  margin: 0 -2px !important;
+}
+
+/* 为编辑器插入的链接添加图标 */
+.article-content a.editor-link::after,
+.prose a.editor-link::after,
+[class*="article"] a.editor-link::after,
+[class*="content"] a.editor-link::after {
+  content: '🔗' !important;
+  display: inline !important;
+  margin-left: 2px !important;
+  font-size: 0.8em !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.article-content a.editor-link:hover::after,
+.prose a.editor-link:hover::after,
+[class*="article"] a.editor-link:hover::after,
+[class*="content"] a.editor-link:hover::after {
+  opacity: 1 !important;
+}
+
+/* 外部链接前的箭头图标 */
+.article-content a[target="_blank"]::before,
+.prose a[target="_blank"]::before,
+[class*="article"] a[target="_blank"]::before,
+[class*="content"] a[target="_blank"]::before {
+  content: '' !important;
+  display: inline-block !important;
+  width: 0 !important;
+  height: 0 !important;
+  border-left: 3px solid currentColor !important;
+  border-top: 3px solid transparent !important;
+  border-bottom: 3px solid transparent !important;
+  margin-right: 3px !important;
+  opacity: 0.6 !important;
+  vertical-align: middle !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.article-content a[target="_blank"]:hover::before,
+.prose a[target="_blank"]:hover::before,
+[class*="article"] a[target="_blank"]:hover::before,
+[class*="content"] a[target="_blank"]:hover::before {
+  opacity: 1 !important;
+}
+

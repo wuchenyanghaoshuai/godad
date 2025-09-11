@@ -760,4 +760,58 @@ onMounted(() => {
   margin: 1.5rem auto;
   display: block;
 }
+
+/* 文章内容中的链接样式 */
+.article-content a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-decoration-color: rgba(37, 99, 235, 0.6);
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  position: relative;
+}
+
+.article-content a:hover {
+  color: #1e40af;
+  background-color: rgba(37, 99, 235, 0.1);
+  text-decoration-color: #1e40af;
+  border-radius: 3px;
+  padding: 2px 4px;
+  margin: 0 -2px;
+}
+
+/* 为链接添加小图标 */
+.article-content a.editor-link::after {
+  content: '🔗';
+  display: inline;
+  margin-left: 2px;
+  font-size: 0.8em;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.article-content a.editor-link:hover::after {
+  opacity: 1;
+}
+
+/* 外部链接图标 */
+.article-content a[target="_blank"]::before {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 3px solid currentColor;
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  margin-right: 3px;
+  opacity: 0.6;
+  vertical-align: middle;
+  transition: opacity 0.2s ease;
+}
+
+.article-content a[target="_blank"]:hover::before {
+  opacity: 1;
+}
 </style>
