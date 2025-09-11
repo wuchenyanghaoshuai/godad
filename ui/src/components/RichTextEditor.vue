@@ -4,6 +4,7 @@
       <!-- 格式化按钮 -->
       <div class="flex gap-0.5 sm:gap-1">
         <button
+          type="button"
           @click="execCommand('bold')"
           :class="['toolbar-btn', isActive('bold') && 'active']"
           title="粗体"
@@ -11,6 +12,7 @@
           <BoldIcon class="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
         <button
+          type="button"
           @click="execCommand('italic')"
           :class="['toolbar-btn', isActive('italic') && 'active']"
           title="斜体"
@@ -18,6 +20,7 @@
           <ItalicIcon class="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
         <button
+          type="button"
           @click="execCommand('underline')"
           :class="['toolbar-btn', isActive('underline') && 'active']"
           title="下划线"
@@ -25,6 +28,7 @@
           <UnderlineIcon class="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
         <button
+          type="button"
           @click="execCommand('strikeThrough')"
           :class="['toolbar-btn', isActive('strikeThrough') && 'active']"
           title="删除线"
@@ -62,6 +66,7 @@
       <!-- 对齐按钮 -->
       <div class="flex gap-0.5 sm:gap-1">
         <button
+          type="button"
           @click="execCommand('justifyLeft')"
           :class="['toolbar-btn', isActive('justifyLeft') && 'active']"
           title="左对齐"
@@ -69,6 +74,7 @@
           <span class="text-xs">⬅</span>
         </button>
         <button
+          type="button"
           @click="execCommand('justifyCenter')"
           :class="['toolbar-btn', isActive('justifyCenter') && 'active']"
           title="居中"
@@ -76,6 +82,7 @@
           <span class="text-xs">⬌</span>
         </button>
         <button
+          type="button"
           @click="execCommand('justifyRight')"
           :class="['toolbar-btn', isActive('justifyRight') && 'active']"
           title="右对齐"
@@ -105,6 +112,7 @@
       <!-- 列表按钮 -->
       <div class="flex gap-0.5 sm:gap-1">
         <button
+          type="button"
           @click="execCommand('insertUnorderedList')"
           :class="['toolbar-btn', isActive('insertUnorderedList') && 'active']"
           title="无序列表"
@@ -112,6 +120,7 @@
           <ListIcon class="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
         <button
+          type="button"
           @click="execCommand('insertOrderedList')"
           :class="['toolbar-btn', isActive('insertOrderedList') && 'active']"
           title="有序列表"
@@ -125,6 +134,7 @@
       <!-- 链接和图片 -->
       <div class="flex gap-0.5 sm:gap-1">
         <button
+          type="button"
           @click="insertLink"
           class="toolbar-btn"
           title="插入链接"
@@ -132,6 +142,7 @@
           <LinkIcon class="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
         <button
+          type="button"
           @click="showImageUpload = true"
           class="toolbar-btn"
           title="插入图片"
@@ -145,6 +156,7 @@
       <!-- 其他功能 -->
       <div class="flex gap-0.5 sm:gap-1">
         <button
+          type="button"
           @click="execCommand('removeFormat')"
           class="toolbar-btn"
           title="清除格式"
@@ -152,6 +164,7 @@
           <EraserIcon class="h-3 w-3 sm:h-4 sm:w-4" />
         </button>
         <button
+          type="button"
           @click="toggleSourceMode"
           :class="['toolbar-btn', sourceMode && 'active']"
           title="源码模式"
@@ -204,6 +217,7 @@
         <div class="flex justify-between items-center mb-4">
           <h3 class="text-lg font-semibold">插入图片</h3>
           <button
+            type="button"
             @click="showImageUpload = false"
             class="text-gray-400 hover:text-gray-600"
           >
@@ -212,22 +226,26 @@
         </div>
         
         <ImageUpload
-          v-model="uploadedImageUrl"
+          v-model="uploadedImageUrls"
           @upload-success="handleImageUpload"
-          :multiple="false"
+          :multiple="true"
+          :max-files="6"
           :max-size="10"
+          :article-title="props.articleTitle"
         />
         
         <div class="mt-4 flex justify-end gap-2">
           <button
+            type="button"
             @click="showImageUpload = false"
             class="px-4 py-2 text-gray-600 hover:text-gray-800"
           >
             取消
           </button>
           <button
+            type="button"
             @click="insertImage"
-            :disabled="!uploadedImageUrl"
+            :disabled="uploadedImageUrls.length === 0"
             class="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             插入
@@ -261,6 +279,7 @@ interface Props {
   placeholder?: string
   minHeight?: number
   disabled?: boolean
+  articleTitle?: string // 新增：文章标题，用于图片上传时创建文件夹
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -284,7 +303,7 @@ const content = ref('')
 const sourceContent = ref('')
 const sourceMode = ref(false)
 const showImageUpload = ref(false)
-const uploadedImageUrl = ref('')
+const uploadedImageUrls = ref<string[]>([])
 const currentSelection = ref<Range | null>(null)
 const isComposing = ref(false)
 
@@ -489,15 +508,22 @@ const changeBackgroundColor = (e: Event) => {
   execCommand('hiliteColor', target.value)
 }
 
-const handleImageUpload = (response: ImageUploadResponse) => {
-  uploadedImageUrl.value = response.public_url
+const handleImageUpload = (response: ImageUploadResponse | ImageUploadResponse[]) => {
+  if (Array.isArray(response)) {
+    uploadedImageUrls.value = response.map(img => img.public_url)
+  } else {
+    uploadedImageUrls.value = [response.public_url]
+  }
 }
 
 const insertImage = () => {
-  if (uploadedImageUrl.value) {
-    execCommand('insertHTML', `<img src="${uploadedImageUrl.value}" alt="插入的图片" style="max-width: 100%; height: auto;" />`)
+  if (uploadedImageUrls.value.length > 0) {
+    const imagesHTML = uploadedImageUrls.value.map(url => 
+      `<img src="${url}" alt="插入的图片" style="max-width: 100%; height: auto; margin: 5px;" />`
+    ).join('')
+    execCommand('insertHTML', imagesHTML)
     showImageUpload.value = false
-    uploadedImageUrl.value = ''
+    uploadedImageUrls.value = []
   }
 }
 

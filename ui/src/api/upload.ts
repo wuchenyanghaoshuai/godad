@@ -9,17 +9,23 @@ import type {
 // 上传API服务类
 export class UploadApi {
   // 上传图片
-  static async uploadImage(file: File): Promise<ApiResponse<ImageUploadResponse>> {
+  static async uploadImage(file: File, articleTitle?: string): Promise<ApiResponse<ImageUploadResponse>> {
     const formData = new FormData()
     formData.append('file', file)  // 修复：后端期望的字段名是 'file'
+    formData.append('type', 'article')  // 设置类型为文章图片
+    
+    // 如果提供了文章标题，添加到表单数据中
+    if (articleTitle) {
+      formData.append('article_title', articleTitle)
+    }
     
     return http.post<ImageUploadResponse>(API_CONFIG.ENDPOINTS.UPLOAD.IMAGE, formData)
   }
 
   // 批量上传图片
-  static async uploadImages(files: File[]): Promise<ApiResponse<ImageUploadResponse[]>> {
+  static async uploadImages(files: File[], articleTitle?: string): Promise<ApiResponse<ImageUploadResponse[]>> {
     // 由于后端只有单个图片上传接口，这里使用循环上传多个文件
-    const uploadPromises = files.map(file => this.uploadImage(file))
+    const uploadPromises = files.map(file => this.uploadImage(file, articleTitle))
     const results = await Promise.all(uploadPromises)
     
     // 提取所有上传结果的data部分

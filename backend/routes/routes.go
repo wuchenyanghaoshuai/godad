@@ -1,7 +1,10 @@
 package routes
 
 import (
+	"godad-backend/config"
+	"godad-backend/controllers"
 	"godad-backend/middleware"
+	"godad-backend/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -50,6 +53,11 @@ func SetupRoutes() *gin.Engine {
 	SetupCommentRoutes(router)  // 评论路由
 	SetupUploadRoutes(router)   // 上传路由
 	SetupAdminRoutes(router)    // 管理员路由
+	
+	// 设置点赞路由
+	likeService := services.NewLikeService(config.GetDB())
+	likeController := controllers.NewLikeController(likeService)
+	RegisterLikeRoutes(router, likeController)
 
 	return router
 }

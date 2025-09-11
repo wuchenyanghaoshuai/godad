@@ -102,6 +102,7 @@ interface Props {
   compress?: boolean
   quality?: number
   uploadType?: 'image' | 'avatar' // 新增：上传类型
+  articleTitle?: string // 新增：文章标题
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -271,7 +272,7 @@ const uploadFiles = async () => {
   try {
     if (props.multiple && selectedFiles.value.length > 1) {
       // 批量上传
-      const response = await UploadApi.uploadImages(selectedFiles.value)
+      const response = await UploadApi.uploadImages(selectedFiles.value, props.articleTitle)
       if (response.data && Array.isArray(response.data)) {
         const urls = response.data.map(item => item.public_url)
         const currentUrls = Array.isArray(props.modelValue) ? props.modelValue : []
@@ -295,7 +296,7 @@ const uploadFiles = async () => {
       // 根据上传类型调用不同的API方法
       const response = props.uploadType === 'avatar' 
         ? await UploadApi.uploadAvatar(file)
-        : await UploadApi.uploadImage(file)
+        : await UploadApi.uploadImage(file, props.articleTitle)
       
       if (response.data) {
         const url = response.data.public_url

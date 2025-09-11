@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"html"
 	"regexp"
 	"strings"
 	"time"
@@ -459,10 +460,13 @@ func (s *ArticleService) processTags(tags string) string {
 
 // generateSummary 生成文章摘要
 func (s *ArticleService) generateSummary(content string) string {
-	// 简单的摘要生成：取前200个字符
-	runes := []rune(content)
+	// 清理HTML标签和实体
+	cleanContent := s.cleanHTMLContent(content)
+	
+	// 取前200个字符
+	runes := []rune(cleanContent)
 	if len(runes) <= 200 {
-		return content
+		return cleanContent
 	}
 	return string(runes[:200]) + "..."
 }
@@ -520,4 +524,24 @@ func (s *ArticleService) GetArticleCount() (int64, error) {
 		return 0, fmt.Errorf("获取文章总数失败: %v", err)
 	}
 	return count, nil
+}
+
+// cleanHTMLContent 清理HTML标签和实体
+func (s *ArticleService) cleanHTMLContent(content string) string {
+	// 1. 解码HTML实体（如&nbsp;转为空格）
+	content = html.UnescapeString(content)
+	
+	// 2. 移除HTML标签
+	// 匹配所有HTML标签
+	htmlTagReg := regexp.MustCompile(`<[^>]*>`)
+	content = htmlTagReg.ReplaceAllString(content, "")
+	
+	// 3. 将连续的空白字符替换为单个空格
+	spaceReg := regexp.MustCompile(`\s+`)
+	content = spaceReg.ReplaceAllString(content, " ")
+	
+	// 4. 去除首尾空白
+	content = strings.TrimSpace(content)
+	
+	return content
 }

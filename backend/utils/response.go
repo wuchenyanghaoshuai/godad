@@ -126,6 +126,33 @@ func DatabaseError(c *gin.Context, message string) {
 	Error(c, CodeDatabaseError, message)
 }
 
+// ErrorResponse 错误响应（兼容旧版本）
+func ErrorResponse(c *gin.Context, status int, message string) {
+	c.JSON(status, Response{
+		Code:    status,
+		Message: message,
+		Data:    nil,
+	})
+}
+
+// SuccessResponse 成功响应（兼容旧版本）
+func SuccessResponse(c *gin.Context, data interface{}, message string) {
+	c.JSON(http.StatusOK, Response{
+		Code:    CodeSuccess,
+		Message: message,
+		Data:    data,
+	})
+}
+
+// PaginationResponse 分页响应结构体
+type PaginationResponse struct {
+	Data       interface{} `json:"data"`
+	Total      int64       `json:"total"`
+	Page       int         `json:"page"`
+	PageSize   int         `json:"page_size"`
+	TotalPages int         `json:"total_pages"`
+}
+
 // getHTTPStatus 根据业务状态码获取HTTP状态码
 func getHTTPStatus(code int) int {
 	switch {

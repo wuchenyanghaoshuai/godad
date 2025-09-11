@@ -47,7 +47,7 @@ func NewUploadService() (*UploadService, error) {
 }
 
 // UploadImage 上传图片
-func (s *UploadService) UploadImage(file *multipart.FileHeader, userID uint, usage string) (*models.Upload, error) {
+func (s *UploadService) UploadImage(file *multipart.FileHeader, userID uint, usage string, articleTitle ...string) (*models.Upload, error) {
 	// 验证文件类型
 	if !s.isValidImageType(file.Filename) {
 		return nil, fmt.Errorf("不支持的文件类型，仅支持 jpg, jpeg, png, gif, webp")
@@ -85,7 +85,12 @@ func (s *UploadService) UploadImage(file *multipart.FileHeader, userID uint, usa
 	systemName := s.generateSystemName(file.Filename)
 	
 	// 生成存储路径
-	fileName := s.generateFileName(file.Filename, usage)
+	var fileName string
+	if len(articleTitle) > 0 && articleTitle[0] != "" {
+		fileName = s.generateFileNameWithTitle(file.Filename, usage, articleTitle[0])
+	} else {
+		fileName = s.generateFileName(file.Filename, usage)
+	}
 
 	// 上传到OSS
 	err = s.bucket.PutObject(fileName, bytes.NewReader(fileContent))
@@ -102,14 +107,8 @@ func (s *UploadService) UploadImage(file *multipart.FileHeader, userID uint, usa
 	// 获取MIME类型
 	mimeType := http.DetectContentType(fileContent)
 	
-	// 检查是否已存在相同的文件（同一用户+相同哈希值）
-	var existingUpload models.Upload
-	err = config.GetDB().Where("user_id = ? AND file_hash = ?", userID, hash).First(&existingUpload).Error
-	if err == nil {
-		// 文件已存在，删除刚上传的重复文件，返回已存在的记录
-		s.bucket.DeleteObject(fileName)
-		return &existingUpload, nil
-	}
+	// 注释：根据需求，每次上传都应该创建新文件，即使内容相同
+	// 所以移除了文件去重检查逻辑
 
 	// 保存上传记录到数据库
 	upload := &models.Upload{
@@ -237,7 +236,7 @@ func (s *UploadService) isValidImageType(filename string) bool {
 	return false
 }
 
-// generateFileName 生成文件名
+// generateFileName 生成文件名（原有的按日期分组方法）
 func (s *UploadService) generateFileName(originalName, usage string) string {
 	ext := filepath.Ext(originalName)
 	uuid := uuid.New().String()
@@ -261,6 +260,60 @@ func (s *UploadService) generateFileName(originalName, usage string) string {
 	}
 
 	return filePath
+}
+
+// generateFileNameWithTitle 根据文章标题生成文件名
+func (s *UploadService) generateFileNameWithTitle(originalName, usage, articleTitle string) string {
+	ext := filepath.Ext(originalName)
+	uuid := uuid.New().String()
+
+	// 清理文章标题，确保可以用作文件夹名称
+	sanitizedTitle := s.sanitizeFileName(articleTitle)
+
+	// 根据上传类型生成不同的路径
+	var filePath string
+	switch usage {
+	case "avatar":
+		// 头像仍然使用UserImage
+		filePath = fmt.Sprintf("UserImage/%s%s", uuid, ext)
+	case "article":
+		// 文章图片按文章标题分组
+		filePath = fmt.Sprintf("ContentImage/%s/%s%s", sanitizedTitle, uuid, ext)
+	case "comment":
+		// 评论图片也可以按文章标题分组，或者单独处理
+		filePath = fmt.Sprintf("ContentImage/%s/%s%s", sanitizedTitle, uuid, ext)
+	default:
+		// 默认使用文章标题分组
+		filePath = fmt.Sprintf("ContentImage/%s/%s%s", sanitizedTitle, uuid, ext)
+	}
+
+	return filePath
+}
+
+// sanitizeFileName 清理文件名，移除或替换不适合作为文件夹名称的字符
+func (s *UploadService) sanitizeFileName(filename string) string {
+	// 移除或替换特殊字符
+	filename = strings.ReplaceAll(filename, "/", "_")
+	filename = strings.ReplaceAll(filename, "\\", "_")
+	filename = strings.ReplaceAll(filename, ":", "_")
+	filename = strings.ReplaceAll(filename, "*", "_")
+	filename = strings.ReplaceAll(filename, "?", "_")
+	filename = strings.ReplaceAll(filename, "\"", "_")
+	filename = strings.ReplaceAll(filename, "<", "_")
+	filename = strings.ReplaceAll(filename, ">", "_")
+	filename = strings.ReplaceAll(filename, "|", "_")
+	
+	// 限制长度，避免过长的文件夹名
+	if len(filename) > 50 {
+		filename = filename[:50]
+	}
+	
+	// 如果清理后为空，使用默认名称
+	if strings.TrimSpace(filename) == "" {
+		filename = "untitled"
+	}
+	
+	return filename
 }
 
 // generateSystemName 生成系统文件名（UUID）

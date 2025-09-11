@@ -78,8 +78,6 @@ export interface Article {
   like_count: number
   comment_count: number
   tags: string[]
-  views?: number
-  likes?: number
   created_at: string
   updated_at: string
 }

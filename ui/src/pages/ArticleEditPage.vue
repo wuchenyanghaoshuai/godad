@@ -17,7 +17,7 @@
     </div>
 
     <!-- 编辑表单 -->
-    <div v-else class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+    <div v-else-if="originalArticle" class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
       <!-- 页面标题 -->
       <div class="mb-6 sm:mb-8">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -149,6 +149,7 @@
             v-model="form.cover_image"
             :multiple="false"
             :max-size="5"
+            :article-title="originalArticle?.title || form.title || `article-${originalArticle?.id || 'editing'}`"
             @upload-success="handleCoverUpload"
             @upload-error="handleUploadError"
           />
@@ -168,6 +169,7 @@
               placeholder="请输入文章内容..."
               :min-height="300"
               class="sm:min-h-[400px]"
+              :article-title="originalArticle?.title || form.title || `article-${originalArticle?.id || 'editing'}`"
               @change="handleContentChange"
             />
           </div>
@@ -439,12 +441,21 @@ const loadArticle = async () => {
       category_id: originalArticle.value.category_id,
       cover_image: originalArticle.value.cover_image || '',
       tags: originalArticle.value.tags ? originalArticle.value.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
-      status: originalArticle.value.status,
+      status: originalArticle.value.status === 1 ? 'published' : 'draft',
       // is_featured 属性已移除
     }
     
   } catch (err: any) {
-    error.value = err.message || '加载文章失败'
+    // 根据错误状态码或错误信息提供更精确的错误提示
+    if (err.response?.status === 404) {
+      error.value = '文章不存在或已被删除'
+    } else if (err.response?.status === 403) {
+      error.value = '您没有权限访问此文章'
+    } else if (err.response?.data?.message) {
+      error.value = err.response.data.message
+    } else {
+      error.value = err.message || '加载文章失败'
+    }
     console.error('加载文章失败:', err)
   } finally {
     isLoading.value = false

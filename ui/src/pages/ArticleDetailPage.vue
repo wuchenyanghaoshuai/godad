@@ -73,46 +73,19 @@
           </div>
 
           <!-- 作者和发布信息 -->
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 pb-6 border-b border-gray-200">
-            <div class="flex items-center space-x-4 mb-4 md:mb-0">
-              <div class="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-sm">
-                <UserIcon class="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <div class="font-medium text-gray-900">
-                  {{ article.author?.username || '匿名用户' }}
-                </div>
-                <div class="text-sm text-gray-500">
-                  发布于 {{ formatDate(article.created_at) }}
-                  <span v-if="article.updated_at !== article.created_at">
-                    · 更新于 {{ formatDate(article.updated_at) }}
-                  </span>
-                </div>
-              </div>
+          <div class="flex items-center space-x-4 mb-6 pb-6 border-b border-gray-200">
+            <div class="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-sm">
+              <UserIcon class="h-6 w-6 text-white" />
             </div>
-            
-            <!-- 文章统计 -->
-            <div class="grid grid-cols-3 gap-4 md:flex md:items-center md:space-x-6 md:gap-0">
-              <div class="flex items-center justify-center md:justify-start bg-gray-50 rounded-lg p-3 md:bg-transparent md:p-0">
-                <EyeIcon class="h-4 w-4 mr-2 text-blue-500" />
-                <div class="text-center md:text-left">
-                  <div class="text-sm font-semibold text-gray-900">{{ article.views || 0 }}</div>
-                  <div class="text-xs text-gray-500">阅读</div>
-                </div>
+            <div>
+              <div class="font-medium text-gray-900">
+                {{ article.author?.username || '匿名用户' }}
               </div>
-              <div class="flex items-center justify-center md:justify-start bg-gray-50 rounded-lg p-3 md:bg-transparent md:p-0">
-                <HeartIcon class="h-4 w-4 mr-2 text-red-500" />
-                <div class="text-center md:text-left">
-                  <div class="text-sm font-semibold text-gray-900">{{ article.likes || 0 }}</div>
-                  <div class="text-xs text-gray-500">点赞</div>
-                </div>
-              </div>
-              <div class="flex items-center justify-center md:justify-start bg-gray-50 rounded-lg p-3 md:bg-transparent md:p-0">
-                <MessageCircleIcon class="h-4 w-4 mr-2 text-green-500" />
-                <div class="text-center md:text-left">
-                  <div class="text-sm font-semibold text-gray-900">{{ article.comment_count || 0 }}</div>
-                  <div class="text-xs text-gray-500">评论</div>
-                </div>
+              <div class="text-sm text-gray-500">
+                发布于 {{ formatDate(article.created_at) }}
+                <span v-if="article.updated_at !== article.created_at">
+                  · 更新于 {{ formatDate(article.updated_at) }}
+                </span>
               </div>
             </div>
           </div>
@@ -161,48 +134,82 @@
             </div>
           </div>
 
-          <!-- 操作按钮 -->
+          <!-- 互动操作区 -->
           <div class="mt-8 pt-6 border-t border-gray-200">
-            <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-6 sm:mb-8 border border-gray-100">
-              <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 sm:gap-4">
-                <button
-                  @click="toggleLike"
-                  :disabled="isLiking"
-                  class="flex items-center justify-center sm:justify-start px-4 py-3 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
-                  :class="isLiked ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                >
-                  <HeartIcon class="h-4 w-4 sm:h-5 sm:w-5 mr-2" :class="isLiked ? 'fill-current' : ''" />
-                  <div class="text-center sm:text-left">
-                    <div class="text-xs sm:text-sm font-medium">{{ isLiked ? '已点赞' : '点赞' }}</div>
-                    <div class="text-xs opacity-75">({{ article.likes || 0 }})</div>
+            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+              <div class="flex items-center justify-between">
+                <!-- 左侧：数据统计 -->
+                <div class="flex items-center space-x-6">
+                  <div class="flex items-center text-gray-600">
+                    <EyeIcon class="h-4 w-4 mr-1.5" />
+                    <span class="text-sm font-medium">{{ article.view_count || 0 }} 阅读</span>
                   </div>
-                </button>
+                  <div class="flex items-center text-gray-600">
+                    <HeartIcon class="h-4 w-4 mr-1.5" />
+                    <span class="text-sm font-medium">{{ article.like_count || 0 }} 点赞</span>
+                  </div>
+                  <div class="flex items-center text-gray-600">
+                    <MessageCircleIcon class="h-4 w-4 mr-1.5" />
+                    <span class="text-sm font-medium">{{ article.comment_count || 0 }} 评论</span>
+                  </div>
+                </div>
                 
-                <button
-                  @click="shareArticle"
-                  class="flex items-center justify-center sm:justify-start px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
-                >
-                  <ShareIcon class="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                  <span class="text-xs sm:text-sm font-medium">分享</span>
-                </button>
-                
-                <button
-                  v-if="canEdit"
-                  @click="$router.push(`/articles/${article.id}/edit`)"
-                  class="flex items-center justify-center sm:justify-start px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
-                >
-                  <EditIcon class="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                  <span class="text-xs sm:text-sm font-medium">编辑</span>
-                </button>
-                
-                <button
-                  v-if="canEdit"
-                  @click="deleteArticle"
-                  class="flex items-center justify-center sm:justify-start px-4 py-3 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl hover:from-red-600 hover:to-rose-600 transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md"
-                >
-                  <TrashIcon class="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                  <span class="text-xs sm:text-sm font-medium">删除</span>
-                </button>
+                <!-- 右侧：操作按钮 -->
+                <div class="flex items-center space-x-2">
+                  <!-- 点赞按钮 -->
+                  <button
+                    @click="toggleLike"
+                    :disabled="isLiking"
+                    class="group flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    :class="isLiked 
+                      ? 'bg-red-500 text-white hover:bg-red-600' 
+                      : 'bg-white text-gray-700 border border-gray-200 hover:border-red-300 hover:text-red-600 hover:bg-red-50'"
+                  >
+                    <HeartIcon 
+                      class="h-4 w-4 mr-1 transition-transform duration-300 group-hover:scale-110" 
+                      :class="isLiked ? 'fill-current' : 'group-hover:text-red-500'" 
+                    />
+                    <span>{{ isLiked ? '已点赞' : '点赞' }}</span>
+                  </button>
+                  
+                  <!-- 评论按钮 -->
+                  <button
+                    @click="showComments = !showComments"
+                    class="group flex items-center px-3 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md hover:border-green-300 hover:text-green-600 hover:bg-green-50 text-sm"
+                  >
+                    <MessageCircleIcon class="h-4 w-4 mr-1 transition-transform duration-300 group-hover:scale-110 group-hover:text-green-500" />
+                    <span>评论</span>
+                  </button>
+                  
+                  <!-- 分享按钮 -->
+                  <button
+                    @click="shareArticle"
+                    class="group flex items-center px-3 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 text-sm"
+                  >
+                    <ShareIcon class="h-4 w-4 mr-1 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12 group-hover:text-blue-500" />
+                    <span>分享</span>
+                  </button>
+                  
+                  <!-- 编辑按钮（作者可见） -->
+                  <button
+                    v-if="canEdit"
+                    @click="$router.push(`/articles/${article.id}/edit`)"
+                    class="group flex items-center px-3 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50 text-sm"
+                  >
+                    <EditIcon class="h-4 w-4 mr-1 transition-transform duration-300 group-hover:scale-110 group-hover:text-emerald-500" />
+                    <span>编辑</span>
+                  </button>
+                  
+                  <!-- 删除按钮（作者可见） -->
+                  <button
+                    v-if="canEdit"
+                    @click="deleteArticle"
+                    class="group flex items-center px-3 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md hover:border-red-300 hover:text-red-600 hover:bg-red-50 text-sm"
+                  >
+                    <TrashIcon class="h-4 w-4 mr-1 transition-transform duration-300 group-hover:scale-110 group-hover:text-red-500" />
+                    <span>删除</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -293,11 +300,11 @@
                 <div class="flex items-center space-x-3 text-xs text-gray-400">
                   <div class="flex items-center space-x-1">
                     <EyeIcon class="w-3 h-3" />
-                    <span>{{ relatedArticle.views || 0 }}</span>
+                    <span>{{ relatedArticle.view_count || 0 }}</span>
                   </div>
                   <div class="flex items-center space-x-1">
                     <HeartIcon class="w-3 h-3" />
-                    <span>{{ relatedArticle.likes || 0 }}</span>
+                    <span>{{ relatedArticle.like_count || 0 }}</span>
                   </div>
                 </div>
                 <div class="text-xs text-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -391,9 +398,9 @@ const formatContent = (content: string | undefined | null) => {
     .replace(/`(.*?)`/g, '<code>$1</code>')
 }
 
-// 返回上一页
+// 返回文章列表页
 const goBack = () => {
-  router.back()
+  router.push('/articles')
 }
 
 // 跳转到文章
@@ -408,18 +415,23 @@ const toggleLike = async () => {
   try {
     isLiking.value = true
     
-    if (isLiked.value) {
-      await ArticleApi.unlikeArticle(article.value.id)
-      article.value.likes = (article.value.likes || 1) - 1
-      isLiked.value = false
-    } else {
-      await ArticleApi.likeArticle(article.value.id)
-      article.value.likes = (article.value.likes || 0) + 1
+    const response = await ArticleApi.toggleLike(article.value.id)
+    
+    // 根据后端返回的数据判断点赞状态
+    // 后端逻辑：点赞成功返回点赞对象，取消点赞返回null
+    if (response.data !== null && response.data !== undefined) {
+      // 返回了点赞对象，说明是点赞成功
       isLiked.value = true
+      article.value.like_count = (article.value.like_count || 0) + 1
+    } else {
+      // 返回null，说明是取消点赞成功
+      isLiked.value = false
+      article.value.like_count = Math.max(0, (article.value.like_count || 1) - 1)
     }
   } catch (err: any) {
     console.error('点赞操作失败:', err)
-    // 这里可以显示错误提示
+    // 显示错误提示但不更改状态
+    alert('点赞失败：' + (err.message || '未知错误'))
   } finally {
     isLiking.value = false
   }
@@ -504,10 +516,17 @@ const loadArticle = async () => {
     // 增加浏览量 (暂时禁用，后端接口未实现)
     // ArticleApi.incrementViewCount(articleId).catch(console.error)
     
-    // 检查是否已点赞（如果用户已登录）
-    if (authStore.isAuthenticated) {
-      // 这里需要后端提供检查点赞状态的接口
-      // isLiked.value = await ArticleApi.checkLikeStatus(articleId)
+    // 获取点赞状态 - 无论用户是否登录都尝试获取，让后端来判断
+    try {
+      console.log('获取点赞状态..., 认证状态:', authStore.isAuthenticated, '用户信息:', authStore.user)
+      const likeStatusResponse = await ArticleApi.getLikeStatus(articleId)
+      console.log('点赞状态API响应:', likeStatusResponse)
+      isLiked.value = likeStatusResponse.data?.is_liked || false
+      console.log('设置点赞状态:', isLiked.value)
+    } catch (error) {
+      console.error('获取点赞状态失败:', error)
+      // 如果API调用失败，默认设置为未点赞
+      isLiked.value = false
     }
     
     // 加载相关文章
@@ -559,8 +578,8 @@ const loadRelatedArticles = async (currentArticleId: number, categoryId: number)
       }
       
       // 浏览量和点赞数权重 (热门文章优先)
-      score += Math.log(1 + (article.views || 0)) * 0.1
-      score += (article.likes || 0) * 0.2
+      score += Math.log(1 + (article.view_count || 0)) * 0.1
+      score += (article.like_count || 0) * 0.2
       
       return { ...article, relevanceScore: score }
     })
@@ -596,8 +615,31 @@ watch(
       article.value = null
       relatedArticles.value = []
       showComments.value = false
+      isLiked.value = false
       // 重新加载数据
       loadArticle()
+    }
+  }
+)
+
+// 监听认证状态变化，重新加载点赞状态
+watch(
+  () => authStore.isAuthenticated,
+  (newVal) => {
+    console.log('认证状态变化:', newVal, '当前文章:', article.value?.id)
+    if (article.value) {
+      // 无论登录还是登出都重新获取点赞状态，让后端判断
+      console.log('认证状态变化，重新获取点赞状态')
+      ArticleApi.getLikeStatus(article.value.id)
+        .then(response => {
+          console.log('重新获取的点赞状态:', response)
+          isLiked.value = response.data?.is_liked || false
+          console.log('更新点赞状态为:', isLiked.value)
+        })
+        .catch(error => {
+          console.error('获取点赞状态失败:', error)
+          isLiked.value = false
+        })
     }
   }
 )

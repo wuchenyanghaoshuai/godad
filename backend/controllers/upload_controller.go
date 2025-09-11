@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"strconv"
 
 	"godad-backend/middleware"
@@ -60,8 +61,32 @@ func (c *UploadController) UploadImage(ctx *gin.Context) {
 	// 获取上传类型
 	uploadType := ctx.DefaultPostForm("type", "other")
 
+	// 获取文章标题（可选）
+	articleTitle := ctx.PostForm("article_title")
+	
+	// 添加调试日志
+	fmt.Printf("=== 上传调试信息 ===\n")
+	fmt.Printf("uploadType: %s\n", uploadType)
+	fmt.Printf("articleTitle: '%s'\n", articleTitle)
+	fmt.Printf("articleTitle length: %d\n", len(articleTitle))
+	
+	// 打印所有表单参数
+	ctx.Request.ParseMultipartForm(32 << 20) // 32MB
+	if ctx.Request.MultipartForm != nil {
+		fmt.Printf("所有表单参数:\n")
+		for key, values := range ctx.Request.MultipartForm.Value {
+			fmt.Printf("  %s: %v\n", key, values)
+		}
+	}
+	fmt.Printf("==================\n")
+
 	// 上传文件
-	upload, err := c.uploadService.UploadImage(file, userID, uploadType)
+	var upload *models.Upload
+	if articleTitle != "" {
+		upload, err = c.uploadService.UploadImage(file, userID, uploadType, articleTitle)
+	} else {
+		upload, err = c.uploadService.UploadImage(file, userID, uploadType)
+	}
 	if err != nil {
 		utils.Error(ctx, utils.CodeBadRequest, err.Error())
 		return
