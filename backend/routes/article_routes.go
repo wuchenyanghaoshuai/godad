@@ -68,6 +68,8 @@ func SetupArticleRoutes(router *gin.Engine) {
 	categoryAdmin := v1.Group("/admin/categories")
 	categoryAdmin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware())
 	{
+		// 获取分类列表（管理员）
+		categoryAdmin.GET("", categoryController.GetCategoryList)
 		// 创建分类
 		categoryAdmin.POST("", categoryController.CreateCategory)
 		// 更新分类

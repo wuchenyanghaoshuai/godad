@@ -230,11 +230,14 @@ func (s *CommentService) GetCommentsByArticle(articleID uint, page, size int) ([
 	// 构建查询条件
 	query := s.db.Model(&models.Comment{}).Where("article_id = ? AND status = ? AND parent_id IS NULL", articleID, 1)
 
-	// 获取总数
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
+	// 获取顶级评论总数（用于分页）
+	var topLevelTotal int64
+	if err := query.Count(&topLevelTotal).Error; err != nil {
 		return nil, 0, err
 	}
+
+	// 获取文章的总评论数（包含回复）
+	var total int64 = int64(article.CommentCount)
 
 	// 获取评论列表（只获取顶级评论）
 	var comments []*models.Comment
@@ -398,26 +401,28 @@ func (s *CommentService) UnlikeComment(commentID, userID uint) error {
 	return tx.Commit().Error
 }
 
-// loadReplies 加载评论的回复（递归加载，最多3层）
+// loadReplies 加载评论的回复（递归加载，最多5层）
 func (s *CommentService) loadReplies(comment *models.Comment) error {
-	// 加载直接回复（最多显示5条）
+	return s.loadRepliesRecursive(comment, 0, 5)
+}
+
+// loadRepliesRecursive 递归加载评论回复
+func (s *CommentService) loadRepliesRecursive(comment *models.Comment, currentDepth, maxDepth int) error {
+	if currentDepth >= maxDepth {
+		return nil
+	}
+
+	// 加载直接回复
 	var replies []*models.Comment
-	if err := s.db.Where("parent_id = ? AND status = ?", comment.ID, 1).Preload("User").Order("created_at ASC").Limit(5).Find(&replies).Error; err != nil {
+	if err := s.db.Where("parent_id = ? AND status = ?", comment.ID, 1).Preload("User").Order("created_at ASC").Find(&replies).Error; err != nil {
 		return err
 	}
 
-	// 为每个回复递归加载子回复（最多2层）
+	// 为每个回复递归加载子回复
 	for _, reply := range replies {
-		var subReplies []*models.Comment
-		if err := s.db.Where("parent_id = ? AND status = ?", reply.ID, 1).Preload("User").Order("created_at ASC").Limit(3).Find(&subReplies).Error; err != nil {
+		if err := s.loadRepliesRecursive(reply, currentDepth+1, maxDepth); err != nil {
 			return err
 		}
-		// 转换指针切片为值切片
-		subRepliesValue := make([]models.Comment, len(subReplies))
-		for i, subReply := range subReplies {
-			subRepliesValue[i] = *subReply
-		}
-		reply.Replies = subRepliesValue
 	}
 
 	// 转换指针切片为值切片

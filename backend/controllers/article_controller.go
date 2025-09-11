@@ -144,8 +144,8 @@ func (c *ArticleController) GetArticle(ctx *gin.Context) {
 	// 获取当前用户ID（可选）
 	userID, _ := middleware.GetCurrentUserID(ctx)
 
-	// 获取文章
-	article, err := c.articleService.GetArticleByID(uint(articleID), userID, false)
+	// 获取文章 - 允许用户查看自己的文章（包括草稿）
+	article, err := c.articleService.GetArticleByID(uint(articleID), userID, true)
 	if err != nil {
 		if err.Error() == "文章不存在" {
 			utils.Error(ctx, utils.CodeNotFound, err.Error())

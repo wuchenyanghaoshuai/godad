@@ -243,7 +243,7 @@ func (c *CommentController) GetCommentsByArticle(ctx *gin.Context) {
 	// 转换为响应格式
 	var commentResponses []*models.CommentResponse
 	for _, comment := range comments {
-		commentResponses = append(commentResponses, comment.ToResponse(false))
+		commentResponses = append(commentResponses, comment.ToResponse(true))
 	}
 
 	// 使用分页响应

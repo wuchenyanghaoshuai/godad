@@ -130,6 +130,11 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   
   try {
+    // 如果还没有初始化认证状态，先初始化
+    if (!authStore.token && !authStore.user) {
+      await authStore.initAuth()
+    }
+    
     // 检查用户认证状态
     if (authStore.token && !authStore.isAuthenticated) {
       await authStore.checkAuth()

@@ -115,11 +115,25 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err) {
       console.error('登出API调用失败:', err)
     } finally {
+      // 保存"记住我"的信息
+      const rememberMe = localStorage.getItem('remember_me') === 'true'
+      const rememberedUsername = localStorage.getItem('remembered_username')
+      const rememberedPassword = localStorage.getItem('remembered_password')
+      
       // 清除本地状态和存储
       user.value = null
       token.value = null
       error.value = null
       AuthUtils.clearAuthData()
+      
+      // 如果用户选择了记住我，恢复这些信息
+      if (rememberMe && rememberedUsername) {
+        localStorage.setItem('remember_me', 'true')
+        localStorage.setItem('remembered_username', rememberedUsername)
+        if (rememberedPassword) {
+          localStorage.setItem('remembered_password', rememberedPassword)
+        }
+      }
     }
   }
 

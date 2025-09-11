@@ -1,6 +1,6 @@
 <template>
-  <div class="rich-text-editor">
-    <div ref="toolbarRef" class="editor-toolbar border-b border-gray-200 p-2 sm:p-3 flex flex-wrap gap-1 sm:gap-2">
+  <div>
+    <div ref="toolbarRef" class="editor-toolbar px-3 py-3 sm:px-4 sm:py-3 flex flex-wrap gap-2 sm:gap-2">
       <!-- 格式化按钮 -->
       <div class="flex gap-0.5 sm:gap-1">
         <button
@@ -175,7 +175,8 @@
     </div>
     
     <!-- 编辑器内容区 -->
-    <div class="editor-content relative">
+    <div class="rich-text-editor">
+      <div class="editor-content relative">
       <div
         v-if="!sourceMode"
         ref="editorRef"
@@ -201,6 +202,7 @@
       <!-- 字数统计 -->
       <div class="absolute bottom-2 right-2 text-xs text-gray-500 bg-white bg-opacity-80 px-2 py-1 rounded shadow-sm">
         <span class="font-medium">{{ wordCount }}</span> 字
+      </div>
       </div>
     </div>
     
@@ -367,26 +369,15 @@ watch(content, (newValue) => {
   emit('change', newValue)
 })
 
-// 动态调整工具栏sticky位置
+// 动态调整工具栏位置
 const adjustToolbarPosition = () => {
   if (toolbarRef.value) {
     // 获取导航栏的实际高度
     const navbar = document.querySelector('nav')
-    if (navbar) {
-      const navbarHeight = navbar.offsetHeight
-      
-      // 使用CSS变量设置top值
-      toolbarRef.value.style.setProperty('--toolbar-top', `${navbarHeight}px`)
-      toolbarRef.value.style.setProperty('--toolbar-top-mobile', `${navbarHeight}px`)
-      
-      // 添加一些调试信息
-      console.log(`工具栏位置调整: navbar高度=${navbarHeight}px`)
-    } else {
-      // 如果找不到导航栏，使用默认值
-      console.warn('未找到导航栏元素，使用默认sticky位置')
-      toolbarRef.value.style.setProperty('--toolbar-top', '4rem')
-      toolbarRef.value.style.setProperty('--toolbar-top-mobile', '3.5rem')
-    }
+    const navbarHeight = navbar ? navbar.offsetHeight : 64
+    
+    // 设置CSS变量，工具栏紧贴导航栏底部
+    toolbarRef.value.style.setProperty('--navbar-height', `${navbarHeight}px`)
   }
 }
 
@@ -446,7 +437,7 @@ onMounted(() => {
     
     // 监听窗口大小变化和滚动事件
     window.addEventListener('resize', adjustToolbarPosition)
-    window.addEventListener('scroll', checkStickyState)
+    window.addEventListener('scroll', adjustToolbarPosition)
     
     // 延迟调整，确保页面完全加载
     setTimeout(adjustToolbarPosition, 100)
@@ -462,7 +453,7 @@ onBeforeUnmount(() => {
   }
   // 清理事件监听器
   window.removeEventListener('resize', adjustToolbarPosition)
-  window.removeEventListener('scroll', checkStickyState)
+  window.removeEventListener('scroll', adjustToolbarPosition)
 })
 
 // 方法
@@ -564,10 +555,22 @@ const formatHeading = (e: Event) => {
 }
 
 const insertLink = () => {
-  const url = prompt('请输入链接地址:')
-  if (url) {
-    const text = window.getSelection()?.toString() || url
-    execCommand('insertHTML', `<a href="${url}" target="_blank">${text}</a>`)
+  const inputUrl = prompt('请输入链接地址:')
+  if (inputUrl && inputUrl.trim()) {
+    let url = inputUrl.trim()
+    
+    // 如果没有协议，自动添加 https://
+    if (!url.match(/^https?:\/\//)) {
+      // 检查是否是邮箱地址
+      if (url.includes('@')) {
+        url = `mailto:${url}`
+      } else {
+        url = `https://${url}`
+      }
+    }
+    
+    const text = window.getSelection()?.toString() || inputUrl.trim()
+    execCommand('insertHTML', `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`)
   }
 }
 
@@ -626,11 +629,21 @@ const toggleSourceMode = () => {
 }
 
 .editor-toolbar {
-  @apply bg-white shadow-sm sticky z-30;
-  top: 80px; /* 导航栏高度大约80px，固定在其下方 */
+  @apply bg-gray-50/90 backdrop-blur-sm z-40;
+  position: sticky;
+  top: var(--navbar-height, 64px);
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  margin: 0 -24px; /* 负边距突破父容器的padding限制 */
+  padding: 6px 24px;
+  width: calc(100% + 48px); /* 补偿负边距 */
+  /* 确保内容不被裁剪 */
+  overflow: visible;
+  min-height: 48px;
 }
 
-/* 增强的粘性效果 */
+/* 工具栏处于sticky状态时的增强效果 */
 .editor-toolbar.is-sticky {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(10px);
@@ -640,8 +653,8 @@ const toggleSourceMode = () => {
 /* 响应式调整 */
 @media (max-width: 768px) {
   .editor-toolbar {
-    /* 移动端降低top值 */
-    top: var(--toolbar-top-mobile, 3.5rem);
+    /* 移动端使用相同的navbar-height变量 */
+    top: var(--navbar-height, 56px);
   }
 }
 
@@ -663,7 +676,21 @@ const toggleSourceMode = () => {
 }
 
 .toolbar-btn {
-  @apply px-1.5 py-1 sm:px-2 sm:py-1.5 border border-gray-300 rounded hover:bg-gray-50 transition-colors text-xs sm:text-sm;
+  @apply px-2 py-2 sm:px-3 sm:py-2 rounded hover:bg-white/70 transition-all text-xs sm:text-sm;
+  border: 1px solid transparent;
+  color: #6b7280;
+  min-height: 36px; /* 增加高度确保文本不被截断 */
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2; /* 确保文本行高正常 */
+  white-space: nowrap; /* 防止文本换行 */
+}
+
+.toolbar-btn:hover {
+  @apply bg-white/80 shadow-sm;
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .toolbar-btn.active {
@@ -671,7 +698,21 @@ const toggleSourceMode = () => {
 }
 
 .toolbar-select {
-  @apply px-1.5 py-1 sm:px-2 sm:py-1.5 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500;
+  @apply px-2 py-2 sm:px-3 sm:py-2 rounded text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-blue-400;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.7);
+  color: #6b7280;
+  min-height: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.toolbar-select:hover {
+  @apply bg-white/80 shadow-sm;
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .editor-area {
@@ -724,11 +765,13 @@ const toggleSourceMode = () => {
 /* 移动端优化 */
 @media (max-width: 640px) {
   .toolbar-btn {
-    @apply min-w-[32px] min-h-[32px] flex items-center justify-center;
+    @apply min-w-[36px] min-h-[36px] flex items-center justify-center;
+    height: 36px;
   }
   
   .toolbar-select {
-    @apply min-h-[32px];
+    @apply min-h-[36px];
+    height: 36px;
   }
 }
 </style>

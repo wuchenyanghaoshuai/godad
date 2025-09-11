@@ -37,6 +37,7 @@
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
                 required
+                autocomplete="current-password"
                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-colors pr-12"
                 placeholder="请输入您的密码"
                 :disabled="isLoading"
@@ -61,6 +62,7 @@
                 v-model="form.remember"
                 type="checkbox"
                 class="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300 rounded"
+                @change="handleRememberChange"
               />
               <label for="remember" class="ml-2 block text-sm text-gray-700">
                 记住我
@@ -154,6 +156,19 @@ const form = reactive<UserLoginRequest & { remember: boolean }>({
   password: '',
   remember: false
 })
+// 简单的加密函数（仅用于演示，生产环境应使用更强的加密）
+const encryptPassword = (password: string): string => {
+  return btoa(password) // Base64编码，实际应用中应使用更安全的加密
+}
+
+const decryptPassword = (encrypted: string): string => {
+  try {
+    return atob(encrypted) // Base64解码
+  } catch {
+    return ''
+  }
+}
+
 // 处理登录
 const handleLogin = async () => {
   try {
@@ -167,12 +182,33 @@ const handleLogin = async () => {
       password: form.password
     })
 
+    // 如果选择了记住我，保存用户名和密码
+    if (form.remember) {
+      localStorage.setItem('remembered_username', form.username)
+      localStorage.setItem('remembered_password', encryptPassword(form.password))
+      localStorage.setItem('remember_me', 'true')
+    } else {
+      localStorage.removeItem('remembered_username')
+      localStorage.removeItem('remembered_password')
+      localStorage.removeItem('remember_me')
+    }
+
     // 登录成功，跳转到首页
     router.push('/')
   } catch (err) {
     error.value = err instanceof Error ? err.message : '登录失败，请重试'
   } finally {
     isLoading.value = false
+  }
+}
+
+// 处理记住我选项变化
+const handleRememberChange = () => {
+  if (!form.remember) {
+    // 如果取消勾选记住我，清除保存的信息
+    localStorage.removeItem('remember_me')
+    localStorage.removeItem('remembered_username')
+    localStorage.removeItem('remembered_password')
   }
 }
 
@@ -186,5 +222,30 @@ onMounted(() => {
       successMessage.value = null
     }, 5000)
   }
+  
+  // 恢复记住的用户名和密码
+  const rememberMe = localStorage.getItem('remember_me') === 'true'
+  if (rememberMe) {
+    const rememberedUsername = localStorage.getItem('remembered_username')
+    const rememberedPassword = localStorage.getItem('remembered_password')
+    
+    if (rememberedUsername) {
+      form.username = rememberedUsername
+    }
+    
+    if (rememberedPassword) {
+      form.password = decryptPassword(rememberedPassword)
+    }
+    
+    form.remember = true
+  }
+  
+  // 确保密码输入框类型正确
+  setTimeout(() => {
+    const passwordInput = document.getElementById('password') as HTMLInputElement
+    if (passwordInput && !showPassword.value) {
+      passwordInput.type = 'password'
+    }
+  }, 100)
 })
 </script>
