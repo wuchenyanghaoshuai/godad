@@ -154,15 +154,6 @@ onUnmounted(() => {
                   <PlusIcon class="h-4 w-4 mr-3" />
                   发布文章
                 </router-link>
-                <router-link
-                  v-if="authStore.user && (authStore.user.role === 2 || authStore.user.role === '2')"
-                  to="/management-dashboard"
-                  class="flex items-center px-4 py-2 text-sm text-purple-700 hover:bg-purple-50 transition-colors"
-                  @click="showUserMenu = false"
-                >
-                  <CogIcon class="h-4 w-4 mr-3" />
-                  后台管理
-                </router-link>
                 <hr class="my-2 border-gray-100" />
                 <button
                   @click="handleLogout"
