@@ -26,3 +26,9 @@ type FollowStats struct {
 	FollowingCount int64 `json:"following_count"`
 	FollowersCount int64 `json:"followers_count"`
 }
+
+type UserWithFollowTime struct {
+	User
+	FollowedAt    *time.Time `json:"followed_at,omitempty"`
+	IsMutualFollow bool      `json:"is_mutual_follow,omitempty"`
+}

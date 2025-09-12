@@ -72,68 +72,74 @@ func (s *FollowService) IsFollowing(followerID, followeeID uint) (bool, error) {
 	return count > 0, nil
 }
 
-func (s *FollowService) GetFollowing(userID uint, page, limit int) ([]models.User, int64, error) {
-	var users []models.User
+func (s *FollowService) GetFollowing(userID uint, page, limit int) ([]models.UserWithFollowTime, int64, error) {
+	var following []models.UserWithFollowTime
 	var total int64
 
 	offset := (page - 1) * limit
 
+	// 计算总数时要排除软删除的记录
 	err := s.db.Model(&models.Follow{}).
-		Where("follower_id = ?", userID).
+		Where("follower_id = ? AND deleted_at IS NULL", userID).
 		Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
+	// 查询关注列表时也要排除软删除的记录
 	err = s.db.Table("users").
-		Select("users.*").
+		Select("users.*, follows.created_at as followed_at").
 		Joins("INNER JOIN follows ON follows.followee_id = users.id").
-		Where("follows.follower_id = ?", userID).
+		Where("follows.follower_id = ? AND follows.deleted_at IS NULL", userID).
 		Order("follows.created_at DESC").
 		Limit(limit).
 		Offset(offset).
-		Find(&users).Error
+		Find(&following).Error
 
-	return users, total, err
+	return following, total, err
 }
 
-func (s *FollowService) GetFollowers(userID uint, page, limit int) ([]models.User, int64, error) {
-	var users []models.User
+func (s *FollowService) GetFollowers(userID uint, page, limit int) ([]models.UserWithFollowTime, int64, error) {
+	var followers []models.UserWithFollowTime
 	var total int64
 
 	offset := (page - 1) * limit
 
+	// 计算总数时要排除软删除的记录
 	err := s.db.Model(&models.Follow{}).
-		Where("followee_id = ?", userID).
+		Where("followee_id = ? AND deleted_at IS NULL", userID).
 		Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
+	// 查询粉丝列表时也要排除软删除的记录
 	err = s.db.Table("users").
-		Select("users.*").
+		Select("users.*, follows.created_at as followed_at").
 		Joins("INNER JOIN follows ON follows.follower_id = users.id").
-		Where("follows.followee_id = ?", userID).
+		Where("follows.followee_id = ? AND follows.deleted_at IS NULL", userID).
 		Order("follows.created_at DESC").
 		Limit(limit).
 		Offset(offset).
-		Find(&users).Error
+		Find(&followers).Error
 
-	return users, total, err
+	return followers, total, err
 }
 
 func (s *FollowService) GetFollowStats(userID uint) (*models.FollowStats, error) {
 	var stats models.FollowStats
 
+	// 统计关注数（排除软删除）
 	err := s.db.Model(&models.Follow{}).
-		Where("follower_id = ?", userID).
+		Where("follower_id = ? AND deleted_at IS NULL", userID).
 		Count(&stats.FollowingCount).Error
 	if err != nil {
 		return nil, err
 	}
 
+	// 统计粉丝数（排除软删除）
 	err = s.db.Model(&models.Follow{}).
-		Where("followee_id = ?", userID).
+		Where("followee_id = ? AND deleted_at IS NULL", userID).
 		Count(&stats.FollowersCount).Error
 	if err != nil {
 		return nil, err
@@ -142,18 +148,20 @@ func (s *FollowService) GetFollowStats(userID uint) (*models.FollowStats, error)
 	return &stats, nil
 }
 
-func (s *FollowService) GetMutualFollows(userID uint, page, limit int) ([]models.User, int64, error) {
-	var users []models.User
+func (s *FollowService) GetMutualFollows(userID uint, page, limit int) ([]models.UserWithFollowTime, int64, error) {
+	var users []models.UserWithFollowTime
 	var total int64
 
 	offset := (page - 1) * limit
 
+	// 修复查询，排除软删除的记录
 	query := `
-		SELECT users.* 
+		SELECT users.*, f1.created_at as followed_at
 		FROM users 
 		INNER JOIN follows f1 ON f1.followee_id = users.id 
 		INNER JOIN follows f2 ON f2.follower_id = users.id 
-		WHERE f1.follower_id = ? AND f2.followee_id = ?
+		WHERE f1.follower_id = ? AND f2.followee_id = ? 
+		AND f1.deleted_at IS NULL AND f2.deleted_at IS NULL
 		ORDER BY f1.created_at DESC
 		LIMIT ? OFFSET ?
 	`
@@ -163,7 +171,8 @@ func (s *FollowService) GetMutualFollows(userID uint, page, limit int) ([]models
 		FROM users 
 		INNER JOIN follows f1 ON f1.followee_id = users.id 
 		INNER JOIN follows f2 ON f2.follower_id = users.id 
-		WHERE f1.follower_id = ? AND f2.followee_id = ?
+		WHERE f1.follower_id = ? AND f2.followee_id = ? 
+		AND f1.deleted_at IS NULL AND f2.deleted_at IS NULL
 	`
 
 	err := s.db.Raw(countQuery, userID, userID).Count(&total).Error

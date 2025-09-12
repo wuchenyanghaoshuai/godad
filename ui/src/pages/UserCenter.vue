@@ -304,10 +304,11 @@
                       <img v-if="user.avatar" :src="user.avatar" :alt="user.username" class="w-full h-full object-cover">
                       <span v-else class="text-white font-semibold">{{ user.username.charAt(0).toUpperCase() }}</span>
                     </div>
-                    <div>
+                    <div class="flex-1">
                       <h4 class="font-medium text-gray-900">{{ user.nickname || user.username }}</h4>
                       <p class="text-sm text-gray-500">@{{ user.username }}</p>
                       <p v-if="user.bio" class="text-sm text-gray-600 mt-1">{{ user.bio }}</p>
+                      <p v-if="user.followed_at" class="text-xs text-gray-400 mt-1">{{ formatFollowDate(user.followed_at) }}</p>
                     </div>
                   </div>
                   <div class="flex items-center space-x-2">
@@ -349,10 +350,11 @@
                       <img v-if="user.avatar" :src="user.avatar" :alt="user.username" class="w-full h-full object-cover">
                       <span v-else class="text-white font-semibold">{{ user.username.charAt(0).toUpperCase() }}</span>
                     </div>
-                    <div>
+                    <div class="flex-1">
                       <h4 class="font-medium text-gray-900">{{ user.nickname || user.username }}</h4>
                       <p class="text-sm text-gray-500">@{{ user.username }}</p>
                       <p v-if="user.bio" class="text-sm text-gray-600 mt-1">{{ user.bio }}</p>
+                      <p v-if="user.followed_at" class="text-xs text-gray-400 mt-1">{{ formatFollowDate(user.followed_at) }}</p>
                     </div>
                   </div>
                   <div class="flex items-center space-x-2">
@@ -402,10 +404,11 @@
                       <img v-if="user.avatar" :src="user.avatar" :alt="user.username" class="w-full h-full object-cover">
                       <span v-else class="text-white font-semibold">{{ user.username.charAt(0).toUpperCase() }}</span>
                     </div>
-                    <div>
+                    <div class="flex-1">
                       <h4 class="font-medium text-gray-900">{{ user.nickname || user.username }}</h4>
                       <p class="text-sm text-gray-500">@{{ user.username }}</p>
                       <p v-if="user.bio" class="text-sm text-gray-600 mt-1">{{ user.bio }}</p>
+                      <p v-if="user.followed_at" class="text-xs text-gray-400 mt-1">{{ formatFollowDate(user.followed_at) }}</p>
                     </div>
                   </div>
                   <div class="flex items-center space-x-2">
@@ -738,6 +741,8 @@ const loadMyArticles = async () => {
     
     const response = await ArticleApi.getMyArticles({ page: 1, size: 20 })
     myArticles.value = (response.data && Array.isArray(response.data)) ? response.data : []
+    // 更新文章数量统计
+    articlesCount.value = myArticles.value.length
   } catch (error: any) {
     articlesError.value = error.message || '加载文章失败'
     console.error('加载我的文章失败:', error)
@@ -754,6 +759,33 @@ const formatDate = (dateString: string) => {
     month: 'short',
     day: 'numeric'
   })
+}
+
+// 格式化关注时间
+const formatFollowDate = (dateString: string) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+  
+  if (diffInSeconds < 60) {
+    return '刚刚关注'
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60)
+    return `${minutes}分钟前关注`
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600)
+    return `${hours}小时前关注`
+  } else if (diffInSeconds < 2592000) {
+    const days = Math.floor(diffInSeconds / 86400)
+    return `${days}天前关注`
+  } else {
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }) + ' 关注'
+  }
 }
 
 // 获取状态文本
@@ -920,10 +952,7 @@ onMounted(() => {
   
   initUserInfo()
   loadFollowStats()
-  
-  // 如果默认是文章标签，立即加载文章
-  if (activeTab.value === 'articles') {
-    loadMyArticles()
-  }
+  // 初始加载文章数量统计
+  loadMyArticles()
 })
 </script>

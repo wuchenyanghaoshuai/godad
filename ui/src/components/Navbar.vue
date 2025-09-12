@@ -147,8 +147,8 @@
                   class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-1 z-50"
                 >
                   <div class="px-4 py-2 border-b border-gray-100">
-                    <div class="text-sm font-medium text-gray-900">{{ authStore.user?.nickname || authStore.user?.username }}</div>
-                    <div class="text-xs text-gray-500">{{ authStore.user?.email }}</div>
+                    <div class="text-sm font-medium text-gray-900 truncate">{{ authStore.user?.nickname || authStore.user?.username }}</div>
+                    <div class="text-xs text-gray-500 truncate" :title="authStore.user?.email">{{ authStore.user?.email }}</div>
                   </div>
                   <router-link
                     to="/user-center"
