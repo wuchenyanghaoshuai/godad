@@ -28,6 +28,7 @@
         />
         <div class="flex-1">
           <textarea
+            ref="commentTextareaRef"
             v-model="newComment"
             placeholder="写下您的评论..."
             rows="3"
@@ -99,6 +100,8 @@
         :key="comment.id"
         :comment="comment"
         :article-id="props.articleId"
+        :article-author-id="props.articleAuthorId"
+        :all-comments="comments"
         :depth="0"
         :max-depth="3"
         @reply-added="handleReplyAdded"
@@ -139,6 +142,7 @@ import type { Comment, CommentCreateRequest } from '@/api/types'
 // 组件属性
 interface Props {
   articleId: number
+  articleAuthorId?: number
 }
 
 const props = defineProps<Props>()
@@ -165,6 +169,9 @@ const sortBy = ref<'newest' | 'oldest' | 'most_liked'>('most_liked')
 const currentPage = ref(1)
 const hasMore = ref(false)
 const totalComments = ref(0)
+
+// 模板引用
+const commentTextareaRef = ref<HTMLTextAreaElement>()
 
 // 清空评论输入
 const clearComment = () => {
@@ -316,6 +323,25 @@ const loadMoreComments = async () => {
     isLoadingMore.value = false
   }
 }
+
+// 聚焦评论输入框
+const focusCommentInput = () => {
+  console.log('focusCommentInput被调用')
+  console.log('commentTextareaRef.value:', commentTextareaRef.value)
+  
+  if (commentTextareaRef.value) {
+    console.log('找到评论输入框，开始聚焦')
+    commentTextareaRef.value.focus()
+    console.log('评论输入框聚焦完成')
+  } else {
+    console.warn('评论输入框引用不存在')
+  }
+}
+
+// 暴露方法给父组件
+defineExpose({
+  focusCommentInput
+})
 
 // 组件挂载时加载评论
 onMounted(() => {

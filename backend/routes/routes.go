@@ -36,13 +36,15 @@ func SetupRoutes() *gin.Engine {
 			"version":     "1.0.0",
 			"description": "GoDad育儿知识分享平台API",
 			"endpoints": gin.H{
-				"auth":     "/api/auth",
-				"user":     "/api/user",
-				"article":  "/api/article",
-				"comment":  "/api/comment",
-				"category": "/api/category",
-				"upload":   "/api/upload",
-				"follow":   "/api/follows",
+				"auth":         "/api/auth",
+				"user":         "/api/user",
+				"article":      "/api/article",
+				"comment":      "/api/comment",
+				"category":     "/api/category",
+				"upload":       "/api/upload",
+				"follow":       "/api/follows",
+				"notification": "/api/notifications",
+				"favorite":     "/api/favorites",
 			},
 		})
 	})
@@ -60,6 +62,16 @@ func SetupRoutes() *gin.Engine {
 	likeService := services.NewLikeService(config.GetDB())
 	likeController := controllers.NewLikeController(likeService)
 	RegisterLikeRoutes(router, likeController)
+
+	// 设置通知路由
+	notificationService := services.NewNotificationService(config.GetDB())
+	notificationController := controllers.NewNotificationController(notificationService)
+	NotificationRoutes(router, notificationController)
+
+	// 设置收藏路由
+	favoriteService := services.NewFavoriteService(config.GetDB())
+	favoriteController := controllers.NewFavoriteController(favoriteService)
+	SetupFavoriteRoutes(router, favoriteController)
 
 	return router
 }

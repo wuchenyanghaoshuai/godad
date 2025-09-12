@@ -119,6 +119,9 @@
                 发布文章
               </router-link>
 
+              <!-- 通知铃铛 -->
+              <NotificationBell />
+
               <!-- 用户头像菜单 -->
               <div class="relative">
                 <button
@@ -254,6 +257,7 @@ import {
   CogIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
+import NotificationBell from '@/components/NotificationBell.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

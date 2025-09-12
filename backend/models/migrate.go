@@ -22,6 +22,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&Follow{},
 		&Like{},
 		&Tag{},
+		&Notification{},
 	)
 
 	if err != nil {
@@ -102,6 +103,14 @@ func createIndexes(db *gorm.DB) error {
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_follows_created_at ON follows(created_at)")
 	db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_follows_unique ON follows(follower_id, followee_id) WHERE deleted_at IS NULL")
 
+	// 通知表索引
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_notifications_receiver_id ON notifications(receiver_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_notifications_actor_id ON notifications(actor_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_notifications_receiver_read ON notifications(receiver_id, is_read)")
+
 	return nil
 }
 
@@ -127,6 +136,10 @@ func createForeignKeys(db *gorm.DB) error {
 	// 关注表外键
 	db.Exec("ALTER TABLE follows ADD CONSTRAINT fk_follows_follower FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
 	db.Exec("ALTER TABLE follows ADD CONSTRAINT fk_follows_followee FOREIGN KEY (followee_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
+
+	// 通知表外键
+	db.Exec("ALTER TABLE notifications ADD CONSTRAINT fk_notifications_receiver FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
+	db.Exec("ALTER TABLE notifications ADD CONSTRAINT fk_notifications_actor FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
 
 	return nil
 }

@@ -2,17 +2,22 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"godad-backend/models"
 
 	"gorm.io/gorm"
 )
 
 type FollowService struct {
-	db *gorm.DB
+	db                  *gorm.DB
+	notificationService *NotificationService
 }
 
 func NewFollowService(db *gorm.DB) *FollowService {
-	return &FollowService{db: db}
+	return &FollowService{
+		db:                  db,
+		notificationService: NewNotificationService(db),
+	}
 }
 
 func (s *FollowService) FollowUser(followerID, followeeID uint) error {
@@ -42,7 +47,17 @@ func (s *FollowService) FollowUser(followerID, followeeID uint) error {
 		FolloweeID: followeeID,
 	}
 
-	return s.db.Create(&follow).Error
+	if err := s.db.Create(&follow).Error; err != nil {
+		return err
+	}
+
+	// 发送关注通知
+	if err := s.notificationService.CreateFollowNotification(followerID, followeeID); err != nil {
+		// 通知发送失败不影响关注操作，只记录错误
+		fmt.Printf("发送关注通知失败: %v\n", err)
+	}
+
+	return nil
 }
 
 func (s *FollowService) UnfollowUser(followerID, followeeID uint) error {

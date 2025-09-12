@@ -75,12 +75,26 @@
           <!-- 作者和发布信息 -->
           <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-200">
             <div class="flex items-center space-x-4">
-              <div class="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center shadow-sm">
-                <UserIcon class="h-6 w-6 text-white" />
+              <!-- 作者头像 -->
+              <div class="w-12 h-12 rounded-full flex items-center justify-center shadow-sm overflow-hidden">
+                <img
+                  v-if="article.author?.avatar"
+                  :src="article.author.avatar"
+                  :alt="article.author.nickname || article.author.username"
+                  class="w-12 h-12 rounded-full object-cover"
+                />
+                <div
+                  v-else
+                  class="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-white font-semibold text-sm">
+                    {{ (article.author?.nickname || article.author?.username || 'U').charAt(0).toUpperCase() }}
+                  </span>
+                </div>
               </div>
               <div>
                 <div class="font-medium text-gray-900">
-                  {{ article.author?.username || '匿名用户' }}
+                  {{ article.author?.nickname || article.author?.username || '匿名用户' }}
                 </div>
                 <div class="text-sm text-gray-500">
                   发布于 {{ formatDate(article.created_at) }}
@@ -163,78 +177,102 @@
 
           <!-- 互动操作区 -->
           <div class="mt-8 pt-6 border-t border-gray-200">
-            <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-              <div class="flex items-center justify-between">
-                <!-- 左侧：数据统计 -->
-                <div class="flex items-center space-x-6">
+            <!-- 文章互动区 -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <!-- 数据统计行 -->
+              <div class="flex items-center justify-center py-3 px-4 bg-gray-50 border-b border-gray-200">
+                <div class="flex items-center space-x-8">
                   <div class="flex items-center text-gray-600">
-                    <EyeIcon class="h-4 w-4 mr-1.5" />
+                    <EyeIcon class="h-4 w-4 mr-1.5 text-gray-500" />
                     <span class="text-sm font-medium">{{ article.view_count || 0 }} 阅读</span>
                   </div>
                   <div class="flex items-center text-gray-600">
-                    <HeartIcon class="h-4 w-4 mr-1.5" />
+                    <HeartIcon class="h-4 w-4 mr-1.5 text-red-400" />
                     <span class="text-sm font-medium">{{ article.like_count || 0 }} 点赞</span>
                   </div>
                   <div class="flex items-center text-gray-600">
-                    <MessageCircleIcon class="h-4 w-4 mr-1.5" />
+                    <MessageCircleIcon class="h-4 w-4 mr-1.5 text-blue-400" />
                     <span class="text-sm font-medium">{{ article.comment_count || 0 }} 评论</span>
                   </div>
+                  <div class="flex items-center text-gray-600">
+                    <StarIcon class="h-4 w-4 mr-1.5 text-amber-400" />
+                    <span class="text-sm font-medium">{{ article.favorite_count || 0 }} 收藏</span>
+                  </div>
                 </div>
-                
-                <!-- 右侧：操作按钮 -->
-                <div class="flex items-center space-x-2">
+              </div>
+
+              <!-- 操作按钮行 -->
+              <div class="p-3">
+                <div class="flex items-center justify-center space-x-2 flex-wrap gap-2">
                   <!-- 点赞按钮 -->
                   <button
                     @click="toggleLike"
                     :disabled="isLiking"
-                    class="group flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    class="group flex items-center px-4 py-2 rounded-md font-medium transition-all duration-300 text-sm border min-w-[72px] justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     :class="isLiked 
-                      ? 'bg-red-500 text-white hover:bg-red-600' 
-                      : 'bg-white text-gray-700 border border-gray-200 hover:border-red-300 hover:text-red-600 hover:bg-red-50'"
+                      ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100 hover:border-red-300' 
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-red-300 hover:text-red-600 hover:bg-red-50'"
                   >
                     <HeartIcon 
-                      class="h-4 w-4 mr-1 transition-transform duration-300 group-hover:scale-110" 
-                      :class="isLiked ? 'fill-current' : 'group-hover:text-red-500'" 
+                      class="h-4 w-4 mr-1.5 transition-all duration-300" 
+                      :class="isLiked ? 'fill-current text-red-500' : 'group-hover:text-red-500'" 
                     />
-                    <span>{{ isLiked ? '已点赞' : '点赞' }}</span>
+                    <span class="whitespace-nowrap">{{ isLiked ? '已点赞' : '点赞' }}</span>
                   </button>
                   
                   <!-- 评论按钮 -->
                   <button
                     @click="showComments = !showComments"
-                    class="group flex items-center px-3 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md hover:border-green-300 hover:text-green-600 hover:bg-green-50 text-sm"
+                    class="group flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md font-medium transition-all duration-300 text-sm min-w-[72px] justify-center hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50"
                   >
-                    <MessageCircleIcon class="h-4 w-4 mr-1 transition-transform duration-300 group-hover:scale-110 group-hover:text-green-500" />
-                    <span>评论</span>
+                    <MessageCircleIcon class="h-4 w-4 mr-1.5 transition-all duration-300 group-hover:text-blue-500" />
+                    <span class="whitespace-nowrap">评论</span>
+                  </button>
+                  
+                  <!-- 收藏按钮 -->
+                  <button
+                    @click="toggleFavorite"
+                    :disabled="isFavoriting"
+                    class="group flex items-center px-4 py-2 rounded-md font-medium transition-all duration-300 text-sm border min-w-[72px] justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    :class="isFavorited
+                      ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50'"
+                  >
+                    <StarIcon
+                      class="h-4 w-4 mr-1.5 transition-all duration-300"
+                      :class="isFavorited ? 'fill-current text-amber-500' : 'group-hover:text-amber-500'"
+                    />
+                    <span v-if="isFavoriting" class="whitespace-nowrap">{{ isFavorited ? '取消中...' : '收藏中...' }}</span>
+                    <span v-else class="whitespace-nowrap">{{ isFavorited ? '已收藏' : '收藏' }}</span>
                   </button>
                   
                   <!-- 分享按钮 -->
                   <button
                     @click="shareArticle"
-                    class="group flex items-center px-3 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 text-sm"
+                    class="group flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md font-medium transition-all duration-300 text-sm min-w-[72px] justify-center hover:border-green-300 hover:text-green-600 hover:bg-green-50"
                   >
-                    <ShareIcon class="h-4 w-4 mr-1 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12 group-hover:text-blue-500" />
-                    <span>分享</span>
+                    <ShareIcon class="h-4 w-4 mr-1.5 transition-all duration-300 group-hover:text-green-500" />
+                    <span class="whitespace-nowrap">分享</span>
                   </button>
                   
                   <!-- 编辑按钮（作者可见） -->
                   <button
                     v-if="canEdit"
                     @click="$router.push(`/articles/${article.id}/edit`)"
-                    class="group flex items-center px-3 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50 text-sm"
+                    class="group flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md font-medium transition-all duration-300 text-sm min-w-[72px] justify-center hover:border-purple-300 hover:text-purple-600 hover:bg-purple-50"
                   >
-                    <EditIcon class="h-4 w-4 mr-1 transition-transform duration-300 group-hover:scale-110 group-hover:text-emerald-500" />
-                    <span>编辑</span>
+                    <EditIcon class="h-4 w-4 mr-1.5 transition-all duration-300 group-hover:text-purple-500" />
+                    <span class="whitespace-nowrap">编辑</span>
                   </button>
                   
                   <!-- 删除按钮（作者可见） -->
                   <button
                     v-if="canEdit"
                     @click="deleteArticle"
-                    class="group flex items-center px-3 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md hover:border-red-300 hover:text-red-600 hover:bg-red-50 text-sm"
+                    class="group flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md font-medium transition-all duration-300 text-sm min-w-[72px] justify-center hover:border-red-300 hover:text-red-600 hover:bg-red-50"
                   >
-                    <TrashIcon class="h-4 w-4 mr-1 transition-transform duration-300 group-hover:scale-110 group-hover:text-red-500" />
-                    <span>删除</span>
+                    <TrashIcon class="h-4 w-4 mr-1.5 transition-all duration-300 group-hover:text-red-500" />
+                    <span class="whitespace-nowrap">删除</span>
                   </button>
                 </div>
               </div>
@@ -244,7 +282,7 @@
       </article>
 
       <!-- 评论区域 -->
-      <div class="mt-6 sm:mt-8">
+      <div ref="commentsSectionRef" class="mt-6 sm:mt-8">
         <!-- 评论标题栏 - 紧凑化 -->
         <div class="flex items-center justify-between mb-3 sm:mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
           <div class="flex items-center">
@@ -277,7 +315,9 @@
           :class="showComments ? 'opacity-100' : 'opacity-0'"
         >
           <CommentSection
+            ref="commentSectionRef"
             :article-id="article.id"
+            :article-author-id="article.author_id"
             @comment-added="handleCommentAdded"
             @comment-deleted="handleCommentDeleted"
           />
@@ -317,9 +357,25 @@
                 {{ relatedArticle.title }}
               </h3>
               <div class="flex items-center justify-between text-xs sm:text-sm text-gray-500">
-                <div class="flex items-center space-x-1">
-                  <UserIcon class="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span class="truncate max-w-20 sm:max-w-none">{{ relatedArticle.author?.username }}</span>
+                <div class="flex items-center space-x-2">
+                  <!-- 相关文章作者头像 -->
+                  <div class="w-4 h-4 sm:w-5 sm:h-5 rounded-full overflow-hidden flex-shrink-0">
+                    <img
+                      v-if="relatedArticle.author?.avatar"
+                      :src="relatedArticle.author.avatar"
+                      :alt="relatedArticle.author.nickname || relatedArticle.author.username"
+                      class="w-full h-full object-cover"
+                    />
+                    <div
+                      v-else
+                      class="w-full h-full bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center"
+                    >
+                      <span class="text-white font-bold text-xs">
+                        {{ (relatedArticle.author?.nickname || relatedArticle.author?.username || 'U').charAt(0).toUpperCase() }}
+                      </span>
+                    </div>
+                  </div>
+                  <span class="truncate max-w-20 sm:max-w-none">{{ relatedArticle.author?.nickname || relatedArticle.author?.username }}</span>
                 </div>
                 <span class="text-xs">{{ formatDate(relatedArticle.created_at) }}</span>
               </div>
@@ -347,7 +403,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowLeftIcon,
@@ -364,6 +420,7 @@ import { useAuthStore } from '@/stores/auth'
 import { ArticleApi } from '@/api/article'
 import { CategoryApi } from '@/api/category'
 import { FollowApi } from '@/api/follow'
+import { FavoriteApi } from '@/api/favorite'
 import type { Article, Category } from '@/api/types'
 import CommentSection from '@/components/CommentSection.vue'
 import Navbar from '@/components/Navbar.vue'
@@ -383,7 +440,13 @@ const isLiking = ref(false)
 const isLiked = ref(false)
 const imageLoadError = ref(false)
 const showComments = ref(false)
+const isFavorited = ref(false)
+const isFavoriting = ref(false)
 const { toast } = useToast()
+
+// 模板引用
+const commentsSectionRef = ref<HTMLElement>()
+const commentSectionRef = ref<any>()
 
 // 关注相关状态
 const isFollowing = ref(false)
@@ -535,6 +598,36 @@ const unfollowAuthor = async () => {
   }
 }
 
+// 切换收藏状态
+const toggleFavorite = async () => {
+  if (!authStore.isAuthenticated || !article.value) {
+    router.push('/login')
+    return
+  }
+  
+  try {
+    isFavoriting.value = true
+    
+    const response = await FavoriteApi.toggleFavorite({ article_id: article.value.id })
+    
+    // 直接根据后端返回的is_favorited状态更新UI
+    if (response.data.is_favorited) {
+      // 收藏成功
+      isFavorited.value = true
+      article.value.favorite_count = (article.value.favorite_count || 0) + 1
+    } else {
+      // 取消收藏成功
+      isFavorited.value = false
+      article.value.favorite_count = Math.max(0, (article.value.favorite_count || 1) - 1)
+    }
+  } catch (error: any) {
+    console.error('收藏操作失败:', error)
+    toast.error(error.message || '收藏操作失败，请稍后重试')
+  } finally {
+    isFavoriting.value = false
+  }
+}
+
 // 删除文章
 const deleteArticle = async () => {
   if (!article.value || !confirm('确定要删除这篇文章吗？此操作不可恢复。')) return
@@ -545,6 +638,166 @@ const deleteArticle = async () => {
   } catch (err: any) {
     console.error('删除文章失败:', err)
     alert('删除失败：' + (err.message || '未知错误'))
+  }
+}
+
+// 聚焦到评论区
+const focusToComments = async () => {
+  // console.log('开始聚焦到评论区')
+  
+  // 展开评论区
+  showComments.value = true
+  // console.log('评论区已展开:', showComments.value)
+  
+  // 等待DOM更新
+  await nextTick()
+  // console.log('DOM更新完成')
+  
+  try {
+    // 滚动到评论区
+    if (commentsSectionRef.value) {
+      // console.log('找到评论区引用，开始滚动')
+      commentsSectionRef.value.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      })
+      // console.log('滚动完成')
+    } else {
+      // console.warn('评论区引用不存在')
+    }
+    
+    // 等待一下再聚焦输入框，确保评论区已完全展开
+    setTimeout(() => {
+      // console.log('准备聚焦输入框')
+      // console.log('commentSectionRef.value:', commentSectionRef.value)
+      
+      // 如果评论组件有focusCommentInput方法，调用它
+      if (commentSectionRef.value && typeof commentSectionRef.value.focusCommentInput === 'function') {
+        // console.log('调用focusCommentInput方法')
+        commentSectionRef.value.focusCommentInput()
+        // console.log('focusCommentInput方法调用完成')
+      } else {
+        // console.warn('commentSectionRef不存在或focusCommentInput方法不可用')
+        // console.log('commentSectionRef类型:', typeof commentSectionRef.value)
+        if (commentSectionRef.value) {
+          // console.log('commentSectionRef可用方法:', Object.keys(commentSectionRef.value))
+        }
+      }
+    }, 300)
+  } catch (error) {
+    console.error('Focus to comments failed:', error)
+  }
+}
+
+// 聚焦到特定评论
+const focusToSpecificComment = async (actorId: number, commentContent?: string) => {
+  // console.log('开始聚焦到特定评论，作者ID:', actorId, '评论内容:', commentContent)
+  
+  // 确保评论区展开
+  showComments.value = true
+  
+  // 等待DOM更新
+  await nextTick()
+  // console.log('评论区已展开，开始查找评论')
+  
+  // 滚动到评论区
+  if (commentsSectionRef.value) {
+    // console.log('找到评论区，立即跳转')
+    commentsSectionRef.value.scrollIntoView({ 
+      behavior: 'instant', 
+      block: 'start' 
+    })
+    
+    // 立即查找特定评论
+    await nextTick()
+    setTimeout(() => {
+      // console.log('开始查找评论，作者ID:', actorId, '评论内容:', commentContent)
+      const commentItems = document.querySelectorAll('[data-author-id]')
+      // console.log('找到', commentItems.length, '个评论元素')
+      
+      let targetComment: HTMLElement | null = null
+      
+      // 如果有评论内容，优先根据内容精确匹配
+      if (commentContent) {
+        for (const item of commentItems) {
+          const element = item as HTMLElement
+          const authorId = element.getAttribute('data-author-id')
+          const content = element.getAttribute('data-comment-content')
+          
+          // console.log('检查评论，作者ID:', authorId, '评论内容:', content)
+          
+          if (authorId === actorId.toString() && content && content.includes(commentContent)) {
+            // console.log('找到精确匹配的评论')
+            targetComment = element
+            break
+          }
+        }
+      }
+      
+      // 如果没有找到精确匹配，回退到仅根据作者ID匹配最新的评论
+      if (!targetComment) {
+        // console.log('没有找到精确匹配，回退到作者ID匹配')
+        for (let i = commentItems.length - 1; i >= 0; i--) {
+          const element = commentItems[i] as HTMLElement
+          const authorId = element.getAttribute('data-author-id')
+          
+          if (authorId === actorId.toString()) {
+            // console.log('找到作者ID匹配的评论')
+            targetComment = element
+            break
+          }
+        }
+      }
+      
+      // 如果找到目标评论，直接滚动并点击回复按钮
+      if (targetComment) {
+        // console.log('找到目标评论，准备滚动和点击回复')
+        
+        // 直接滚动到该评论（使用instant模式，立即跳转）
+        targetComment.scrollIntoView({ 
+          behavior: 'instant', 
+          block: 'center' 
+        })
+        
+        // 立即查找并点击回复按钮
+        requestAnimationFrame(() => {
+          // console.log('开始查找并点击回复按钮')
+          // 在当前评论元素内查找所有按钮，找到包含"回复"文字的按钮
+          const buttons = targetComment!.querySelectorAll('button')
+          let replyButton: HTMLButtonElement | null = null
+          
+          for (const button of buttons) {
+            const span = button.querySelector('span')
+            if (span && span.textContent?.includes('回复')) {
+              replyButton = button as HTMLButtonElement
+              // console.log('找到回复按钮，准备点击')
+              break
+            }
+          }
+          
+          if (replyButton) {
+            replyButton.click()
+            
+            // 立即聚焦到回复输入框
+            requestAnimationFrame(() => {
+              const textarea = targetComment!.querySelector('textarea[placeholder*="回复"]') as HTMLTextAreaElement
+              if (textarea) {
+                // console.log('找到回复输入框，准备聚焦')
+                textarea.focus()
+              } else {
+                // console.warn('没有找到回复输入框')
+              }
+            })
+          } else {
+            // console.warn('没有找到回复按钮')
+          }
+        })
+      } else {
+        // console.warn('没有找到匹配的评论')
+      }
+    }, 0)
+  } else {
+    // console.warn('找不到评论区元素')
   }
 }
 
@@ -568,7 +821,7 @@ const handleCommentDeleted = () => {
 // 图片错误处理
 const handleImageError = () => {
   imageLoadError.value = true
-  console.warn('封面图片加载失败:', article.value?.cover_image)
+  // console.warn('封面图片加载失败:', article.value?.cover_image)
 }
 
 const handleImageLoad = () => {
@@ -592,8 +845,13 @@ const loadArticle = async () => {
     const response = await ArticleApi.getArticleDetail(articleId)
     article.value = response.data
     
-    // 如果有评论，自动展开评论区
-    showComments.value = (article.value.comment_count || 0) > 0
+    // 检查是否需要聚焦到评论区
+    await handleFocusParameter()
+    
+    // 如果没有focus参数，正常展开评论区
+    if (route.query.focus !== 'comments') {
+      showComments.value = (article.value.comment_count || 0) > 0
+    }
     
     // 增加浏览量 (暂时禁用，后端接口未实现)
     // ArticleApi.incrementViewCount(articleId).catch(console.error)
@@ -605,6 +863,19 @@ const loadArticle = async () => {
     } catch (error) {
       // 如果API调用失败，默认设置为未点赞
       isLiked.value = false
+    }
+    
+    // 获取收藏状态
+    if (authStore.isAuthenticated) {
+      try {
+        const favoriteStatusResponse = await FavoriteApi.getFavoriteStatus(articleId)
+        isFavorited.value = favoriteStatusResponse.data?.is_favorited || false
+      } catch (error) {
+        // 如果API调用失败，默认设置为未收藏
+        isFavorited.value = false
+      }
+    } else {
+      isFavorited.value = false
     }
     
     // 获取关注状态 - 如果用户已登录且不是自己的文章
@@ -709,6 +980,7 @@ watch(
       showComments.value = false
       isLiked.value = false
       isFollowing.value = false
+      isFavorited.value = false
       // 重新加载数据
       loadArticle()
     }
@@ -742,9 +1014,64 @@ watch(
       } else {
         isFollowing.value = false
       }
+      
+      // 重新获取收藏状态
+      if (newVal) {
+        FavoriteApi.getFavoriteStatus(article.value.id)
+          .then(response => {
+            isFavorited.value = response.data?.is_favorited || false
+          })
+          .catch(error => {
+            isFavorited.value = false
+          })
+      } else {
+        isFavorited.value = false
+      }
     }
   }
 )
+
+// 处理focus参数
+const handleFocusParameter = async () => {
+  if (route.query.focus === 'comments') {
+    
+    // 立即清除URL参数，防止刷新页面时重复触发
+    router.replace({
+      path: route.path,
+      query: { ...route.query, focus: undefined }
+    })
+    
+    // 聚焦到评论区底部输入框
+    await nextTick()
+    await focusToComments()
+  } else if (route.query.focus === 'comment' && route.query.actor_id) {
+    // console.log('发现focus=comment参数，准备聚焦到特定评论，作者ID:', route.query.actor_id)
+    // console.log('评论内容:', route.query.comment_content)
+    
+    // 立即清除URL参数，防止刷新页面时重复触发
+    router.replace({
+      path: route.path,
+      query: { ...route.query, focus: undefined, actor_id: undefined, comment_content: undefined }
+    })
+    
+    // 聚焦到特定评论
+    await nextTick()
+    await focusToSpecificComment(
+      parseInt(route.query.actor_id as string), 
+      route.query.comment_content as string
+    )
+  } else {
+    // console.log('没有focus参数')
+  }
+}
+
+// 监听路由查询参数变化
+watch(() => route.query.focus, async (newFocus) => {
+  // console.log('路由focus参数变化:', newFocus)
+  if ((newFocus === 'comments' || newFocus === 'comment') && article.value) {
+    await handleFocusParameter()
+  }
+})
 
 // 组件挂载时加载数据
 onMounted(() => {

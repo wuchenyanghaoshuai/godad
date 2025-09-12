@@ -50,6 +50,18 @@ func (e *EmailService) SendWelcomeEmail(to, username string) error {
 	return e.sendEmail(to, template.Subject, template.Body)
 }
 
+// SendCommentNotificationEmail 发送评论通知邮件
+func (e *EmailService) SendCommentNotificationEmail(to, recipientName, actorName, articleTitle, commentContent string) error {
+	template := e.getCommentNotificationTemplate(recipientName, actorName, articleTitle, commentContent)
+	return e.sendEmail(to, template.Subject, template.Body)
+}
+
+// SendReplyNotificationEmail 发送回复通知邮件
+func (e *EmailService) SendReplyNotificationEmail(to, recipientName, actorName, commentContent string) error {
+	template := e.getReplyNotificationTemplate(recipientName, actorName, commentContent)
+	return e.sendEmail(to, template.Subject, template.Body)
+}
+
 // sendEmail 发送邮件
 func (e *EmailService) sendEmail(to, subject, body string) error {
 	// 检查配置
@@ -335,6 +347,198 @@ func (e *EmailService) getWelcomeTemplate(username string) EmailTemplate {
 </body>
 </html>
 `, username)
+
+	return EmailTemplate{
+		Subject: subject,
+		Body:    body,
+	}
+}
+
+// getCommentNotificationTemplate 获取评论通知邮件模板
+func (e *EmailService) getCommentNotificationTemplate(recipientName, actorName, articleTitle, commentContent string) EmailTemplate {
+	subject := "【GoDad育儿平台】有人评论了您的文章"
+	
+	body := fmt.Sprintf(`
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>评论通知</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px;
+        }
+        .header { 
+            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            color: white; 
+            padding: 30px; 
+            text-align: center; 
+            border-radius: 10px 10px 0 0;
+        }
+        .content { 
+            background: #f9f9f9; 
+            padding: 30px; 
+            border-radius: 0 0 10px 10px;
+            border: 1px solid #e0e0e0;
+        }
+        .button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            color: white; 
+            text-decoration: none; 
+            padding: 15px 30px; 
+            border-radius: 5px; 
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .footer { 
+            text-align: center; 
+            margin-top: 30px; 
+            padding-top: 20px; 
+            border-top: 1px solid #e0e0e0; 
+            color: #666; 
+            font-size: 14px;
+        }
+        .comment-box {
+            background: #fff;
+            border-left: 4px solid #ec4899;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>💬 新评论通知</h1>
+        <p>GoDad育儿知识分享平台</p>
+    </div>
+    
+    <div class="content">
+        <h2>亲爱的 %s，您好！</h2>
+        <p><strong>%s</strong> 评论了您的文章《<strong>%s</strong>》：</p>
+        
+        <div class="comment-box">
+            "%s"
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="http://127.0.0.1:3333" class="button">查看详情并回复</a>
+        </div>
+        
+        <p>您可以登录平台查看完整评论并进行回复，与其他育儿伙伴进行交流。</p>
+    </div>
+    
+    <div class="footer">
+        <p>此邮件由系统自动发送，请勿回复</p>
+        <p>© 2025 GoDad育儿知识分享平台</p>
+    </div>
+</body>
+</html>
+`, recipientName, actorName, articleTitle, commentContent)
+
+	return EmailTemplate{
+		Subject: subject,
+		Body:    body,
+	}
+}
+
+// getReplyNotificationTemplate 获取回复通知邮件模板
+func (e *EmailService) getReplyNotificationTemplate(recipientName, actorName, commentContent string) EmailTemplate {
+	subject := "【GoDad育儿平台】有人回复了您的评论"
+	
+	body := fmt.Sprintf(`
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>回复通知</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px;
+        }
+        .header { 
+            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            color: white; 
+            padding: 30px; 
+            text-align: center; 
+            border-radius: 10px 10px 0 0;
+        }
+        .content { 
+            background: #f9f9f9; 
+            padding: 30px; 
+            border-radius: 0 0 10px 10px;
+            border: 1px solid #e0e0e0;
+        }
+        .button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            color: white; 
+            text-decoration: none; 
+            padding: 15px 30px; 
+            border-radius: 5px; 
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .footer { 
+            text-align: center; 
+            margin-top: 30px; 
+            padding-top: 20px; 
+            border-top: 1px solid #e0e0e0; 
+            color: #666; 
+            font-size: 14px;
+        }
+        .comment-box {
+            background: #fff;
+            border-left: 4px solid #ec4899;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔄 回复通知</h1>
+        <p>GoDad育儿知识分享平台</p>
+    </div>
+    
+    <div class="content">
+        <h2>亲爱的 %s，您好！</h2>
+        <p><strong>%s</strong> 回复了您的评论：</p>
+        
+        <div class="comment-box">
+            "%s"
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="http://127.0.0.1:3333" class="button">查看详情并回复</a>
+        </div>
+        
+        <p>您可以登录平台查看完整对话并继续参与讨论。</p>
+    </div>
+    
+    <div class="footer">
+        <p>此邮件由系统自动发送，请勿回复</p>
+        <p>© 2025 GoDad育儿知识分享平台</p>
+    </div>
+</body>
+</html>
+`, recipientName, actorName, commentContent)
 
 	return EmailTemplate{
 		Subject: subject,

@@ -1,5 +1,5 @@
 <template>
-  <div class="comment-item">
+  <div class="comment-item" :data-author-id="comment.user?.id" :data-comment-content="comment.content">
     <!-- 主评论 -->
     <div class="flex items-start space-x-2 sm:space-x-3">
       <!-- 用户头像 -->
@@ -14,21 +14,26 @@
         <!-- 用户信息和时间 -->
         <div class="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-2 mb-2">
           <div class="flex items-center space-x-2">
+            <!-- 整合的用户名显示：包含回复信息和内容 -->
             <span class="font-medium text-gray-900 text-sm sm:text-base">
-              {{ comment.user?.username || '匿名用户' }}
-            </span>
-            <span v-if="comment.user?.role === 'admin'" class="px-1.5 sm:px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full">
-              管理员
+              <span class="font-medium text-pink-600">{{ comment.user?.username || '匿名用户' }}</span>
+              <span v-if="comment.user?.role === 'admin'" class="px-1.5 sm:px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full ml-2">
+                管理员
+              </span>
+              <span v-if="isArticleAuthor" class="px-1.5 sm:px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full ml-2">
+                博主
+              </span>
+              <!-- 回复信息和内容在同一行 -->
+              <span v-if="depth > 0 && parentComment" class="font-normal text-gray-900">
+                回复了<span class="font-medium text-blue-600">{{ parentComment.user?.username || '匿名用户' }}</span>：<span class="text-gray-800">{{ comment.content }}</span>
+              </span>
+              <!-- 主评论内容 -->
+              <span v-else class="font-normal text-gray-800 ml-2">{{ comment.content }}</span>
             </span>
           </div>
           <span class="text-xs sm:text-sm text-gray-500">
             {{ formatDate(comment.created_at) }}
           </span>
-        </div>
-        
-        <!-- 评论文本 -->
-        <div class="text-gray-800 mb-3 whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed">
-          {{ comment.content }}
         </div>
         
         <!-- 操作按钮 -->
@@ -131,6 +136,8 @@
               :article-id="props.articleId"
               :depth="depth + 1"
               :max-depth="maxDepth"
+              :article-author-id="props.articleAuthorId"
+              :all-comments="props.allComments"
               @reply-added="handleReplyAdded"
               @comment-deleted="handleCommentDeleted"
               @like="handleLike"
@@ -186,11 +193,14 @@ interface Props {
   articleId: number
   depth?: number
   maxDepth?: number
+  articleAuthorId?: number
+  allComments?: Comment[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   depth: 0,
-  maxDepth: 3
+  maxDepth: 3,
+  allComments: () => []
 })
 
 // 组件事件
@@ -218,6 +228,29 @@ const canDelete = computed(() => {
   return authStore.isAdmin || authStore.user?.id === props.comment.user?.id
 })
 
+const isArticleAuthor = computed(() => {
+  return props.articleAuthorId && props.comment.user?.id === props.articleAuthorId
+})
+
+// 查找真正的父评论
+const findParentComment = (parentId: number, comments: Comment[]): Comment | null => {
+  for (const comment of comments) {
+    if (comment.id === parentId) {
+      return comment
+    }
+    if (comment.replies) {
+      const found = findParentComment(parentId, comment.replies)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const parentComment = computed(() => {
+  if (!props.comment.parent_id || !props.allComments) return null
+  return findParentComment(props.comment.parent_id, props.allComments)
+})
+
 const hasReplies = computed(() => {
   return props.comment.replies && props.comment.replies.length > 0
 })
@@ -230,17 +263,17 @@ const visibleReplies = computed(() => {
     return replies
   }
   
-  // 默认显示前3条回复
-  return replies.slice(0, 3)
+  // 默认显示前2条回复
+  return replies.slice(0, 2)
 })
 
 const hasHiddenReplies = computed(() => {
-  return hasReplies.value && props.comment.replies.length > 3
+  return hasReplies.value && props.comment.replies.length > 2
 })
 
 const hiddenRepliesCount = computed(() => {
   if (!hasHiddenReplies.value) return 0
-  return props.comment.replies.length - 3
+  return props.comment.replies.length - 2
 })
 
 // 格式化日期
@@ -290,7 +323,7 @@ const submitReply = async () => {
     const replyData: CommentCreateRequest = {
        content: replyContent.value.trim(),
        article_id: props.articleId,
-       parent_id: props.comment.parent_id || props.comment.id // 如果当前是子评论，回复到其父评论
+       parent_id: props.comment.id // 回复当前评论，所以 parent_id 就是当前评论的 ID
      }
      
      const reply = await CommentApi.createComment(replyData)

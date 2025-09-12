@@ -220,6 +220,7 @@ func (c *CommentController) GetCommentsByArticle(ctx *gin.Context) {
 	// 解析查询参数
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(ctx.DefaultQuery("size", "10"))
+	sort := ctx.DefaultQuery("sort", "most_liked")
 
 	// 验证分页参数
 	if page < 1 {
@@ -229,8 +230,18 @@ func (c *CommentController) GetCommentsByArticle(ctx *gin.Context) {
 		size = 10
 	}
 
+	// 验证排序参数
+	validSorts := map[string]bool{
+		"newest":     true,
+		"oldest":     true,
+		"most_liked": true,
+	}
+	if !validSorts[sort] {
+		sort = "most_liked"
+	}
+
 	// 获取评论列表
-	comments, total, err := c.commentService.GetCommentsByArticle(uint(articleID), page, size)
+	comments, total, err := c.commentService.GetCommentsByArticleWithSort(uint(articleID), page, size, sort)
 	if err != nil {
 		if err.Error() == "文章不存在或已下线" {
 			utils.Error(ctx, utils.CodeNotFound, err.Error())

@@ -10,15 +10,17 @@ import (
 
 // LikeService 点赞服务
 type LikeService struct {
-	db           *gorm.DB
-	cacheService *CacheService
+	db                  *gorm.DB
+	cacheService        *CacheService
+	notificationService *NotificationService
 }
 
 // NewLikeService 创建点赞服务实例
 func NewLikeService(db *gorm.DB) *LikeService {
 	return &LikeService{
-		db:           db,
-		cacheService: NewCacheService(),
+		db:                  db,
+		cacheService:        NewCacheService(),
+		notificationService: NewNotificationService(db),
 	}
 }
 
@@ -60,11 +62,17 @@ func (s *LikeService) ToggleLike(userID uint, targetType string, targetID uint) 
 		return nil, fmt.Errorf("更新点赞计数失败: %v", err)
 	}
 
-	// 创建点赞动态（仅对文章点赞）
+	// 创建点赞动态和通知（仅对文章点赞）
 	if targetType == "article" {
 		var article models.Article
 		if err := s.db.First(&article, targetID).Error; err == nil {
-			// 优化后移除了积分系统
+			// 发送点赞通知给文章作者
+			if article.AuthorID != userID { // 避免给自己发通知
+				if err := s.notificationService.CreateLikeNotification(userID, article.AuthorID, targetID); err != nil {
+					// 通知发送失败不影响点赞操作，只记录错误
+					fmt.Printf("发送点赞通知失败: %v\n", err)
+				}
+			}
 		}
 	}
 	

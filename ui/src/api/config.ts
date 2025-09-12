@@ -88,6 +88,17 @@ export const API_CONFIG = {
       TOGGLE: '/admin/categories'
     },
     
+    // 收藏相关
+    FAVORITE: {
+      TOGGLE: '/favorites/toggle',
+      STATUS: '/favorites/status',
+      BATCH_STATUS: '/favorites/batch-status',
+      MY: '/favorites/my',
+      DELETE: '/favorites',
+      ARTICLE_FAVORITES: '/favorites/article',
+      POPULAR: '/favorites/popular'
+    },
+
     // 上传相关
     UPLOAD: {
       IMAGE: '/upload/image'

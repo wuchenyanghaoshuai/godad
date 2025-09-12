@@ -285,6 +285,11 @@
               </div>
             </div>
 
+            <!-- 消息通知 -->
+            <div v-else-if="activeTab === 'notifications'" class="p-6">
+              <NotificationList :auto-refresh="true" />
+            </div>
+
             <!-- 我的关注 -->
             <div v-else-if="activeTab === 'following'" class="p-6">
               <div class="flex justify-between items-center mb-6">
@@ -512,14 +517,17 @@ import { useRouter } from 'vue-router'
 import {
   UserIcon,
   FileTextIcon,
+  StarIcon,
   SettingsIcon,
   LogOutIcon,
   CameraIcon,
   UsersIcon,
-  HeartIcon
+  HeartIcon,
+  BellIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import AvatarModal from '../components/AvatarModal.vue'
+import NotificationList from '../components/NotificationList.vue'
 import { useToast } from '../composables/useToast'
 import { UserApi } from '../api/user'
 import { ArticleApi } from '../api/article'
@@ -584,6 +592,8 @@ const roleClasses = computed(() => {
 const menuItems = [
   { key: 'profile', label: '个人信息', icon: UserIcon },
   { key: 'articles', label: '我的文章', icon: FileTextIcon },
+  { key: 'favorites', label: '我的收藏', icon: StarIcon },
+  { key: 'notifications', label: '消息通知', icon: BellIcon },
   { key: 'following', label: '我的关注', icon: HeartIcon },
   { key: 'followers', label: '我的粉丝', icon: UsersIcon },
   { key: 'mutual', label: '互相关注', icon: HeartIcon },
@@ -944,6 +954,13 @@ onMounted(() => {
   if (!authStore.isAuthenticated) {
     router.push('/login')
     return
+  }
+  
+  // 处理URL参数中的tab
+  const urlParams = new URLSearchParams(window.location.search)
+  const tab = urlParams.get('tab')
+  if (tab && ['profile', 'articles', 'notifications', 'following', 'followers', 'mutual', 'settings'].includes(tab)) {
+    activeTab.value = tab
   }
   
   initUserInfo()

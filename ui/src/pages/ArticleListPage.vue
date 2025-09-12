@@ -159,8 +159,21 @@
                 <span class="text-xs text-gray-500">{{ formatDate(article.created_at) }}</span>
                 
                 <!-- 快速收藏按钮 -->
-                <button class="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-amber-500 transition-all duration-300 group" @click.stop="quickBookmark(article)">
-                  <StarIcon class="h-4 w-4 group-hover:scale-110 transition-transform" />
+                <button 
+                  :class="[
+                    'p-1.5 rounded-full transition-all duration-300 group',
+                    bookmarkStatus[article.id] 
+                      ? 'bg-amber-100 text-amber-500 hover:bg-amber-200' 
+                      : 'hover:bg-gray-100 text-gray-400 hover:text-amber-500'
+                  ]"
+                  @click.stop="quickBookmark(article)"
+                >
+                  <StarIcon 
+                    :class="[
+                      'h-4 w-4 group-hover:scale-110 transition-transform',
+                      bookmarkStatus[article.id] ? 'fill-current' : ''
+                    ]" 
+                  />
                 </button>
                 
                 <!-- 快速分享按钮 -->
@@ -244,6 +257,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { ArticleApi } from '@/api/article'
 import { CategoryApi } from '@/api/category'
+import { FavoriteApi } from '@/api/favorite'
 import type { Article, Category } from '@/api/types'
 import Navbar from '@/components/Navbar.vue'
 
@@ -255,6 +269,7 @@ const articles = ref<Article[]>([])
 const categories = ref<Category[]>([])
 const isLoading = ref(false)
 const error = ref('')
+const bookmarkStatus = ref<Record<number, boolean>>({})
 
 // 搜索和筛选
 const searchQuery = ref('')
@@ -354,6 +369,22 @@ const goToPage = (page: number) => {
   }
 }
 
+// 加载收藏状态
+const loadBookmarkStatus = async (articleIds: number[]) => {
+  if (!authStore.isAuthenticated || articleIds.length === 0) {
+    return
+  }
+  
+  try {
+    const response = await FavoriteApi.batchGetFavoriteStatus({ article_ids: articleIds })
+    if (response.success && response.data) {
+      bookmarkStatus.value = { ...bookmarkStatus.value, ...response.data }
+    }
+  } catch (error) {
+    console.error('加载收藏状态失败:', error)
+  }
+}
+
 // 加载文章列表
 const loadArticles = async () => {
   try {
@@ -379,6 +410,11 @@ const loadArticles = async () => {
       articles.value = (response.data && Array.isArray(response.data)) ? response.data : []
       totalCount.value = response.total || 0
     }
+    
+    // 加载收藏状态
+    const articleIds = articles.value.map(article => article.id)
+    await loadBookmarkStatus(articleIds)
+    
   } catch (err: any) {
     error.value = err.message || '加载文章失败'
     console.error('加载文章失败:', err)
@@ -429,10 +465,22 @@ const quickBookmark = async (article: Article) => {
   }
   
   try {
-    // 这里应该调用收藏API
-    // await BookmarkApi.bookmarkArticle(article.id)
+    const response = await FavoriteApi.toggleFavorite({ article_id: article.id })
+    
+    if (response.success) {
+      // 更新本地状态
+      bookmarkStatus.value[article.id] = response.data.is_favorited
+      
+      // 更新文章收藏数
+      const currentCount = article.favorite_count || 0
+      if (response.data.is_favorited) {
+        article.favorite_count = currentCount + 1
+      } else {
+        article.favorite_count = Math.max(0, currentCount - 1)
+      }
+    }
   } catch (error) {
-    console.error('收藏失败:', error)
+    console.error('收藏操作失败:', error)
   }
 }
 

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -9,18 +10,30 @@ import (
 	"godad-backend/config"
 	"godad-backend/models"
 
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 // CommentService 评论服务
 type CommentService struct {
-	db *gorm.DB
+	db                  *gorm.DB
+	notificationService *NotificationService
+	redisClient         *redis.Client
 }
 
 // NewCommentService 创建评论服务实例
 func NewCommentService() *CommentService {
+	db := config.GetDB()
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "127.0.0.1:6379",
+		Password: "",
+		DB:       0,
+	})
+	
 	return &CommentService{
-		db: config.GetDB(),
+		db:                  db,
+		notificationService: NewNotificationService(db),
+		redisClient:         redisClient,
 	}
 }
 
@@ -93,6 +106,34 @@ func (s *CommentService) CreateComment(userID uint, req *models.CommentCreateReq
 	// 提交事务
 	if err := tx.Commit().Error; err != nil {
 		return nil, err
+	}
+
+	// 发送通知
+	if req.ParentID != nil && *req.ParentID > 0 {
+		// 这是回复评论，需要通知原评论作者
+		var parentComment models.Comment
+		if err := s.db.Where("id = ?", *req.ParentID).First(&parentComment).Error; err == nil {
+			// 通知原评论作者（如果不是自己）
+			if parentComment.UserID != userID {
+				if err := s.notificationService.CreateCommentReplyNotification(userID, parentComment.UserID, req.ArticleID, *req.ParentID, req.Content); err != nil {
+					fmt.Printf("发送回复通知失败: %v\n", err)
+				}
+			}
+		}
+		
+		// 如果原评论作者不是文章作者，也要通知文章作者
+		if article.AuthorID != userID && article.AuthorID != parentComment.UserID {
+			if err := s.notificationService.CreateCommentNotification(userID, article.AuthorID, req.ArticleID, req.Content); err != nil {
+				fmt.Printf("发送文章评论通知失败: %v\n", err)
+			}
+		}
+	} else {
+		// 这是顶级评论，通知文章作者
+		if article.AuthorID != userID {
+			if err := s.notificationService.CreateCommentNotification(userID, article.AuthorID, req.ArticleID, req.Content); err != nil {
+				fmt.Printf("发送评论通知失败: %v\n", err)
+			}
+		}
 	}
 
 	// 预加载关联数据
@@ -176,17 +217,28 @@ func (s *CommentService) DeleteComment(commentID, userID uint) error {
 		}
 	}()
 
-	// 软删除评论（设置状态为0）
-	if err := tx.Model(&comment).Updates(map[string]interface{}{
-		"status":     0,
-		"deleted_at": time.Now(),
-	}).Error; err != nil {
+	// 计算要删除的总评论数（包括子评论）
+	totalDeleteCount, err := s.countCommentsRecursively(tx, comment.ID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	totalDeleteCount += 1 // 加上主评论本身
+	
+	// 硬删除子评论（递归删除所有回复）
+	if err := s.deleteChildCommentsRecursively(tx, comment.ID); err != nil {
+		tx.Rollback()
+		return err
+	}
+	
+	// 硬删除评论本身
+	if err := tx.Delete(&comment).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// 更新文章评论数
-	if err := tx.Model(&models.Article{}).Where("id = ?", comment.ArticleID).UpdateColumn("comment_count", gorm.Expr("comment_count - ?", 1)).Error; err != nil {
+	// 更新文章评论数（减去所有被删除的评论数）
+	if err := tx.Model(&models.Article{}).Where("id = ?", comment.ArticleID).UpdateColumn("comment_count", gorm.Expr("comment_count - ?", totalDeleteCount)).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -200,7 +252,14 @@ func (s *CommentService) DeleteComment(commentID, userID uint) error {
 	}
 
 	// 提交事务
-	return tx.Commit().Error
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+	
+	// 清除Redis缓存（如果有的话）
+	s.clearCommentCache(comment.ArticleID, comment.ID)
+	
+	return nil
 }
 
 // GetComment 获取评论详情
@@ -216,8 +275,66 @@ func (s *CommentService) GetComment(commentID uint) (*models.Comment, error) {
 	return &comment, nil
 }
 
-// GetCommentsByArticle 获取文章的评论列表
+// GetCommentsByArticleWithSort 获取文章的评论列表（带排序）
+func (s *CommentService) GetCommentsByArticleWithSort(articleID uint, page, size int, sort string) ([]*models.Comment, int64, error) {
+	// 验证文章是否存在
+	var article models.Article
+	if err := s.db.Where("id = ? AND status = ?", articleID, 1).First(&article).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, 0, errors.New("文章不存在或已下线")
+		}
+		return nil, 0, err
+	}
+
+	// 构建查询条件
+	query := s.db.Model(&models.Comment{}).Where("article_id = ? AND status = ? AND parent_id IS NULL", articleID, 1)
+
+	// 获取顶级评论总数（用于分页）
+	var topLevelTotal int64
+	if err := query.Count(&topLevelTotal).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 获取文章的总评论数（包含回复）
+	var total int64 = int64(article.CommentCount)
+
+	// 根据排序类型设置排序规则
+	var orderBy string
+	switch sort {
+	case "newest":
+		orderBy = "created_at DESC"
+	case "oldest":
+		orderBy = "created_at ASC"
+	case "most_liked":
+		orderBy = "like_count DESC, created_at DESC"
+	default:
+		orderBy = "like_count DESC, created_at DESC"
+	}
+
+	// 获取评论列表（只获取顶级评论）
+	var comments []*models.Comment
+	offset := (page - 1) * size
+	if err := query.Preload("User").Order(orderBy).Offset(offset).Limit(size).Find(&comments).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 为每个顶级评论加载回复
+	for _, comment := range comments {
+		if err := s.loadReplies(comment); err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return comments, total, nil
+}
+
+// GetCommentsByArticle 获取文章的评论列表（保持兼容性）
 func (s *CommentService) GetCommentsByArticle(articleID uint, page, size int) ([]*models.Comment, int64, error) {
+	return s.GetCommentsByArticleWithSort(articleID, page, size, "most_liked")
+}
+
+// GetCommentsByArticleOld 获取文章的评论列表（旧版本）
+func (s *CommentService) GetCommentsByArticleOld(articleID uint, page, size int) ([]*models.Comment, int64, error) {
 	// 验证文章是否存在
 	var article models.Article
 	if err := s.db.Where("id = ? AND status = ?", articleID, 1).First(&article).Error; err != nil {
@@ -462,6 +579,74 @@ func (s *CommentService) validateUpdateRequest(req *models.CommentUpdateRequest)
 	}
 
 	return nil
+}
+
+// countCommentsRecursively 递归统计子评论数量
+func (s *CommentService) countCommentsRecursively(tx *gorm.DB, parentID uint) (int64, error) {
+	var childComments []models.Comment
+	if err := tx.Where("parent_id = ?", parentID).Find(&childComments).Error; err != nil {
+		return 0, err
+	}
+	
+	count := int64(len(childComments))
+	
+	for _, child := range childComments {
+		// 递归统计子评论的子评论
+		childCount, err := s.countCommentsRecursively(tx, child.ID)
+		if err != nil {
+			return 0, err
+		}
+		count += childCount
+	}
+	
+	return count, nil
+}
+
+// deleteChildCommentsRecursively 递归删除子评论
+func (s *CommentService) deleteChildCommentsRecursively(tx *gorm.DB, parentID uint) error {
+	var childComments []models.Comment
+	if err := tx.Where("parent_id = ?", parentID).Find(&childComments).Error; err != nil {
+		return err
+	}
+	
+	for _, child := range childComments {
+		// 递归删除子评论的子评论
+		if err := s.deleteChildCommentsRecursively(tx, child.ID); err != nil {
+			return err
+		}
+		
+		// 删除子评论
+		if err := tx.Delete(&child).Error; err != nil {
+			return err
+		}
+	}
+	
+	return nil
+}
+
+// clearCommentCache 清除评论相关的Redis缓存
+func (s *CommentService) clearCommentCache(articleID, commentID uint) {
+	ctx := context.Background()
+	
+	// 清除可能的评论缓存key
+	cacheKeys := []string{
+		fmt.Sprintf("comments:article:%d", articleID),
+		fmt.Sprintf("comment:%d", commentID),
+		fmt.Sprintf("comments:article:%d:*", articleID), // 使用通配符清除分页缓存
+	}
+	
+	// 删除每个缓存key（忽略错误，因为key可能不存在）
+	for _, key := range cacheKeys {
+		if strings.Contains(key, "*") {
+			// 对于通配符key，需要先获取匹配的keys再删除
+			keys, err := s.redisClient.Keys(ctx, key).Result()
+			if err == nil && len(keys) > 0 {
+				s.redisClient.Del(ctx, keys...)
+			}
+		} else {
+			s.redisClient.Del(ctx, key)
+		}
+	}
 }
 
 // GetCommentCount 获取评论总数
