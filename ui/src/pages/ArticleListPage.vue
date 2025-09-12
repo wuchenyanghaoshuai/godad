@@ -413,7 +413,6 @@ const quickLike = async (article: Article) => {
   
   try {
     // 这里应该调用点赞API，暂时模拟
-    console.log('快速点赞文章:', article.title)
     // await ArticleApi.likeArticle(article.id)
     // 暂时增加点赞数用于演示
     article.like_count = (article.like_count || 0) + 1
@@ -430,7 +429,6 @@ const quickBookmark = async (article: Article) => {
   }
   
   try {
-    console.log('快速收藏文章:', article.title)
     // 这里应该调用收藏API
     // await BookmarkApi.bookmarkArticle(article.id)
   } catch (error) {
@@ -451,7 +449,6 @@ const quickShare = (article: Article) => {
   } else {
     // 复制链接到剪贴板
     navigator.clipboard.writeText(shareUrl).then(() => {
-      console.log('链接已复制到剪贴板')
       // 这里可以显示一个提示消息
     })
   }

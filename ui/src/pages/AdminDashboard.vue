@@ -700,21 +700,16 @@ const toggleUserStatus = async (user) => {
 // 加载分类列表
 const loadCategories = async () => {
   try {
-    console.log('AdminDashboard: 开始加载分类数据...')
     const response = await http.get('/admin/categories')
-    console.log('AdminDashboard: API 响应:', response)
     
     // 处理分页响应格式
     if (response.data && Array.isArray(response.data)) {
       categories.value = response.data
-      console.log('AdminDashboard: 成功加载分类数据 (格式1):', categories.value.length, '个分类')
     } else if (response && response.data && Array.isArray(response.data.data)) {
       // 处理嵌套的分页响应格式
       categories.value = response.data.data
-      console.log('AdminDashboard: 成功加载分类数据 (格式2):', categories.value.length, '个分类')
     } else {
       categories.value = []
-      console.log('AdminDashboard: 未找到分类数据，响应格式:', typeof response.data, response.data)
     }
   } catch (error) {
     console.error('AdminDashboard: 加载分类列表失败:', error)

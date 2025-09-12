@@ -710,7 +710,6 @@ const changePassword = async () => {
 
     isChangingPassword.value = true
     // TODO: 调用修改密码API
-    console.log('修改密码')
     
     // 重置表单
     passwordForm.currentPassword = ''
@@ -812,7 +811,6 @@ const getStatusClass = (status: number) => {
 const loadFollowStats = async () => {
   try {
     const response = await FollowApi.getFollowStats()
-    console.log('Follow stats response:', response)
     // 检查响应结构
     if (response && response.data) {
       followingCount.value = response.data.following_count || 0
@@ -832,7 +830,6 @@ const loadFollowing = async () => {
   try {
     isLoadingFollows.value = true
     const response = await FollowApi.getFollowing({ page: 1, limit: 50 })
-    console.log('Following response:', response)
     // 检查响应结构
     if (response && response.data && response.data.users) {
       followingList.value = response.data.users
@@ -854,7 +851,6 @@ const loadFollowers = async () => {
   try {
     isLoadingFollows.value = true
     const response = await FollowApi.getFollowers({ page: 1, limit: 50 })
-    console.log('Followers response:', response)
     // 检查响应结构
     if (response && response.data && response.data.users) {
       followersList.value = response.data.users
