@@ -29,6 +29,7 @@ type FollowStats struct {
 
 type UserWithFollowTime struct {
 	User
-	FollowedAt    *time.Time `json:"followed_at,omitempty"`
-	IsMutualFollow bool      `json:"is_mutual_follow,omitempty"`
+	FollowedAt     *time.Time `json:"followed_at,omitempty"`
+	IsMutualFollow bool       `json:"is_mutual_follow,omitempty"`
+	IsFollowing    bool       `json:"is_following,omitempty"`
 }

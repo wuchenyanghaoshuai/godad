@@ -36,7 +36,9 @@ export const API_CONFIG = {
       PUBLIC_INFO: '/user',
       CHECK_NICKNAME: '/user/check-nickname',
       REFRESH_TOKEN: '/user/refresh-token',
-      GENERATE_NICKNAME: '/user/generate-nickname'
+      GENERATE_NICKNAME: '/user/generate-nickname',
+      BY_USERNAME: '/user/profile',
+      ARTICLES_BY_USERNAME: '/user/profile'
     },
     
     // 文章相关

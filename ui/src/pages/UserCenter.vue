@@ -214,6 +214,7 @@
                 </router-link>
               </div>
 
+
               <!-- 加载状态 -->
               <div v-if="isLoadingArticles" class="text-center py-12">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto"></div>
@@ -281,6 +282,32 @@
                   class="text-pink-600 hover:text-pink-500 mt-2 inline-block"
                 >
                   立即创建第一篇文章
+                </router-link>
+              </div>
+            </div>
+
+            <!-- 私信 -->
+            <div v-else-if="activeTab === 'messages'" class="p-6">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-medium text-gray-900">我的私信</h3>
+                <router-link
+                  to="/chat"
+                  class="bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 transition-colors text-sm"
+                >
+                  管理私信
+                </router-link>
+              </div>
+              
+              <div class="bg-gray-50 rounded-lg p-8 text-center">
+                <MessageCircleIcon class="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <h4 class="text-lg font-medium text-gray-700 mb-2">私信管理</h4>
+                <p class="text-gray-500 mb-4">在这里您可以管理所有的私信对话</p>
+                <router-link
+                  to="/chat"
+                  class="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+                >
+                  <MessageCircleIcon class="w-4 h-4 mr-2" />
+                  进入私信
                 </router-link>
               </div>
             </div>
@@ -363,16 +390,21 @@
                     </div>
                   </div>
                   <div class="flex items-center space-x-2">
-                    <span v-if="user.is_mutual_follow" class="text-xs bg-pink-100 text-pink-600 px-2 py-1 rounded-full">互关</span>
-                    <button 
-                      v-if="!user.is_following" 
+                    <span
+                      v-if="user.is_mutual_follow"
+                      class="text-xs bg-pink-100 text-pink-600 px-3 py-2 rounded-full"
+                    >
+                      互相关注
+                    </span>
+                    <button
+                      v-else-if="!user.is_following"
                       @click="followUser(user.id)"
                       class="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm"
                     >
                       回关
                     </button>
-                    <button 
-                      v-else 
+                    <button
+                      v-else
                       @click="unfollowUser(user.id)"
                       class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
                     >
@@ -433,6 +465,95 @@
                 <HeartIcon class="h-12 w-12 mx-auto mb-4 text-pink-300" />
                 <p>还没有互相关注的用户</p>
                 <p class="text-sm mt-2">关注其他用户，等待他们回关吧</p>
+              </div>
+            </div>
+
+            <!-- 我的收藏 -->
+            <div v-else-if="activeTab === 'favorites'" class="p-6">
+              <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-medium text-gray-900">我的收藏</h3>
+              </div>
+              
+              <!-- 收藏列表 -->
+              <div v-if="favoritesLoading" class="text-center py-12">
+                <LoaderIcon class="h-8 w-8 mx-auto mb-4 text-gray-400 animate-spin" />
+                <p class="text-gray-500">加载中...</p>
+              </div>
+
+              <div v-else-if="favorites.length === 0" class="text-center py-12 text-gray-500">
+                <StarIcon class="h-12 w-12 mx-auto mb-4 text-yellow-400" />
+                <p>暂无收藏的文章</p>
+                <p class="text-sm mt-2">去收藏一些有趣的文章吧</p>
+              </div>
+
+              <div v-else class="space-y-4">
+                <div
+                  v-for="favorite in favorites"
+                  :key="favorite.id"
+                  class="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors cursor-pointer"
+                  @click="goToArticle(favorite.article_id)"
+                >
+                  <div class="flex items-start space-x-4">
+                    <img
+                      v-if="favorite.article?.cover_image"
+                      :src="favorite.article.cover_image"
+                      :alt="favorite.article.title"
+                      class="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                    />
+                    <div v-else class="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex-shrink-0 flex items-center justify-center">
+                      <FileTextIcon class="h-6 w-6 text-white" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <h4 class="text-sm font-medium text-gray-900 truncate mb-1">
+                        {{ favorite.article?.title || '文章标题' }}
+                      </h4>
+                      <p class="text-xs text-gray-500 mb-2">
+                        {{ favorite.article?.excerpt || '暂无摘要' }}
+                      </p>
+                      <div class="flex items-center space-x-4 text-xs text-gray-400">
+                        <span>收藏时间: {{ formatDate(favorite.created_at) }}</span>
+                        <div class="flex items-center space-x-1">
+                          <EyeIcon class="h-3 w-3" />
+                          <span>{{ favorite.article?.view_count || 0 }}</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                          <HeartIcon class="h-3 w-3" />
+                          <span>{{ favorite.article?.like_count || 0 }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      @click.stop="removeFavorite(favorite.id)"
+                      class="text-gray-400 hover:text-red-500 transition-colors"
+                      title="取消收藏"
+                    >
+                      <TrashIcon class="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 分页 -->
+                <div v-if="favoritesPagination.total_pages > 1" class="flex justify-center mt-6">
+                  <nav class="flex items-center space-x-2">
+                    <button
+                      @click="loadFavorites(favoritesPagination.current_page - 1)"
+                      :disabled="favoritesPagination.current_page <= 1 || favoritesLoading"
+                      class="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      上一页
+                    </button>
+                    <span class="text-sm text-gray-600">
+                      第 {{ favoritesPagination.current_page }} 页，共 {{ favoritesPagination.total_pages }} 页
+                    </span>
+                    <button
+                      @click="loadFavorites(favoritesPagination.current_page + 1)"
+                      :disabled="favoritesPagination.current_page >= favoritesPagination.total_pages || favoritesLoading"
+                      class="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      下一页
+                    </button>
+                  </nav>
+                </div>
               </div>
             </div>
 
@@ -523,16 +644,22 @@ import {
   CameraIcon,
   UsersIcon,
   HeartIcon,
-  BellIcon
+  BellIcon,
+  MessageCircleIcon,
+  LoaderIcon,
+  EyeIcon,
+  TrashIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import AvatarModal from '../components/AvatarModal.vue'
 import NotificationList from '../components/NotificationList.vue'
 import { useToast } from '../composables/useToast'
+import { useUserDataSync } from '../composables/useUserDataSync'
 import { UserApi } from '../api/user'
 import { ArticleApi } from '../api/article'
 import { FollowApi } from '../api/follow'
-import type { ImageUploadResponse, Article } from '../api/types'
+import { FavoriteApi } from '../api/favorite'
+import type { ImageUploadResponse, Article, Favorite } from '../api/types'
 
 // 路由
 const router = useRouter()
@@ -541,29 +668,40 @@ const router = useRouter()
 const authStore = useAuthStore()
 const { toast } = useToast()
 
+// 用户数据同步
+const userDataSync = useUserDataSync()
+
 // 响应式数据
 const showAvatarModal = ref(false)
 const activeTab = ref('profile')
 const isUpdating = ref(false)
 const isChangingPassword = ref(false)
 
-// 文章相关
-const myArticles = ref<Article[]>([])
-const isLoadingArticles = ref(false)
+// 收藏相关
+const favorites = ref<Favorite[]>([])
+const favoritesLoading = ref(false)
+const favoritesPagination = ref({
+  total: 0,
+  current_page: 1,
+  per_page: 10,
+  total_pages: 0
+})
 
-// 关注相关数据
-const followingCount = ref(0)
-const followersCount = ref(0)
-const mutualCount = ref(0)
-const articlesCount = ref(0)
-const followingList = ref<any[]>([])
-const followersList = ref<any[]>([])
-const mutualFollowsList = ref<any[]>([])
-const isLoadingFollows = ref(false)
+// 使用同步的数据 - 直接使用userDataSync返回的computed属性
+const myArticles = userDataSync.articles
+const isLoadingArticles = userDataSync.isLoading
+const followingCount = computed(() => userDataSync.stats.value.following_count)
+const followersCount = computed(() => userDataSync.stats.value.followers_count)
+const mutualCount = computed(() => userDataSync.mutualFollowsList.value.length)
+const articlesCount = computed(() => userDataSync.stats.value.article_count)
+const followingList = userDataSync.followingList
+const followersList = userDataSync.followersList
+const mutualFollowsList = userDataSync.mutualFollowsList
+const isLoadingFollows = userDataSync.isLoading
 const articlesError = ref('')
 
 // 用户信息
-const user = computed(() => authStore.user)
+const user = computed(() => userDataSync.profile.value || authStore.user)
 
 // 角色显示
 const roleText = computed(() => {
@@ -593,6 +731,7 @@ const menuItems = [
   { key: 'profile', label: '个人信息', icon: UserIcon },
   { key: 'articles', label: '我的文章', icon: FileTextIcon },
   { key: 'favorites', label: '我的收藏', icon: StarIcon },
+  { key: 'messages', label: '私信', icon: MessageCircleIcon },
   { key: 'notifications', label: '消息通知', icon: BellIcon },
   { key: 'following', label: '我的关注', icon: HeartIcon },
   { key: 'followers', label: '我的粉丝', icon: UsersIcon },
@@ -642,21 +781,16 @@ const handleAvatarUpload = async (response: ImageUploadResponse) => {
       // 更新表单数据
       profileForm.avatar = avatarUrl
       
-      // 调用API更新头像到后端
-      const updateResponse = await UserApi.updateProfile({
+      // 使用数据同步函数更新头像
+      await userDataSync.updateUserProfile({
         avatar: avatarUrl
       })
-      
-      // 更新本地用户信息
-      authStore.updateUserInfo(updateResponse.data)
       
       // 确保DOM更新
       await nextTick()
       
       // 关闭头像上传弹窗
       closeAvatarModal()
-      
-      toast.success('头像更换成功')
     } catch (error) {
       console.error('头像更新失败:', error)
       toast.error('头像更新失败，请重试')
@@ -696,12 +830,11 @@ const updateProfile = async () => {
       }
     })
     
-    const response = await UserApi.updateProfile(updateData)
+    // 使用数据同步函数更新
+    await userDataSync.updateUserProfile(updateData)
     
-    // 更新本地用户信息
-    authStore.updateUserInfo(response.data)
-    
-    toast.success('个人信息更新成功')
+    // 重新初始化表单
+    initUserInfo()
   } catch (error) {
     console.error('更新失败:', error)
     toast.error('更新失败，请重试')
@@ -742,21 +875,14 @@ const handleLogout = async () => {
   }
 }
 
-// 加载我的文章
+// 加载我的文章（使用数据同步）
 const loadMyArticles = async () => {
   try {
-    isLoadingArticles.value = true
     articlesError.value = ''
-    
-    const response = await ArticleApi.getMyArticles({ page: 1, size: 20 })
-    myArticles.value = (response.data && Array.isArray(response.data)) ? response.data : []
-    // 更新文章数量统计
-    articlesCount.value = myArticles.value.length
+    await userDataSync.loadUserArticles({ page: 1, size: 20 })
   } catch (error: any) {
     articlesError.value = error.message || '加载文章失败'
     console.error('加载我的文章失败:', error)
-  } finally {
-    isLoadingArticles.value = false
   }
 }
 
@@ -817,122 +943,102 @@ const getStatusClass = (status: number) => {
   }
 }
 
-// 加载关注统计信息
+// 加载关注统计信息（使用数据同步）
 const loadFollowStats = async () => {
   try {
-    const response = await FollowApi.getFollowStats()
-    // 检查响应结构
-    if (response && response.data) {
-      followingCount.value = response.data.following_count || 0
-      followersCount.value = response.data.followers_count || 0
-    } else {
-      // 如果直接是数据对象
-      followingCount.value = response.following_count || 0
-      followersCount.value = response.followers_count || 0
-    }
+    await userDataSync.loadUserStats()
   } catch (error) {
     console.error('加载关注统计失败:', error)
   }
 }
 
-// 加载关注列表
+// 加载关注列表（使用数据同步）
 const loadFollowing = async () => {
   try {
-    isLoadingFollows.value = true
-    const response = await FollowApi.getFollowing({ page: 1, limit: 50 })
-    // 检查响应结构
-    if (response && response.data && response.data.users) {
-      followingList.value = response.data.users
-    } else if (response && response.users) {
-      followingList.value = response.users
-    } else {
-      followingList.value = []
-    }
+    await userDataSync.loadFollowingList({ page: 1, limit: 50 })
   } catch (error) {
     console.error('加载关注列表失败:', error)
     toast.error('加载关注列表失败')
-  } finally {
-    isLoadingFollows.value = false
   }
 }
 
-// 加载粉丝列表
+// 加载粉丝列表（使用数据同步）
 const loadFollowers = async () => {
   try {
-    isLoadingFollows.value = true
-    const response = await FollowApi.getFollowers({ page: 1, limit: 50 })
-    // 检查响应结构
-    if (response && response.data && response.data.users) {
-      followersList.value = response.data.users
-    } else if (response && response.users) {
-      followersList.value = response.users
-    } else {
-      followersList.value = []
-    }
+    await userDataSync.loadFollowersList({ page: 1, limit: 50 })
   } catch (error) {
     console.error('加载粉丝列表失败:', error)
     toast.error('加载粉丝列表失败')
-  } finally {
-    isLoadingFollows.value = false
   }
 }
 
-// 取消关注
+// 取消关注（使用数据同步）
 const unfollowUser = async (userId) => {
   try {
-    await FollowApi.unfollowUser(userId)
-    toast.success('取消关注成功')
-    // 重新加载数据
-    await loadFollowStats()
-    if (activeTab.value === 'following') {
-      await loadFollowing()
-    }
+    await userDataSync.unfollowUser(userId)
+    // 数据同步函数会自动更新相关统计和列表
   } catch (error) {
     console.error('取消关注失败:', error)
-    toast.error('取消关注失败')
   }
 }
 
-// 关注用户
+// 关注用户（使用数据同步）
 const followUser = async (userId) => {
   try {
-    await FollowApi.followUser(userId)
-    toast.success('关注成功')
-    // 重新加载数据
-    await loadFollowStats()
-    if (activeTab.value === 'followers') {
-      await loadFollowers()
-    }
+    await userDataSync.followUser(userId)
+    // 数据同步函数会自动更新相关统计和列表
   } catch (error) {
     console.error('关注失败:', error)
-    toast.error('关注失败')
   }
 }
 
-// 加载互相关注列表
+// 加载互相关注列表（使用数据同步）
 const loadMutualFollows = async () => {
   try {
-    isLoadingFollows.value = true
-    const response = await FollowApi.getMutualFollows({ page: 1, limit: 50 })
-    // 检查响应结构
-    if (response && response.data && response.data.users) {
-      mutualFollowsList.value = response.data.users
-      mutualCount.value = response.data.total || response.data.users.length
-    } else if (response && response.users) {
-      mutualFollowsList.value = response.users
-      mutualCount.value = response.total || response.users.length
-    } else {
-      mutualFollowsList.value = []
-      mutualCount.value = 0
-    }
+    await userDataSync.loadMutualFollowsList({ page: 1, limit: 50 })
   } catch (error) {
     console.error('加载互关列表失败:', error)
     toast.error('加载互关列表失败')
-    mutualFollowsList.value = []
-    mutualCount.value = 0
-  } finally {
-    isLoadingFollows.value = false
   }
+}
+
+// 收藏相关函数
+const loadFavorites = async (page = 1) => {
+  try {
+    favoritesLoading.value = true
+    const response = await FavoriteApi.getUserFavorites({
+      page,
+      size: favoritesPagination.value.per_page
+    })
+
+    favorites.value = response.data.favorites
+    favoritesPagination.value = response.data.pagination
+  } catch (error) {
+    console.error('加载收藏列表失败:', error)
+    toast.error('加载收藏列表失败')
+  } finally {
+    favoritesLoading.value = false
+  }
+}
+
+const removeFavorite = async (favoriteId: number) => {
+  if (!confirm('确定要取消收藏这篇文章吗？')) {
+    return
+  }
+
+  try {
+    await FavoriteApi.deleteFavorite(favoriteId)
+    toast.success('取消收藏成功')
+    // 重新加载当前页的收藏列表
+    await loadFavorites(favoritesPagination.value.current_page)
+  } catch (error) {
+    console.error('取消收藏失败:', error)
+    toast.error('取消收藏失败')
+  }
+}
+
+const goToArticle = (articleId: number) => {
+  router.push(`/articles/${articleId}`)
 }
 
 // 监听activeTab变化，根据标签加载不同数据
@@ -945,6 +1051,8 @@ watch(activeTab, (newTab) => {
     loadFollowers()
   } else if (newTab === 'mutual') {
     loadMutualFollows()
+  } else if (newTab === 'favorites') {
+    loadFavorites()
   }
 })
 
@@ -964,8 +1072,7 @@ onMounted(() => {
   }
   
   initUserInfo()
-  loadFollowStats()
-  // 初始加载文章数量统计
-  loadMyArticles()
+  // 初始化用户数据同步
+  userDataSync.initUserData()
 })
 </script>

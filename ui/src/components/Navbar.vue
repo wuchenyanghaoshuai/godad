@@ -119,8 +119,22 @@
                 发布文章
               </router-link>
 
-              <!-- 通知铃铛 -->
-              <NotificationBell />
+              <!-- 消息通知按钮（统一入口） -->
+              <router-link
+                to="/notifications"
+                @click="clearUnreadNotifications"
+                class="relative p-2 rounded-lg text-gray-600 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
+                title="消息通知"
+              >
+                <BellIcon class="h-5 w-5" />
+                <!-- 未读通知红点 -->
+                <span
+                  v-if="totalUnreadCount > 0"
+                  class="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full"
+                >
+                  {{ totalUnreadCount > 99 ? '99+' : totalUnreadCount }}
+                </span>
+              </router-link>
 
               <!-- 用户头像菜单 -->
               <div class="relative">
@@ -160,6 +174,14 @@
                   >
                     <UserIcon class="h-4 w-4 mr-3" />
                     个人中心
+                  </router-link>
+                  <router-link
+                    :to="`/users/${authStore.user?.username}`"
+                    class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors"
+                    @click="showUserMenu = false"
+                  >
+                    <UserIcon class="h-4 w-4 mr-3" />
+                    我的资料
                   </router-link>
                   <router-link
                     to="/articles/create"
@@ -244,28 +266,74 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { 
-  MenuIcon, 
-  XIcon, 
-  UserIcon, 
-  LogOutIcon, 
-  ChevronDownIcon, 
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import {
+  MenuIcon,
+  XIcon,
+  UserIcon,
+  LogOutIcon,
+  ChevronDownIcon,
   PlusIcon,
   SearchIcon,
-  CogIcon
+  CogIcon,
+  BellIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
-import NotificationBell from '@/components/NotificationBell.vue'
+import { NotificationApi } from '@/api/notification'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 // 响应式数据
 const showUserMenu = ref(false)
 const showMobileMenu = ref(false)
 const userMenuButton = ref<HTMLElement>()
+const unreadMessagesCount = ref(0)
+const unreadNotificationsCount = ref(0)
+
+// 获取所有未读计数（统一管理）
+const fetchUnreadCounts = async () => {
+  if (!authStore.isAuthenticated) {
+    unreadMessagesCount.value = 0
+    unreadNotificationsCount.value = 0
+    return
+  }
+
+  try {
+    const response = await NotificationApi.getNotificationStats()
+    // 统一使用 unread_count
+    const totalCount = response.data.unread_count || 0
+    unreadMessagesCount.value = totalCount
+    unreadNotificationsCount.value = totalCount
+  } catch (error) {
+    console.error('获取未读计数失败:', error)
+    unreadMessagesCount.value = 0
+    unreadNotificationsCount.value = 0
+  }
+}
+
+// 为了向后兼容，保留原方法名
+const fetchUnreadMessagesCount = fetchUnreadCounts
+
+// 统一清除未读计数
+const clearUnreadNotifications = async () => {
+  if (!authStore.isAuthenticated || totalUnreadCount.value === 0) {
+    return
+  }
+
+  try {
+    await NotificationApi.markAllAsRead()
+    unreadMessagesCount.value = 0
+    unreadNotificationsCount.value = 0
+  } catch (error) {
+    console.error('标记通知已读失败:', error)
+  }
+}
+
+// 为了向后兼容，保留原方法
+const clearUnreadMessages = clearUnreadNotifications
 
 // 搜索相关
 const searchQuery = ref('')
@@ -318,9 +386,32 @@ const handleClickOutside = (event: Event) => {
   }
 }
 
+// 计算属性：总未读数量
+const totalUnreadCount = computed(() => {
+  return Math.max(unreadMessagesCount.value, unreadNotificationsCount.value)
+})
+
+// 监听路由变化，当进入通知页面时清除计数
+watch(() => route.path, async (newPath) => {
+  if (newPath === '/notifications' || newPath === '/messages') {
+    await clearUnreadNotifications()
+  }
+})
+
+// 监听认证状态变化，重新获取未读计数
+watch(() => authStore.isAuthenticated, async (isAuthenticated) => {
+  if (isAuthenticated) {
+    await fetchUnreadMessagesCount()
+  } else {
+    unreadMessagesCount.value = 0
+    unreadNotificationsCount.value = 0
+  }
+})
+
 // 组件挂载时
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  fetchUnreadMessagesCount()
 })
 
 // 组件卸载时

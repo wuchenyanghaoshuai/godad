@@ -5,6 +5,7 @@ import RegisterPage from '@/pages/RegisterPage.vue'
 import ForgotPasswordPage from '@/pages/ForgotPasswordPage.vue'
 import ResetPasswordPage from '@/pages/ResetPasswordPage.vue'
 import UserCenter from '@/pages/UserCenter.vue'
+import UserProfilePage from '@/pages/UserProfilePage.vue'
 import CategoryManagePage from '@/pages/CategoryManagePage.vue'
 import ArticleListPage from '@/pages/ArticleListPage.vue'
 import ArticleDetailPage from '@/pages/ArticleDetailPage.vue'
@@ -15,6 +16,7 @@ import NotFoundPage from '@/pages/NotFoundPage.vue'
 import AboutView from '@/views/AboutView.vue'
 import AdminDashboard from '@/pages/AdminDashboard.vue'
 import AdminLoginPage from '@/pages/AdminLoginPage.vue'
+import NotificationsPage from '@/pages/NotificationsPage.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -53,6 +55,24 @@ const router = createRouter({
       path: '/user-center',
       name: 'user-center',
       component: UserCenter,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/users/:username',
+      name: 'UserProfile',
+      component: UserProfilePage,
+      meta: { requiresFromArticle: true }
+    },
+    {
+      path: '/messages',
+      name: 'Messages',
+      redirect: '/notifications',
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/notifications',
+      name: 'Notifications',
+      component: NotificationsPage,
       meta: { requiresAuth: true }
     },
     {
@@ -174,6 +194,35 @@ router.beforeEach(async (to, from, next) => {
     if (to.name === 'ArticleDetail' || to.name === 'ArticleEdit') {
       const id = to.params.id
       if (!id || isNaN(Number(id))) {
+        next('/404')
+        return
+      }
+    }
+    
+    // 允许用户主页访问（移除限制）
+    // 注释掉原有的限制逻辑，用户应该可以直接访问任何用户的主页
+    /*
+    if (to.meta.requiresFromArticle && to.name === 'UserProfile') {
+      // 检查是否从文章相关页面或消息页面跳转，或者是页面刷新
+      const isFromAllowedPage = from.name === 'ArticleDetail' ||
+                               from.name === 'ArticleList' ||
+                               from.name === 'home' ||
+                               from.name === 'Messages' ||
+                               from.path.startsWith('/articles') ||
+                               from.name === null // 页面刷新时from.name为null
+
+      if (!isFromAllowedPage) {
+        // 如果不是从允许的页面跳转，重定向到首页
+        next('/')
+        return
+      }
+    }
+    */
+    
+    // 验证用户名参数
+    if (to.name === 'UserProfile') {
+      const username = to.params.username
+      if (!username || typeof username !== 'string' || username.trim() === '') {
         next('/404')
         return
       }

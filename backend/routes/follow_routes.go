@@ -15,28 +15,31 @@ func SetupFollowRoutes(router *gin.Engine) {
 	followService := services.NewFollowService(config.GetDB())
 	followController := controllers.NewFollowController(followService)
 
-	// 关注相关路由组
+	// 公开的关注统计API（不需要认证）
+	router.GET("/api/follows/stats/:id", followController.GetUserFollowStats)
+
+	// 关注相关路由组（需要认证）
 	followGroup := router.Group("/api/follows")
 	followGroup.Use(middleware.AuthMiddleware())
 	{
 		// 关注用户
 		followGroup.POST("/:id", followController.FollowUser)
-		
+
 		// 取消关注
 		followGroup.DELETE("/:id", followController.UnfollowUser)
-		
+
 		// 检查关注状态
 		followGroup.GET("/status/:id", followController.CheckFollowStatus)
-		
+
 		// 获取关注列表（我关注的人）
 		followGroup.GET("/following", followController.GetFollowing)
-		
+
 		// 获取粉丝列表（关注我的人）
 		followGroup.GET("/followers", followController.GetFollowers)
-		
+
 		// 获取关注统计信息
 		followGroup.GET("/stats", followController.GetFollowStats)
-		
+
 		// 获取互相关注列表
 		followGroup.GET("/mutual", followController.GetMutualFollows)
 	}

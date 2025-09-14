@@ -152,34 +152,51 @@
                   <MessageCircleIcon class="h-3.5 w-3.5 mr-1" />
                   <span>{{ article.comment_count || 0 }}</span>
                 </div>
+
+                <!-- 收藏数量 -->
+                <div class="flex items-center px-2.5 py-1.5 bg-amber-50 text-amber-700 rounded-full text-xs font-medium hover:bg-amber-100 transition-all duration-300">
+                  <BookmarkIcon class="h-3.5 w-3.5 mr-1" />
+                  <span>{{ article.favorite_count || 0 }}</span>
+                </div>
               </div>
               
-              <!-- 日期和快速操作 -->
+              <!-- 作者信息和日期 -->
               <div class="flex items-center space-x-2">
-                <span class="text-xs text-gray-500">{{ formatDate(article.created_at) }}</span>
-                
-                <!-- 快速收藏按钮 -->
-                <button 
-                  :class="[
-                    'p-1.5 rounded-full transition-all duration-300 group',
-                    bookmarkStatus[article.id] 
-                      ? 'bg-amber-100 text-amber-500 hover:bg-amber-200' 
-                      : 'hover:bg-gray-100 text-gray-400 hover:text-amber-500'
-                  ]"
-                  @click.stop="quickBookmark(article)"
-                >
-                  <StarIcon 
-                    :class="[
-                      'h-4 w-4 group-hover:scale-110 transition-transform',
-                      bookmarkStatus[article.id] ? 'fill-current' : ''
-                    ]" 
-                  />
-                </button>
-                
-                <!-- 快速分享按钮 -->
-                <button class="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-blue-500 transition-all duration-300 group" @click.stop="quickShare(article)">
-                  <ShareIcon class="h-4 w-4 group-hover:scale-110 group-hover:rotate-12 transition-transform" />
-                </button>
+                <!-- 作者信息 -->
+                <div v-if="article.author" class="flex items-center space-x-1">
+                  <router-link
+                    v-if="article.author.username"
+                    :to="`/users/${article.author.username}`"
+                    @click.stop
+                    class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-pink-300 transition-all"
+                  >
+                    <img
+                      v-if="article.author.avatar"
+                      :src="article.author.avatar"
+                      :alt="article.author.nickname || article.author.username"
+                      class="w-full h-full object-cover"
+                    />
+                    <div
+                      v-else
+                      class="w-full h-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center"
+                    >
+                      <span class="text-white font-bold text-xs">
+                        {{ (article.author.nickname || article.author.username || 'U').charAt(0).toUpperCase() }}
+                      </span>
+                    </div>
+                  </router-link>
+                  <router-link
+                    v-if="article.author.username"
+                    :to="`/users/${article.author.username}`"
+                    @click.stop
+                    class="text-xs text-gray-600 hover:text-pink-600 transition-colors font-medium truncate max-w-16"
+                  >
+                    {{ article.author.nickname || article.author.username }}
+                  </router-link>
+                  <span v-else class="text-xs text-gray-600">
+                    {{ article.author.nickname || article.author.username || '匿名用户' }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -249,6 +266,7 @@ import {
   PlusIcon,
   StarIcon,
   MessageCircleIcon,
+  BookmarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronDownIcon,

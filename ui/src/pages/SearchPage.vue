@@ -124,7 +124,15 @@
               <div class="flex items-center space-x-4">
                 <div class="flex items-center space-x-1">
                   <UserIcon class="h-3 w-3" />
-                  <span>{{ article.author?.username }}</span>
+                  <router-link
+                    v-if="article.author?.username"
+                    :to="`/users/${article.author.username}`"
+                    @click.stop
+                    class="hover:text-pink-600 transition-colors cursor-pointer"
+                  >
+                    {{ article.author.username }}
+                  </router-link>
+                  <span v-else>{{ article.author?.username }}</span>
                 </div>
                 <div class="flex items-center space-x-1">
                   <EyeIcon class="h-3 w-3" />
@@ -238,7 +246,7 @@ const searchResults = ref<PaginatedResponse<Article>>({
   items: [],
   total: 0,
   page: 1,
-  page_size: 10,
+  size: 10,
   total_pages: 0
 })
 const categories = ref<Category[]>([])
@@ -297,7 +305,7 @@ const performSearch = async (page = 1) => {
     const params = {
       keyword: currentSearchQuery.value,
       page: page,
-      page_size: 10,
+      size: 10,
       category_id: selectedCategory.value ? Number(selectedCategory.value) : undefined,
       sort: sortBy.value,
       status: 1 // 只搜索已发布的文章

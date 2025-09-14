@@ -13,13 +13,15 @@ import (
 
 // UserController 用户控制器
 type UserController struct {
-	userService *services.UserService
+	userService    *services.UserService
+	articleService *services.ArticleService
 }
 
 // NewUserController 创建用户控制器实例
 func NewUserController() *UserController {
 	return &UserController{
-		userService: services.NewUserService(),
+		userService:    services.NewUserService(),
+		articleService: services.NewArticleService(),
 	}
 }
 
@@ -292,6 +294,39 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	utils.Success(ctx, response)
 }
 
+// GetUserByUsername 根据用户名获取用户信息（公开信息）
+// @Summary 根据用户名获取用户信息
+// @Description 获取指定用户的公开信息
+// @Tags 用户管理
+// @Accept json
+// @Produce json
+// @Param username path string true "用户名"
+// @Success 200 {object} utils.Response{data=models.UserResponse} "获取成功"
+// @Failure 400 {object} utils.Response "请求参数错误"
+// @Failure 404 {object} utils.Response "用户不存在"
+// @Router /api/user/profile/{username} [get]
+func (c *UserController) GetUserByUsername(ctx *gin.Context) {
+	username := ctx.Param("username")
+	if username == "" {
+		utils.Error(ctx, utils.CodeBadRequest, "用户名不能为空")
+		return
+	}
+
+	// 获取用户信息
+	user, err := c.userService.GetUserByUsername(username)
+	if err != nil {
+		utils.Error(ctx, utils.CodeNotFound, err.Error())
+		return
+	}
+
+	// 返回公开信息（隐藏敏感信息）
+	response := user.ToResponse()
+	response.Email = "" // 隐藏邮箱
+	response.Phone = "" // 隐藏手机号
+
+	utils.Success(ctx, response)
+}
+
 // GetUserList 获取用户列表（管理员功能）
 // @Summary 获取用户列表
 // @Description 获取用户列表，支持分页和搜索（管理员功能）
@@ -371,4 +406,129 @@ func (c *UserController) GenerateRandomNickname(ctx *gin.Context) {
 	utils.Success(ctx, gin.H{
 		"nickname": nickname,
 	})
+}
+
+// GetUserArticles 获取用户文章列表
+// @Summary 获取用户文章列表
+// @Description 获取指定用户的文章列表，支持分页
+// @Tags 用户管理
+// @Accept json
+// @Produce json
+// @Param id path int true "用户ID"
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页数量" default(20)
+// @Success 200 {object} utils.PageResponse{data=[]models.ArticleResponse} "获取成功"
+// @Failure 400 {object} utils.Response "请求参数错误"
+// @Failure 404 {object} utils.Response "用户不存在"
+// @Router /api/user/{id}/articles [get]
+func (c *UserController) GetUserArticles(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.Error(ctx, utils.CodeBadRequest, "用户ID格式错误")
+		return
+	}
+
+	// 验证用户是否存在
+	_, err = c.userService.GetUserByID(uint(id))
+	if err != nil {
+		utils.Error(ctx, utils.CodeNotFound, err.Error())
+		return
+	}
+
+	// 绑定查询参数
+	var req models.ArticleListRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		utils.Error(ctx, utils.CodeBadRequest, "参数错误: "+err.Error())
+		return
+	}
+
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.Size <= 0 {
+		req.Size = 20
+	}
+
+	// 设置查询条件：只显示已发布的文章和该用户的文章
+	req.AuthorID = uint(id)
+	req.Status = 1 // 只显示已发布的文章
+
+	// 获取文章列表
+	articles, total, err := c.articleService.GetArticleList(&req)
+	if err != nil {
+		utils.Error(ctx, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	// 转换为响应格式
+	var responses []*models.ArticleResponse
+	for _, article := range articles {
+		responses = append(responses, article.ToResponse(false))
+	}
+
+	utils.SuccessPage(ctx, responses, total, req.Page, req.Size)
+}
+
+// GetUserArticlesByUsername 根据用户名获取用户文章列表
+// @Summary 根据用户名获取用户文章列表
+// @Description 获取指定用户的文章列表，支持分页
+// @Tags 用户管理
+// @Accept json
+// @Produce json
+// @Param username path string true "用户名"
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页数量" default(20)
+// @Success 200 {object} utils.PageResponse{data=[]models.ArticleResponse} "获取成功"
+// @Failure 400 {object} utils.Response "请求参数错误"
+// @Failure 404 {object} utils.Response "用户不存在"
+// @Router /api/user/profile/{username}/articles [get]
+func (c *UserController) GetUserArticlesByUsername(ctx *gin.Context) {
+	username := ctx.Param("username")
+	if username == "" {
+		utils.Error(ctx, utils.CodeBadRequest, "用户名不能为空")
+		return
+	}
+
+	// 验证用户是否存在
+	user, err := c.userService.GetUserByUsername(username)
+	if err != nil {
+		utils.Error(ctx, utils.CodeNotFound, err.Error())
+		return
+	}
+
+	// 绑定查询参数
+	var req models.ArticleListRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		utils.Error(ctx, utils.CodeBadRequest, "参数错误: "+err.Error())
+		return
+	}
+
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.Size <= 0 {
+		req.Size = 20
+	}
+
+	// 设置查询条件：只显示已发布的文章和该用户的文章
+	req.AuthorID = user.ID
+	req.Status = 1 // 只显示已发布的文章
+
+	// 获取文章列表
+	articles, total, err := c.articleService.GetArticleList(&req)
+	if err != nil {
+		utils.Error(ctx, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	// 转换为响应格式
+	var responses []*models.ArticleResponse
+	for _, article := range articles {
+		responses = append(responses, article.ToResponse(false))
+	}
+
+	utils.SuccessPage(ctx, responses, total, req.Page, req.Size)
 }

@@ -29,9 +29,14 @@ export class FollowApi {
     return http.get('/follows/followers', params)
   }
 
-  // 获取关注统计信息
+  // 获取关注统计信息（当前用户）
   static async getFollowStats(): Promise<ApiResponse<FollowStats>> {
     return http.get('/follows/stats')
+  }
+
+  // 获取指定用户的关注统计信息（公开接口）
+  static async getUserFollowStats(userId: number): Promise<ApiResponse<FollowStats>> {
+    return http.get(`/follows/stats/${userId}`)
   }
 
   // 获取互相关注列表

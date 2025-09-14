@@ -76,7 +76,30 @@
           <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-200">
             <div class="flex items-center space-x-4">
               <!-- 作者头像 -->
-              <div class="w-12 h-12 rounded-full flex items-center justify-center shadow-sm overflow-hidden">
+              <router-link
+                v-if="article.author?.username"
+                :to="`/users/${article.author.username}`"
+                class="w-12 h-12 rounded-full flex items-center justify-center shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+              >
+                <img
+                  v-if="article.author?.avatar"
+                  :src="article.author.avatar"
+                  :alt="article.author.nickname || article.author.username"
+                  class="w-12 h-12 rounded-full object-cover"
+                />
+                <div
+                  v-else
+                  class="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center"
+                >
+                  <span class="text-white font-semibold text-sm">
+                    {{ (article.author?.nickname || article.author?.username || 'U').charAt(0).toUpperCase() }}
+                  </span>
+                </div>
+              </router-link>
+              <div
+                v-else
+                class="w-12 h-12 rounded-full flex items-center justify-center shadow-sm overflow-hidden"
+              >
                 <img
                   v-if="article.author?.avatar"
                   :src="article.author.avatar"
@@ -93,7 +116,14 @@
                 </div>
               </div>
               <div>
-                <div class="font-medium text-gray-900">
+                <router-link 
+                  v-if="article.author?.username" 
+                  :to="`/users/${article.author.username}`" 
+                  class="font-medium text-gray-900 hover:text-pink-600 transition-colors"
+                >
+                  {{ article.author?.nickname || article.author?.username || '匿名用户' }}
+                </router-link>
+                <div v-else class="font-medium text-gray-900">
                   {{ article.author?.nickname || article.author?.username || '匿名用户' }}
                 </div>
                 <div class="text-sm text-gray-500">
@@ -359,7 +389,31 @@
               <div class="flex items-center justify-between text-xs sm:text-sm text-gray-500">
                 <div class="flex items-center space-x-2">
                   <!-- 相关文章作者头像 -->
-                  <div class="w-4 h-4 sm:w-5 sm:h-5 rounded-full overflow-hidden flex-shrink-0">
+                  <router-link
+                    v-if="relatedArticle.author?.username"
+                    :to="`/users/${relatedArticle.author.username}`"
+                    @click.stop
+                    class="w-4 h-4 sm:w-5 sm:h-5 rounded-full overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-pink-300 transition-all cursor-pointer"
+                  >
+                    <img
+                      v-if="relatedArticle.author?.avatar"
+                      :src="relatedArticle.author.avatar"
+                      :alt="relatedArticle.author.nickname || relatedArticle.author.username"
+                      class="w-full h-full object-cover"
+                    />
+                    <div
+                      v-else
+                      class="w-full h-full bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center"
+                    >
+                      <span class="text-white font-bold text-xs">
+                        {{ (relatedArticle.author?.nickname || relatedArticle.author?.username || 'U').charAt(0).toUpperCase() }}
+                      </span>
+                    </div>
+                  </router-link>
+                  <div
+                    v-else
+                    class="w-4 h-4 sm:w-5 sm:h-5 rounded-full overflow-hidden flex-shrink-0"
+                  >
                     <img
                       v-if="relatedArticle.author?.avatar"
                       :src="relatedArticle.author.avatar"
@@ -375,7 +429,15 @@
                       </span>
                     </div>
                   </div>
-                  <span class="truncate max-w-20 sm:max-w-none">{{ relatedArticle.author?.nickname || relatedArticle.author?.username }}</span>
+                  <router-link
+                    v-if="relatedArticle.author?.username"
+                    :to="`/users/${relatedArticle.author.username}`"
+                    @click.stop
+                    class="truncate max-w-20 sm:max-w-none hover:text-pink-600 transition-colors"
+                  >
+                    {{ relatedArticle.author?.nickname || relatedArticle.author?.username }}
+                  </router-link>
+                  <span v-else class="truncate max-w-20 sm:max-w-none">{{ relatedArticle.author?.nickname || relatedArticle.author?.username }}</span>
                 </div>
                 <span class="text-xs">{{ formatDate(relatedArticle.created_at) }}</span>
               </div>

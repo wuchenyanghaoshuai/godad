@@ -16,7 +16,14 @@
           <div class="flex items-center space-x-2">
             <!-- 整合的用户名显示：包含回复信息和内容 -->
             <span class="font-medium text-gray-900 text-sm sm:text-base">
-              <span class="font-medium text-pink-600">{{ comment.user?.username || '匿名用户' }}</span>
+              <router-link
+                v-if="comment.user?.username"
+                :to="`/users/${comment.user.username}`"
+                class="font-medium text-pink-600 hover:text-pink-700 transition-colors"
+              >
+                {{ comment.user?.username || '匿名用户' }}
+              </router-link>
+              <span v-else class="font-medium text-pink-600">{{ comment.user?.username || '匿名用户' }}</span>
               <span v-if="comment.user?.role === 'admin'" class="px-1.5 sm:px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full ml-2">
                 管理员
               </span>
@@ -25,7 +32,14 @@
               </span>
               <!-- 回复信息和内容在同一行 -->
               <span v-if="depth > 0 && parentComment" class="font-normal text-gray-900">
-                回复了<span class="font-medium text-blue-600">{{ parentComment.user?.username || '匿名用户' }}</span>：<span class="text-gray-800">{{ comment.content }}</span>
+                回复了<router-link
+                  v-if="parentComment.user?.username"
+                  :to="`/users/${parentComment.user.username}`"
+                  class="font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                >{{ parentComment.user?.username || '匿名用户' }}</router-link><span 
+                  v-else 
+                  class="font-medium text-blue-600"
+                >{{ parentComment.user?.username || '匿名用户' }}</span>：<span class="text-gray-800">{{ comment.content }}</span>
               </span>
               <!-- 主评论内容 -->
               <span v-else class="font-normal text-gray-800 ml-2">{{ comment.content }}</span>

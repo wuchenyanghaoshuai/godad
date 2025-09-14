@@ -43,4 +43,34 @@ export class UserApi {
       `${API_CONFIG.ENDPOINTS.USER.CHECK_NICKNAME}?nickname=${encodeURIComponent(nickname)}`
     )
   }
+
+  // 获取用户的文章列表
+  static async getUserArticles(userId: number, params?: ListParams): Promise<ApiResponse<PaginatedResponse<any>>> {
+    return http.get<PaginatedResponse<any>>(`${API_CONFIG.ENDPOINTS.USER.PUBLIC_INFO}/${userId}/articles`, params)
+  }
+
+  // 获取用户的关注状态
+  static async getFollowStatus(userId: number): Promise<ApiResponse<{ is_following: boolean }>> {
+    return http.get<{ is_following: boolean }>(`${API_CONFIG.ENDPOINTS.USER.PUBLIC_INFO}/${userId}/follow-status`)
+  }
+
+  // 关注用户
+  static async followUser(userId: number): Promise<ApiResponse<null>> {
+    return http.post<null>(`${API_CONFIG.ENDPOINTS.USER.PUBLIC_INFO}/${userId}/follow`)
+  }
+
+  // 取消关注用户
+  static async unfollowUser(userId: number): Promise<ApiResponse<null>> {
+    return http.delete<null>(`${API_CONFIG.ENDPOINTS.USER.PUBLIC_INFO}/${userId}/follow`)
+  }
+
+  // 根据用户名获取用户信息（新的安全API）
+  static async getUserByUsername(username: string): Promise<ApiResponse<User>> {
+    return http.get<User>(`${API_CONFIG.ENDPOINTS.USER.BY_USERNAME}/${username}`)
+  }
+
+  // 根据用户名获取用户文章列表（新的安全API）
+  static async getUserArticlesByUsername(username: string, params?: ListParams): Promise<ApiResponse<PaginatedResponse<any>>> {
+    return http.get<PaginatedResponse<any>>(`${API_CONFIG.ENDPOINTS.USER.ARTICLES_BY_USERNAME}/${username}/articles`, params)
+  }
 }

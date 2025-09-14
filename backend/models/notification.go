@@ -13,13 +13,14 @@ const (
 	NotificationTypeComment  NotificationType = "comment"  // 评论
 	NotificationTypeBookmark NotificationType = "bookmark" // 收藏
 	NotificationTypeFollow   NotificationType = "follow"   // 关注
+	NotificationTypeMessage  NotificationType = "message"  // 私信
 )
 
 type Notification struct {
 	ID         uint             `gorm:"primaryKey" json:"id"`
 	ReceiverID uint             `gorm:"not null;index" json:"receiver_id"` // 接收者ID
 	ActorID    uint             `gorm:"not null;index" json:"actor_id"`    // 行为发起者ID
-	Type       NotificationType `gorm:"not null;type:enum('like','comment','bookmark','follow')" json:"type"`
+	Type       NotificationType `gorm:"not null;type:enum('like','comment','bookmark','follow','message')" json:"type"`
 	ResourceID uint             `json:"resource_id,omitempty"` // 资源ID（文章ID、评论ID等）
 	Message    string           `gorm:"type:text" json:"message"`
 	IsRead     bool             `gorm:"default:false;index" json:"is_read"`

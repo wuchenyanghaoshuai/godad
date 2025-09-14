@@ -45,6 +45,7 @@ func SetupRoutes() *gin.Engine {
 				"follow":       "/api/follows",
 				"notification": "/api/notifications",
 				"favorite":     "/api/favorites",
+				"chat":         "/api/chat",
 			},
 		})
 	})
@@ -72,6 +73,11 @@ func SetupRoutes() *gin.Engine {
 	favoriteService := services.NewFavoriteService(config.GetDB())
 	favoriteController := controllers.NewFavoriteController(favoriteService)
 	SetupFavoriteRoutes(router, favoriteController)
+
+	// 设置聊天路由
+	chatService := services.NewChatService(config.GetDB(), notificationService)
+	chatController := controllers.NewChatController(chatService)
+	SetupChatRoutes(router, chatController)
 
 	return router
 }

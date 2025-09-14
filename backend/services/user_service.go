@@ -122,6 +122,26 @@ func (s *UserService) GetUserByID(id uint) (*models.User, error) {
 	return &user, nil
 }
 
+// GetUserByUsername 根据用户名获取用户
+func (s *UserService) GetUserByUsername(username string) (*models.User, error) {
+	if username == "" {
+		return nil, errors.New("用户名不能为空")
+	}
+
+	var user models.User
+	if err := s.db.Where("username = ? AND status = ?", username, 1).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("用户不存在")
+		}
+		return nil, fmt.Errorf("查询用户失败: %v", err)
+	}
+
+	// 缓存用户信息
+	s.cacheService.SetUser(user.ID, &user, 30*time.Minute)
+
+	return &user, nil
+}
+
 // UpdateUser 更新用户信息
 func (s *UserService) UpdateUser(userID uint, req *models.UserUpdateRequest) (*models.User, error) {
 	// 获取用户

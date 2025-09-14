@@ -188,6 +188,28 @@ func (c *FollowController) GetFollowStats(ctx *gin.Context) {
 	})
 }
 
+// 获取指定用户的关注统计（公开接口）
+func (c *FollowController) GetUserFollowStats(ctx *gin.Context) {
+	targetIDStr := ctx.Param("id")
+	targetID, err := strconv.ParseUint(targetIDStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	stats, err := c.followService.GetFollowStats(uint(targetID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get follow stats"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "Follow stats retrieved successfully",
+		"data":    stats,
+	})
+}
+
 func (c *FollowController) GetMutualFollows(ctx *gin.Context) {
 	userID, exists := ctx.Get("user_id")
 	if !exists {

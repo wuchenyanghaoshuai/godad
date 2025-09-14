@@ -117,11 +117,25 @@ export const useAuthStore = defineStore('auth', () => {
       const rememberedUsername = localStorage.getItem('remembered_username')
       const rememberedPassword = localStorage.getItem('remembered_password')
       
+      // 清除用户数据同步缓存
+      const currentUsername = user.value?.username
+      
       // 清除本地状态和存储
       user.value = null
       token.value = null
       error.value = null
       AuthUtils.clearAuthData()
+      
+      // 动态导入并清除用户数据同步缓存
+      if (currentUsername) {
+        try {
+          const { useUserDataSync } = await import('@/composables/useUserDataSync')
+          const userDataSync = useUserDataSync()
+          userDataSync.clearUserData(currentUsername)
+        } catch (err) {
+          console.error('清除用户数据缓存失败:', err)
+        }
+      }
       
       // 如果用户选择了记住我，恢复这些信息
       if (rememberMe && rememberedUsername) {

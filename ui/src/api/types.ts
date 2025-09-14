@@ -142,7 +142,7 @@ export interface ArticleFormData {
 // 文章列表查询参数
 export interface ArticleListParams {
   page?: number
-  page_size?: number
+  size?: number
   category_id?: number
   author_id?: number
   status?: number // 0-草稿，1-已发布，2-已下架
@@ -154,7 +154,7 @@ export interface PaginatedResponse<T> {
   items: T[]
   total: number
   page: number
-  page_size: number
+  size: number
   total_pages: number
 }
 
@@ -183,7 +183,7 @@ export interface Comment {
 export interface CommentListParams {
   article_id: number
   page?: number
-  page_size?: number
+  size?: number
 }
 
 export interface CommentCreateRequest {
@@ -217,7 +217,7 @@ export interface ImageUploadResponse {
 // 通用列表查询参数
 export interface ListParams {
   page?: number
-  page_size?: number
+  size?: number
   keyword?: string
 }
 

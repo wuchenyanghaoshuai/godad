@@ -9,20 +9,20 @@
       <div class="profile-header">
         <div class="profile-cover">
           <img 
-            v-if="profile?.user?.avatar" 
-            :src="profile.user.avatar" 
+            v-if="profile?.avatar" 
+            :src="profile.avatar" 
             alt="用户头像"
             class="profile-avatar"
           />
           <div v-else class="profile-avatar default-avatar">
-            {{ profile?.user?.username?.charAt(0)?.toUpperCase() || 'U' }}
+            {{ profile?.username?.charAt(0)?.toUpperCase() || 'U' }}
           </div>
           
           <div class="profile-info">
             <h1 class="profile-name">
-              {{ profile?.user?.nickname || profile?.user?.username || '加载中...' }}
+              {{ profile?.nickname || profile?.username || '加载中...' }}
             </h1>
-            <p class="profile-username">@{{ profile?.user?.username || '' }}</p>
+            <p class="profile-username">@{{ profile?.username || '' }}</p>
             <p v-if="profile?.bio" class="profile-bio">{{ profile.bio }}</p>
             
             <div class="profile-meta">
@@ -49,58 +49,50 @@
                   <line x1="8" y1="2" x2="8" y2="6"/>
                   <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
-                加入于 {{ formatDate(profile?.joined_at) }}
+                加入于 {{ formatDate(profile?.created_at) }}
               </div>
             </div>
           </div>
           
           <div class="profile-actions">
             <div class="profile-manage-actions">
-              <button
-                @click="activeTab = 'settings'"
-                class="edit-profile-btn primary"
-              >
-                编辑资料
-              </button>
-              <div class="dropdown">
-                <button 
-                  @click="showManageMenu = !showManageMenu"
-                  class="manage-menu-btn"
+              <!-- 他人个人中心显示关注和私信按钮 -->
+              <div v-if="!isOwnProfile" class="flex items-center space-x-3">
+                <button
+                  @click="handleFollowAction"
+                  class="follow-btn"
+                  :class="getFollowButtonClass()"
+                  :disabled="followActionLoading || followStatusLoading"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="1"/>
-                    <circle cx="12" cy="5" r="1"/>
-                    <circle cx="12" cy="19" r="1"/>
+                  <svg v-if="followActionLoading" class="w-4 h-4 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                   </svg>
+                  <svg v-else-if="isFollowing" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                  </svg>
+                  {{ followActionLoading ? '处理中...' : getFollowButtonText() }}
                 </button>
                 
-                <div v-if="showManageMenu" class="dropdown-menu">
-                  <router-link to="/articles/create" class="dropdown-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14,2 14,8 20,8"/>
-                      <line x1="16" y1="13" x2="8" y2="13"/>
-                      <line x1="16" y1="17" x2="8" y2="17"/>
-                      <polyline points="10,9 9,9 8,9"/>
-                    </svg>
-                    发布文章
-                  </router-link>
-                  <router-link to="/my/articles" class="dropdown-item">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14,2 14,8 20,8"/>
-                    </svg>
-                    管理文章
-                  </router-link>
-                  <div class="dropdown-item" @click="showAvatarUpload = true">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                      <circle cx="12" cy="7" r="4"/>
-                    </svg>
-                    更换头像
-                  </div>
-                </div>
+                <button
+                  @click="startChat"
+                  class="chat-btn"
+                  :disabled="chatLoading"
+                >
+                  <svg v-if="chatLoading" class="w-4 h-4 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/>
+                  </svg>
+                  {{ chatLoading ? '处理中...' : '私信' }}
+                </button>
               </div>
+              
             </div>
           </div>
         </div>
@@ -113,7 +105,7 @@
               <div class="stat-label">关注</div>
             </div>
             <div class="stat-item" @click="showFollowersModal = true">
-              <div class="stat-number">{{ stats?.follower_count || 0 }}</div>
+              <div class="stat-number">{{ stats?.followers_count || 0 }}</div>
               <div class="stat-label">粉丝</div>
             </div>
             <div class="stat-item">
@@ -143,13 +135,13 @@
       <!-- 内容区域 -->
       <div class="content-area">
         <div v-if="activeTab === 'articles'" class="articles-content">
-          <div v-if="articles.length === 0" class="empty-state">
+          <div v-if="!Array.isArray(articles) || articles.length === 0" class="empty-state">
             <Empty message="还没有发布任何文章" />
           </div>
           <div v-else class="articles-grid">
             <!-- TODO: 集成ArticleCard组件 -->
-            <div 
-              v-for="article in articles"
+            <div
+              v-for="article in (Array.isArray(articles) ? articles.filter(a => a && a.id) : [])"
               :key="article.id"
               class="article-item bg-white rounded-lg shadow-sm border cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
               @click="$router.push(`/articles/${article.id}`)"
@@ -235,293 +227,171 @@
           </div>
         </div>
 
-        <!-- 管理标签 - 只对自己可见 -->
-        <div v-if="activeTab === 'manage' && isOwnProfile" class="manage-content">
-          <div class="mb-6 flex justify-between items-center">
-            <h3 class="text-xl font-semibold">我的文章管理</h3>
-            <router-link
-              to="/articles/create"
-              class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              发布文章
-            </router-link>
-          </div>
-          
-          <div v-if="articles.length === 0" class="empty-state">
-            <Empty message="还没有发布任何文章">
-              <router-link
-                to="/articles/create"
-                class="text-blue-600 hover:text-blue-500 mt-2 inline-block"
-              >
-                立即创建第一篇文章
-              </router-link>
-            </Empty>
-          </div>
-          <div v-else class="articles-manage-list space-y-4">
-            <div 
-              v-for="article in articles"
-              :key="article.id"
-              class="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow"
-            >
-              <div class="flex justify-between items-start">
-                <div class="flex-1">
-                  <h4 class="text-lg font-medium text-gray-900 hover:text-blue-600 cursor-pointer"
-                      @click="$router.push(`/articles/${article.id}`)">
-                    {{ article.title }}
-                  </h4>
-                  <p v-if="article.summary" class="text-gray-600 mt-2 text-sm">
-                    {{ article.summary }}
-                  </p>
-                  <div class="flex items-center mt-3 space-x-4 text-sm text-gray-500">
-                    <span>发布于 {{ new Date(article.created_at).toLocaleDateString('zh-CN') }}</span>
-                    <span>阅读 {{ article.view_count || 0 }}</span>
-                    <span>点赞 {{ article.like_count || 0 }}</span>
-                    <span 
-                      class="px-2 py-1 rounded-full text-xs"
-                      :class="article.status === 1 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'"
-                    >
-                      {{ article.status === 1 ? '已发布' : '草稿' }}
-                    </span>
-                  </div>
-                </div>
-                <div class="ml-4 flex space-x-3">
-                  <router-link
-                    :to="`/articles/${article.id}/edit`"
-                    class="text-blue-600 hover:text-blue-700 text-sm px-3 py-1 border border-blue-200 rounded hover:bg-blue-50"
-                  >
-                    编辑
-                  </router-link>
-                  <button
-                    @click="deleteArticle(article.id)"
-                    class="text-red-600 hover:text-red-700 text-sm px-3 py-1 border border-red-200 rounded hover:bg-red-50"
-                  >
-                    删除
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 设置标签 - 只对自己可见 -->
-        <div v-if="activeTab === 'settings' && isOwnProfile" class="settings-content">
-          <h3 class="text-xl font-semibold mb-6">账户设置</h3>
-          
-          <div class="space-y-8">
-            <!-- 个人资料编辑 -->
-            <div class="bg-gray-50 p-6 rounded-lg">
-              <h4 class="text-lg font-medium text-gray-900 mb-4">个人资料</h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    昵称
-                  </label>
-                  <input
-                    v-model="profileEditForm.nickname"
-                    type="text"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    邮箱
-                  </label>
-                  <input
-                    v-model="profileEditForm.email"
-                    type="email"
-                    disabled
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
-                  />
-                </div>
-                <div class="md:col-span-2">
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    个人简介
-                  </label>
-                  <textarea
-                    v-model="profileEditForm.bio"
-                    rows="4"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="介绍一下自己..."
-                  ></textarea>
-                </div>
-              </div>
-              <div class="mt-6">
-                <button
-                  @click="updateProfileInfo"
-                  :disabled="updating"
-                  class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {{ updating ? '保存中...' : '保存资料' }}
-                </button>
-              </div>
-            </div>
-
-            <!-- 修改密码 -->
-            <div class="bg-gray-50 p-6 rounded-lg">
-              <h4 class="text-lg font-medium text-gray-900 mb-4">修改密码</h4>
-              <div class="space-y-4 max-w-md">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    当前密码
-                  </label>
-                  <input
-                    v-model="passwordForm.currentPassword"
-                    type="password"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    新密码
-                  </label>
-                  <input
-                    v-model="passwordForm.newPassword"
-                    type="password"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    确认新密码
-                  </label>
-                  <input
-                    v-model="passwordForm.confirmPassword"
-                    type="password"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-              <div class="mt-6">
-                <button
-                  @click="changePassword"
-                  :disabled="changingPassword"
-                  class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
-                >
-                  {{ changingPassword ? '修改中...' : '修改密码' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
     </div>
   </div>
+
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import userProfileApi, { type UserProfile, type UserStats, type UserActivity } from '@/api/userProfile'
-import { ArticleApi } from '@/api/article'
-import likeApi from '@/api/likes'
+import { useUserDataSync } from '@/composables/useUserDataSync'
+import { UserApi } from '@/api/user'
 import { useToast } from '@/composables/useToast'
+import { FollowApi } from '@/api/follow'
 import Navbar from '@/components/Navbar.vue'
 import Empty from '@/components/Empty.vue'
+import type { User } from '@/api/types'
 // import ArticleCard from '@/components/ArticleCard.vue'
 // import ActivityItem from '@/components/ActivityItem.vue'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
-const { toast } = useToast()
+const { showToast } = useToast()
 
-const profile = ref<UserProfile | null>(null)
-const stats = ref<UserStats | null>(null)
-const articles = ref<any[]>([])
+// 用户名参数
+const username = computed(() => route.params.username as string)
+
+// 使用数据同步组合函数
+const userDataSync = useUserDataSync(username.value)
+
+// 使用同步的数据 - 直接使用userDataSync返回的computed属性
+const profile = userDataSync.profile
+const stats = userDataSync.stats
+const articles = userDataSync.articles
 const likedArticles = ref<any[]>([])
-const activities = ref<UserActivity[]>([])
-const loading = ref(false)
+const activities = ref<any[]>([])
+const loading = computed(() => userDataSync.isLoading)
 const activeTab = ref('articles')
 const showFollowingModal = ref(false)
 const showFollowersModal = ref(false)
-const showManageMenu = ref(false)
-const showAvatarUpload = ref(false)
 
-// 用于管理和设置功能的响应式数据
-const profileEditForm = ref({
-  nickname: '',
-  email: '',
-  bio: ''
-})
+const isFollowing = ref<boolean | null>(null) // null表示未加载
+const isMutualFollow = ref<boolean | null>(null) // null表示未加载
+const followActionLoading = ref(false)
+const chatLoading = ref(false)
 
-const passwordForm = ref({
-  currentPassword: '',
-  newPassword: '',
-  confirmPassword: ''
-})
+// 关注状态加载状态
+const followStatusLoading = ref(false)
 
-const updating = ref(false)
-const changingPassword = ref(false)
+// 在用户资料加载后检查关注状态
+const checkFollowStatus = async () => {
+  if (!userId.value || isOwnProfile.value || !authStore.isAuthenticated) {
+    isFollowing.value = false
+    isMutualFollow.value = false
+    return
+  }
+
+  // 如果已经在加载，避免重复请求
+  if (followStatusLoading.value) return
+
+  followStatusLoading.value = true
+
+  try {
+    // 检查我是否关注了对方
+    const myFollowResponse = await FollowApi.checkFollowStatus(userId.value)
+    console.log('关注状态API响应:', myFollowResponse)
+    isFollowing.value = myFollowResponse.data?.is_following || myFollowResponse.is_following || false
+    console.log('是否关注:', isFollowing.value)
+
+    // 如果我关注了对方，再检查是否为互关
+    if (isFollowing.value) {
+      try {
+        // 检查互关列表，看目标用户是否在我的互关列表中
+        const mutualResponse = await FollowApi.getMutualFollows({ page: 1, limit: 100 })
+        console.log('互关列表API响应:', mutualResponse)
+        const mutualUsers = mutualResponse.data?.users || mutualResponse.users || []
+        console.log('互关用户列表:', mutualUsers)
+
+        // 检查目标用户是否在互关列表中
+        isMutualFollow.value = mutualUsers.some((user: any) => user.id === userId.value)
+        console.log('是否互关:', isMutualFollow.value)
+      } catch (error) {
+        console.error('检查互关状态失败:', error)
+        isMutualFollow.value = false
+      }
+    } else {
+      isMutualFollow.value = false
+    }
+
+  } catch (error) {
+    console.error('检查关注状态失败:', error)
+    isFollowing.value = false
+    isMutualFollow.value = false
+  } finally {
+    followStatusLoading.value = false
+  }
+}
+
+// username 已在上面定义
 
 const userId = computed(() => {
-  const id = route.params.id as string
-  return id === 'me' ? authStore.user?.id : parseInt(id)
+  return profile.value?.id
 })
 
 const isOwnProfile = computed(() => {
-  return userId.value === authStore.user?.id
+  const currentUsername = authStore.user?.username
+  const profileUsername = username.value
+  return currentUsername === profileUsername
 })
 
 const tabs = computed(() => {
-  const baseTabs = [
+  return [
     { key: 'articles', label: '文章' },
     { key: 'activity', label: '动态' }
   ]
-  
-  if (isOwnProfile.value) {
-    baseTabs.splice(1, 0, { key: 'liked', label: '点赞' })
-    baseTabs.push({ key: 'manage', label: '管理' })
-    baseTabs.push({ key: 'settings', label: '设置' })
-  }
-  
-  return baseTabs
 })
 
+// 获取关注按钮文字
+const getFollowButtonText = () => {
+  if (followStatusLoading.value || isFollowing.value === null) {
+    return '加载中...'
+  }
+  if (!isFollowing.value) {
+    return '关注'
+  } else if (isMutualFollow.value) {
+    return '互相关注'
+  } else {
+    return '已关注'
+  }
+}
+
+// 获取关注按钮样式类
+const getFollowButtonClass = () => {
+  if (followStatusLoading.value || isFollowing.value === null) {
+    return 'loading'
+  }
+  if (!isFollowing.value) {
+    return 'not-following'
+  } else if (isMutualFollow.value) {
+    return 'mutual-following'
+  } else {
+    return 'following'
+  }
+}
+
 const loadProfile = async () => {
-  if (!userId.value) return
+  if (!username.value) return
 
   try {
-    loading.value = true
-    const profileRes = await userProfileApi.getProfile(isOwnProfile.value ? undefined : userId.value)
-    
-    profile.value = profileRes.data
-    
-    // 如果是自己的资料，从API获取详细统计；如果是他人，从profile中获取
-    if (isOwnProfile.value) {
-      const statsRes = await userProfileApi.getUserStats()
-      stats.value = statsRes.data
-    } else {
-      // 从profile中提取统计信息
-      stats.value = {
-        article_count: profileRes.data.article_count,
-        like_count: 0, // 他人资料暂时不显示获赞数
-        comment_count: 0, // 他人资料暂时不显示评论数
-        follower_count: profileRes.data.follower_count,
-        following_count: profileRes.data.following_count,
-        view_count: 0 // 他人资料暂时不显示浏览数
-      }
-    }
+    await userDataSync.loadUserProfile()
+    await userDataSync.loadUserStats()
+    await checkFollowStatus()
   } catch (error: any) {
-    toast.error(error.response?.data?.message || '加载用户信息失败')
-  } finally {
-    loading.value = false
+    showToast(error.response?.data?.message || '加载用户信息失败', 'error')
   }
 }
 
 const loadArticles = async () => {
-  if (!userId.value) return
+  if (!username.value) return
 
   try {
-    // 使用文章列表API，通过作者ID参数过滤
-    const response = await ArticleApi.getArticleList({ 
-      author_id: userId.value,
-      status: 1, // 只获取已发布的文章
-      page: 1,
-      size: 20
-    })
-    articles.value = response.data || []
+    await userDataSync.loadUserArticles({ page: 1, size: 20 })
   } catch (error) {
     console.error('加载文章列表失败:', error)
   }
@@ -531,21 +401,19 @@ const loadLikedArticles = async () => {
   if (!isOwnProfile.value) return
 
   try {
-    const response = await likeApi.getUserLikes('article')
-    likedArticles.value = response.data.data || []
+    // TODO: 实现获取用户点赞文章的API
+    likedArticles.value = []
   } catch (error) {
     console.error('加载点赞文章失败:', error)
   }
 }
 
 const loadActivities = async () => {
-  if (!userId.value) return
+  if (!username.value) return
 
   try {
-    const response = await userProfileApi.getUserActivity(
-      isOwnProfile.value ? undefined : userId.value
-    )
-    activities.value = response.data.data || []
+    // TODO: 实现获取用户动态的API
+    activities.value = []
   } catch (error) {
     console.error('加载用户动态失败:', error)
   }
@@ -559,7 +427,7 @@ const formatDate = (dateString?: string) => {
   })
 }
 
-watch(() => route.params.id, () => {
+watch(() => route.params.username, () => {
   loadProfile()
   loadArticles()
   if (activeTab.value === 'liked') {
@@ -577,136 +445,66 @@ watch(activeTab, (newTab) => {
   }
 })
 
-// 初始化个人资料编辑表单
-const initProfileEditForm = () => {
-  if (profile.value?.user) {
-    profileEditForm.value = {
-      nickname: profile.value.user.nickname || profile.value.user.username || '',
-      email: profile.value.user.email || '',
-      bio: profile.value.bio || ''
-    }
-  }
-}
 
-// 更新个人资料信息
-const updateProfileInfo = async () => {
-  if (!profileEditForm.value.nickname.trim()) {
-    toast.error('昵称不能为空')
-    return
-  }
+
+// 关注/取消关注用户
+const handleFollowAction = async () => {
+  if (!userId.value || isOwnProfile.value) return
 
   try {
-    updating.value = true
-    
-    // 更新用户基本信息（昵称）
-    if (profileEditForm.value.nickname !== profile.value?.user?.nickname) {
-      // TODO: 调用更新用户信息的API
-      // await userApi.updateUser({ nickname: profileEditForm.value.nickname })
+    followActionLoading.value = true
+
+    if (isFollowing.value) {
+      await FollowApi.unfollowUser(userId.value)
+      isFollowing.value = false
+      isMutualFollow.value = false
+      showToast('已取消关注', 'success')
+    } else {
+      await FollowApi.followUser(userId.value)
+      showToast('关注成功', 'success')
+      // 重新检查关注状态，因为可能建立了互关
+      await checkFollowStatus()
     }
-    
-    // 更新用户资料（个人简介等）
-    if (profileEditForm.value.bio !== profile.value?.bio) {
-      await userProfileApi.updateProfile({
-        bio: profileEditForm.value.bio
-      })
-    }
-    
-    toast.success('个人资料更新成功')
-    
-    // 重新加载资料
-    await loadProfile()
-    initProfileEditForm()
   } catch (error: any) {
-    toast.error(error.response?.data?.message || '更新失败')
+    showToast(error.response?.data?.message || '操作失败', 'error')
   } finally {
-    updating.value = false
+    followActionLoading.value = false
   }
 }
 
-// 修改密码
-const changePassword = async () => {
-  if (!passwordForm.value.currentPassword || !passwordForm.value.newPassword || !passwordForm.value.confirmPassword) {
-    toast.error('所有密码字段都必须填写')
-    return
-  }
-
-  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-    toast.error('新密码与确认密码不匹配')
-    return
-  }
-
-  if (passwordForm.value.newPassword.length < 6) {
-    toast.error('新密码长度至少6位')
-    return
-  }
+// 开始聊天
+const startChat = async () => {
+  if (!userId.value || isOwnProfile.value) return
 
   try {
-    changingPassword.value = true
-    
-    // TODO: 调用修改密码的API
-    // await userApi.changePassword({
-    //   current_password: passwordForm.value.currentPassword,
-    //   new_password: passwordForm.value.newPassword
-    // })
-    
-    toast.success('密码修改成功')
-    
-    // 清空表单
-    passwordForm.value = {
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    }
-  } catch (error: any) {
-    toast.error(error.response?.data?.message || '密码修改失败')
+    chatLoading.value = true
+    // 跳转到私信页面，传递用户ID参数
+    await router.push(`/messages?user=${userId.value}`)
+  } catch (error) {
+    showToast('无法发送私信', 'error')
   } finally {
-    changingPassword.value = false
+    chatLoading.value = false
   }
 }
 
-// 删除文章
-const deleteArticle = async (articleId: number) => {
-  if (!confirm('确认删除这篇文章吗？此操作不可撤销。')) {
-    return
+
+// 监听用户ID变化，当用户数据加载完成后立即检查关注状态
+watch(userId, async (newUserId) => {
+  if (newUserId && !isOwnProfile.value && authStore.isAuthenticated) {
+    console.log('=== userId变化，立即检查关注状态 ===')
+    console.log('新的userId:', newUserId)
+    await checkFollowStatus()
   }
+}, { immediate: true })
 
-  try {
-    await ArticleApi.deleteArticle(articleId)
-    toast.success('文章删除成功')
-    
-    // 从列表中移除该文章
-    articles.value = articles.value.filter(article => article.id !== articleId)
-    
-    // 更新统计数据
-    if (stats.value) {
-      stats.value.article_count = Math.max(0, stats.value.article_count - 1)
-    }
-  } catch (error: any) {
-    toast.error(error.response?.data?.message || '删除失败')
-  }
-}
+onMounted(async () => {
+  console.log('=== UserProfilePage onMounted 开始 ===')
+  console.log('当前用户名参数:', username.value)
+  console.log('当前认证状态:', authStore.isAuthenticated)
+  console.log('当前用户:', authStore.user)
 
-// 点击外部关闭下拉菜单
-const handleClickOutside = (event: Event) => {
-  const target = event.target as Element
-  if (!target.closest('.dropdown')) {
-    showManageMenu.value = false
-  }
-}
-
-onMounted(() => {
-  loadProfile().then(() => {
-    // 资料加载完成后初始化编辑表单
-    if (isOwnProfile.value) {
-      initProfileEditForm()
-    }
-  })
-  loadArticles()
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
+  // 初始化用户数据
+  await userDataSync.initUserData()
 })
 </script>
 
@@ -894,6 +692,93 @@ onUnmounted(() => {
 
 .dropdown-item svg {
   flex-shrink: 0;
+}
+
+/* 关注按钮样式 */
+.follow-btn {
+  background: #3B82F6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+}
+
+.follow-btn:hover {
+  background: #2563EB;
+  transform: translateY(-1px);
+}
+
+.follow-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.follow-btn.following {
+  background: #059669;
+}
+
+.follow-btn.following:hover {
+  background: #047857;
+}
+
+/* 互相关注按钮样式 */
+.follow-btn.mutual-following {
+  background: #7C3AED;
+}
+
+.follow-btn.mutual-following:hover {
+  background: #6D28D9;
+}
+
+/* 加载状态按钮样式 */
+.follow-btn.loading {
+  background: #F1F5F9;
+  color: #94A3B8;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.follow-btn.loading:hover {
+  background: #F1F5F9;
+  transform: none;
+}
+
+/* 私信按钮样式 */
+.chat-btn {
+  background: #F1F5F9;
+  color: #475569;
+  border: 1px solid #E2E8F0;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+}
+
+.chat-btn:hover {
+  background: #E2E8F0;
+  color: #334155;
+  transform: translateY(-1px);
+}
+
+.chat-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .stats-container {

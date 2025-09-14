@@ -77,8 +77,13 @@ export const useToast = () => {
     clear: clearToasts
   }
   
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    return toast[type](message)
+  }
+
   return {
     toast,
+    showToast,
     toasts: toasts.value,
     removeToast,
     clearToasts

@@ -330,7 +330,7 @@ const loadCategories = async (reset = false) => {
   try {
     const response = await CategoryApi.getAdminCategoryList({
       page: currentPage.value,
-      page_size: pageSize.value,
+      size: pageSize.value,
       keyword: searchKeyword.value || undefined
     })
     

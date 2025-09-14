@@ -146,6 +146,33 @@ func (s *NotificationService) CreateFollowNotification(actorID, receiverID uint)
 	return s.CreateNotification(notification)
 }
 
+// CreateMessageNotification 创建私信通知
+func (s *NotificationService) CreateMessageNotification(actorID, receiverID uint, messageContent string) error {
+	var actor models.User
+	if err := s.db.First(&actor, actorID).Error; err != nil {
+		return err
+	}
+
+	displayName := actor.Nickname
+	if displayName == "" {
+		displayName = actor.Username
+	}
+
+	// 限制消息内容长度
+	if len(messageContent) > 100 {
+		messageContent = messageContent[:100] + "..."
+	}
+
+	notification := &models.Notification{
+		ReceiverID: receiverID,
+		ActorID:    actorID,
+		Type:       models.NotificationTypeMessage,
+		Message:    fmt.Sprintf("%s 给你发送了一条私信：%s", displayName, messageContent),
+	}
+
+	return s.CreateNotification(notification)
+}
+
 // GetNotifications 获取通知列表
 func (s *NotificationService) GetNotifications(userID uint, page, limit int) ([]models.NotificationWithDetails, int64, error) {
 	var notifications []models.NotificationWithDetails

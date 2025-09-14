@@ -128,10 +128,16 @@ func (s *FollowService) GetFollowers(userID uint, page, limit int) ([]models.Use
 		return nil, 0, err
 	}
 
-	// 查询粉丝列表时也要排除软删除的记录
+	// 查询粉丝列表时也要排除软删除的记录，同时检查是否互关
 	err = s.db.Table("users").
-		Select("users.*, follows.created_at as followed_at").
+		Select(`users.*,
+			follows.created_at as followed_at,
+			CASE WHEN mutual_follows.id IS NOT NULL THEN true ELSE false END as is_mutual_follow,
+			CASE WHEN mutual_follows.id IS NOT NULL THEN true ELSE false END as is_following`).
 		Joins("INNER JOIN follows ON follows.follower_id = users.id").
+		Joins(`LEFT JOIN follows mutual_follows ON mutual_follows.follower_id = ?
+			AND mutual_follows.followee_id = users.id
+			AND mutual_follows.deleted_at IS NULL`, userID).
 		Where("follows.followee_id = ? AND follows.deleted_at IS NULL", userID).
 		Order("follows.created_at DESC").
 		Limit(limit).

@@ -44,7 +44,7 @@ export interface PaginatedLikeResponse {
   data: LikeUser[]
   total: number
   page: number
-  page_size: number
+  size: number
   total_pages: number
 }
 

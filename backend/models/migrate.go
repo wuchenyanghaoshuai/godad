@@ -23,6 +23,10 @@ func AutoMigrate(db *gorm.DB) error {
 		&Like{},
 		&Tag{},
 		&Notification{},
+		&ChatConversation{},
+		&ChatMessage{},
+		&ChatEmoji{},
+		&ChatDailyLimit{},
 	)
 
 	if err != nil {
@@ -208,6 +212,19 @@ func initBaseData(db *gorm.DB) error {
 			log.Printf("创建分类失败: %v", err)
 			return err
 		}
+	}
+
+	// 初始化聊天表情
+	var emojiCount int64
+	db.Model(&ChatEmoji{}).Count(&emojiCount)
+	if emojiCount == 0 {
+		for _, emoji := range DefaultEmojis {
+			if err := db.Create(&emoji).Error; err != nil {
+				log.Printf("创建表情失败: %v", err)
+				return err
+			}
+		}
+		log.Println("聊天表情初始化完成")
 	}
 
 	log.Println("基础数据初始化完成")

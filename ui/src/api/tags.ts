@@ -32,7 +32,7 @@ export interface PaginatedTagResponse {
   data: Tag[]
   total: number
   page: number
-  page_size: number
+  size: number
   total_pages: number
 }
 
