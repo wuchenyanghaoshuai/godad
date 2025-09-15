@@ -148,6 +148,12 @@ const handleRouteParams = async () => {
 
 // 生命周期
 onMounted(async () => {
+  // 清除可能冲突的localStorage状态
+  const keysToRemove = Object.keys(localStorage).filter(key =>
+    key.startsWith('chat_') || key.startsWith('conversation_') || key.startsWith('message_')
+  )
+  keysToRemove.forEach(key => localStorage.removeItem(key))
+
   // 检查用户登录状态
   if (!authStore.isAuthenticated) {
     showToast('请先登录', 'warning')

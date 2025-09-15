@@ -66,7 +66,7 @@ const router = createRouter({
     {
       path: '/messages',
       name: 'Messages',
-      redirect: '/notifications',
+      component: () => import('@/pages/MessagesPage.vue'),
       meta: { requiresAuth: true }
     },
     {
