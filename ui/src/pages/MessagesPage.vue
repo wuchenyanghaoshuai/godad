@@ -130,9 +130,14 @@ const handleRouteParams = async () => {
         // 刷新对话列表
         conversationListRef.value.refreshConversations()
 
-        // 等待列表更新后选择对话
+        // 等待列表更新后，通过对话ID选择对话（而不是使用response.data对象）
         await nextTick()
-        conversationListRef.value.selectConversation(response.data)
+        // 在刷新后的列表中找到对应的对话
+        const conversations = conversationListRef.value.conversations || []
+        const targetConversation = conversations.find(conv => conv.id === response.data.id)
+        if (targetConversation) {
+          conversationListRef.value.selectConversation(targetConversation)
+        }
       }
     } catch (error) {
       console.error('创建对话失败:', error)

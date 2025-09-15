@@ -198,7 +198,15 @@ const loadConversations = async (page = 1) => {
     if (page === 1) {
       conversations.value = response.data.conversations || []
     } else {
-      conversations.value = [...(conversations.value || []), ...(response.data.conversations || [])]
+      // 合并数据时进行去重，防止重复对话出现
+      const existingConversations = conversations.value || []
+      const newConversations = response.data.conversations || []
+
+      // 基于对话ID进行去重
+      const existingIds = new Set(existingConversations.map(conv => conv.id))
+      const uniqueNewConversations = newConversations.filter(conv => !existingIds.has(conv.id))
+
+      conversations.value = [...existingConversations, ...uniqueNewConversations]
     }
 
     currentPage.value = page
@@ -306,10 +314,11 @@ onMounted(() => {
   loadConversations()
 })
 
-// 暴露方法给父组件
+// 暴露方法和数据给父组件
 defineExpose({
   refreshConversations,
-  selectConversation
+  selectConversation,
+  conversations
 })
 </script>
 
