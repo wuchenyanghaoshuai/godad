@@ -211,8 +211,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ChatAPI, type ChatMessage, type ConversationResponse } from '@/api'
+import { NotificationApi } from '@/api/notification'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { useNotificationSync } from '@/composables/useNotificationSync'
 
 // Props
 interface Props {
@@ -223,6 +225,7 @@ const props = defineProps<Props>()
 // Store & Composables
 const authStore = useAuthStore()
 const { showToast } = useToast()
+const { triggerRefresh } = useNotificationSync()
 
 // 响应式数据
 const messages = ref<ChatMessage[]>([])
@@ -307,11 +310,45 @@ const loadMore = async () => {
 
 const markAsRead = async () => {
   if (!currentConversation.value) return
-  
+
   try {
     await ChatAPI.markAsRead(currentConversation.value.id)
+    // 同时清除相关的私信通知
+    await clearMessageNotifications()
   } catch (error) {
     // 标记已读失败不影响用户体验，静默处理
+  }
+}
+
+// 清除来自当前对话对象的私信通知
+const clearMessageNotifications = async () => {
+  if (!currentConversation.value) return
+
+  try {
+    // 获取当前未读通知
+    const notificationsResponse = await NotificationApi.getNotifications({
+      page: 1,
+      limit: 100 // 获取足够多的通知来查找匹配的
+    })
+
+    if (notificationsResponse.code === 200) {
+      const messageNotifications = notificationsResponse.data.notifications.filter(
+        notification =>
+          notification.type === 'message' &&
+          notification.actor_id === currentConversation.value?.other_user?.id &&
+          !notification.is_read
+      )
+
+      if (messageNotifications.length > 0) {
+        const notificationIds = messageNotifications.map(n => n.id)
+        await NotificationApi.markAsRead(notificationIds)
+        // 触发通知刷新，更新Navbar中的通知数量
+        triggerRefresh()
+      }
+    }
+  } catch (error) {
+    // 清除通知失败也不影响用户体验，静默处理
+    console.debug('清除私信通知失败:', error)
   }
 }
 

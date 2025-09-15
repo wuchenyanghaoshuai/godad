@@ -1,7 +1,7 @@
 import { http } from './http'
 
 // 通知类型
-export type NotificationType = 'like' | 'comment' | 'bookmark' | 'follow'
+export type NotificationType = 'like' | 'comment' | 'bookmark' | 'follow' | 'message'
 
 // 通知接口
 export interface Notification {

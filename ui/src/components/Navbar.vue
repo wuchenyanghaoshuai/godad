@@ -281,10 +281,12 @@ import {
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { NotificationApi } from '@/api/notification'
+import { useNotificationSync } from '@/composables/useNotificationSync'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const { onNotificationEvent } = useNotificationSync()
 
 // 响应式数据
 const showUserMenu = ref(false)
@@ -412,6 +414,11 @@ watch(() => authStore.isAuthenticated, async (isAuthenticated) => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   fetchUnreadMessagesCount()
+
+  // 监听通知刷新事件
+  onNotificationEvent('refresh', () => {
+    fetchUnreadMessagesCount()
+  })
 })
 
 // 组件卸载时
