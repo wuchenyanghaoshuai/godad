@@ -195,12 +195,31 @@ const loadConversations = async (page = 1) => {
       limit: 20
     })
 
+    const newConversations = response.data.conversations || []
+
     if (page === 1) {
-      conversations.value = response.data.conversations || []
-    } else {
-      // 合并数据时进行去重，防止重复对话出现
+      // 第一页也需要去重，防止重复显示同一对话
       const existingConversations = conversations.value || []
-      const newConversations = response.data.conversations || []
+
+      if (existingConversations.length === 0) {
+        // 如果当前没有对话，直接设置
+        conversations.value = newConversations
+      } else {
+        // 如果已有对话，进行去重合并
+        const existingIds = new Set(existingConversations.map(conv => conv.id))
+        const uniqueNewConversations = newConversations.filter(conv => !existingIds.has(conv.id))
+
+        // 保留现有对话，添加新的对话，按时间排序
+        const allConversations = [...existingConversations, ...uniqueNewConversations]
+        conversations.value = allConversations.sort((a, b) => {
+          const timeA = new Date(a.last_message_time || a.created_at).getTime()
+          const timeB = new Date(b.last_message_time || b.created_at).getTime()
+          return timeB - timeA // 最新的在前
+        })
+      }
+    } else {
+      // 分页加载时进行去重，防止重复对话出现
+      const existingConversations = conversations.value || []
 
       // 基于对话ID进行去重
       const existingIds = new Set(existingConversations.map(conv => conv.id))
