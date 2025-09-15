@@ -371,6 +371,18 @@ const handleNotificationClick = async (notification: Notification) => {
         await markAsRead([notification.id])
       }
       await router.push(`/users/${notification.actor_id}`)
+
+    } else if (notification.type === 'message') {
+      // 私信通知跳转到聊天页面
+      console.log('私信通知，跳转到聊天页面，发送者:', notification.actor_id)
+      if (!notification.is_read) {
+        await markAsRead([notification.id])
+      }
+      // 跳转到聊天页面，并且携带用户ID参数以便打开对应的对话
+      await router.push({
+        path: '/chat',
+        query: { user: notification.actor_id }
+      })
     }
   } catch (error) {
     console.error('处理通知点击失败:', error)

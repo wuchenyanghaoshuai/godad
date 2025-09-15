@@ -257,10 +257,10 @@ const loadMessages = async (page = 1, scrollToBottom = true) => {
     })
 
     if (page === 1) {
-      messages.value = response.data.messages.reverse() // 反转消息顺序，最新的在下面
+      messages.value = response.data.messages // 保持原有顺序：旧消息在前，新消息在后
     } else {
       // 加载更早的消息，添加到数组开头
-      messages.value = [...response.data.messages.reverse(), ...messages.value]
+      messages.value = [...response.data.messages, ...messages.value]
     }
 
     currentPage.value = page
@@ -387,19 +387,25 @@ const handleImageError = (event: Event) => {
 
 // 添加新消息到列表
 const addMessage = (message: ChatMessage) => {
-  console.log('ChatMessageList addMessage called with:', message)
-
   // 检查消息是否已存在，避免重复添加
   const existingMessage = messages.value.find(msg => msg.id === message.id)
   if (!existingMessage) {
     messages.value.push(message)
-    console.log('Message added to list, total messages:', messages.value.length)
+
+    // 临时停止轮询3秒，给服务器时间同步数据
+    if (pollingTimer) {
+      clearInterval(pollingTimer)
+      pollingTimer = null
+
+      setTimeout(() => {
+        startPolling() // 3秒后重新开始轮询
+      }, 3000)
+    }
+
     nextTick(() => {
       scrollToBottomAnimated()
       markAsRead()
     })
-  } else {
-    console.log('Message already exists in list, skipping')
   }
 }
 
@@ -409,48 +415,63 @@ let pollingTimer: NodeJS.Timeout | null = null
 const startPolling = () => {
   if (pollingTimer) return
 
-  console.log('Starting message polling for conversation:', currentConversation.value?.id)
-
   pollingTimer = setInterval(async () => {
     if (currentConversation.value && !loading.value) {
       try {
-        console.log('Polling for messages in conversation:', currentConversation.value.id)
         const response = await ChatAPI.getMessages(currentConversation.value.id, {
           page: 1,
           limit: 30
         })
 
         const newMessages = response.data.messages
-        console.log('Polling response messages:', newMessages?.length || 0)
 
         if (newMessages && newMessages.length > 0) {
-          const sortedNewMessages = newMessages.reverse() // API返回的是倒序，需要正序
+          const sortedNewMessages = [...newMessages] // 保持后端返回的顺序：旧消息在前，新消息在后
           const latestNewMessage = sortedNewMessages[sortedNewMessages.length - 1]
           const currentLatestMessage = messages.value[messages.value.length - 1]
-
-          console.log('Current latest message ID:', currentLatestMessage?.id, 'New latest message ID:', latestNewMessage?.id)
 
           // 检查是否有真正的新消息
           if (!currentLatestMessage || latestNewMessage.id > currentLatestMessage.id) {
             // 如果当前没有消息，直接设置所有消息
             if (messages.value.length === 0) {
-              console.log('No current messages, setting all:', sortedNewMessages.length)
               messages.value = sortedNewMessages
             } else {
               // 只添加新消息，避免重复
               const newMessagesToAdd = sortedNewMessages.filter(msg =>
                 msg.id > currentLatestMessage.id
               )
-              console.log('New messages to add:', newMessagesToAdd.length)
               if (newMessagesToAdd.length > 0) {
                 messages.value.push(...newMessagesToAdd)
-                console.log('Added messages, total now:', messages.value.length)
               }
             }
+          } else if (sortedNewMessages.length !== messages.value.length) {
+            // 消息数量不一致时，可能是由于数据同步延迟
+            // 检查是否所有已有消息都在新消息列表中
+            const allExistingMessagesPresent = messages.value.every(msg =>
+              sortedNewMessages.some(newMsg => newMsg.id === msg.id)
+            )
 
-            await nextTick()
-            scrollToBottomAnimated()
-            markAsRead()
+            if (allExistingMessagesPresent && sortedNewMessages.length > messages.value.length) {
+              // 服务器有更多消息，直接更新
+              messages.value = sortedNewMessages
+              await nextTick()
+              scrollToBottomAnimated()
+              markAsRead()
+            } else if (!allExistingMessagesPresent) {
+              // 本地有服务器没有的消息（可能是刚发送的），合并消息
+              const serverMessageIds = new Set(sortedNewMessages.map(msg => msg.id))
+              const localOnlyMessages = messages.value.filter(msg => !serverMessageIds.has(msg.id))
+
+              // 将本地独有的消息与服务器消息合并，按时间正序排序
+              const mergedMessages = [...sortedNewMessages, ...localOnlyMessages]
+              mergedMessages.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+              messages.value = mergedMessages
+              await nextTick()
+              scrollToBottomAnimated()
+              markAsRead()
+            }
+            // else: 服务器消息较少，等待下次轮询
           }
         }
       } catch (error) {
