@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"godad-backend/models"
 	"log"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -163,14 +164,48 @@ func (s *NotificationService) CreateMessageNotification(actorID, receiverID uint
 		messageContent = messageContent[:100] + "..."
 	}
 
-	notification := &models.Notification{
-		ReceiverID: receiverID,
-		ActorID:    actorID,
-		Type:       models.NotificationTypeMessage,
-		Message:    fmt.Sprintf("%s 给你发送了一条私信：%s", displayName, messageContent),
+	// 确定用户ID的顺序（与对话表保持一致）
+	var user1ID, user2ID uint
+	if actorID < receiverID {
+		user1ID, user2ID = actorID, receiverID
+	} else {
+		user1ID, user2ID = receiverID, actorID
 	}
 
-	return s.CreateNotification(notification)
+	// 查找这两个用户之间的对话
+	var conversation models.ChatConversation
+	err := s.db.Where("user1_id = ? AND user2_id = ?", user1ID, user2ID).
+		First(&conversation).Error
+
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return err
+	}
+
+	// 查找是否已存在基于这个对话的未读私信通知
+	var existingNotification models.Notification
+	err = s.db.Where("receiver_id = ? AND type = ? AND resource_id = ? AND is_read = false AND deleted_at IS NULL",
+		receiverID, models.NotificationTypeMessage, conversation.ID).
+		First(&existingNotification).Error
+
+	if err == nil {
+		// 存在未读通知，更新内容、发送者和时间
+		existingNotification.ActorID = actorID
+		existingNotification.Message = fmt.Sprintf("%s 给你发送了一条私信：%s", displayName, messageContent)
+		existingNotification.UpdatedAt = time.Now()
+		return s.db.Save(&existingNotification).Error
+	} else if err == gorm.ErrRecordNotFound {
+		// 不存在未读通知，创建新通知
+		notification := &models.Notification{
+			ReceiverID: receiverID,
+			ActorID:    actorID,
+			Type:       models.NotificationTypeMessage,
+			ResourceID: conversation.ID,
+			Message:    fmt.Sprintf("%s 给你发送了一条私信：%s", displayName, messageContent),
+		}
+		return s.CreateNotification(notification)
+	}
+
+	return err
 }
 
 // GetNotifications 获取通知列表

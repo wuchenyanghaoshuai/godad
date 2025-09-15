@@ -14,7 +14,8 @@ export interface ImageInfo {
 export interface ChatEmoji {
   id: number
   name: string
-  unicode: string
+  code: string
+  image_url: string
   category: string
   sort_order: number
   is_active: boolean

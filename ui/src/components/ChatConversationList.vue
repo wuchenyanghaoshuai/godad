@@ -126,7 +126,7 @@
           <h3 class="text-lg font-medium text-gray-900">删除对话</h3>
         </div>
         <p class="text-gray-600 mb-6">
-          确定要删除与 <span class="font-medium">{{ conversationToDelete?.other_user?.nickname || conversationToDelete?.other_user?.username }}</span> 的对话吗？此操作不可恢复。
+          确定要删除与 <span class="font-medium">{{ conversationToDelete?.other_user?.nickname || conversationToDelete?.other_user?.username }}</span> 的对话吗？删除后该对话将从列表中移除，但历史消息会保留。
         </p>
         <div class="flex justify-end space-x-3">
           <button 

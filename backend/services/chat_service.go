@@ -24,8 +24,9 @@ func NewChatService(db *gorm.DB, notificationService *NotificationService) *Chat
 func (cs *ChatService) GetOrCreateConversation(user1ID, user2ID uint) (*models.ChatConversation, error) {
 	// 确保用户ID顺序正确
 	userID1, userID2 := models.GetConversationUsers(user1ID, user2ID)
-	
+
 	var conversation models.ChatConversation
+	// 查找所有对话，包括已删除的
 	err := cs.db.Where("user1_id = ? AND user2_id = ?", userID1, userID2).
 		First(&conversation).Error
 
@@ -41,6 +42,24 @@ func (cs *ChatService) GetOrCreateConversation(user1ID, user2ID uint) (*models.C
 		}
 	} else if err != nil {
 		return nil, err
+	} else {
+		// 如果对话存在但被删除，则恢复对话
+		needUpdate := false
+		updates := make(map[string]interface{})
+
+		if conversation.User1Deleted || conversation.User2Deleted {
+			// 恢复对话：重置删除标记
+			updates["user1_deleted"] = false
+			updates["user2_deleted"] = false
+			needUpdate = true
+		}
+
+		if needUpdate {
+			err = cs.db.Model(&conversation).Updates(updates).Error
+			if err != nil {
+				return nil, fmt.Errorf("恢复对话失败: %v", err)
+			}
+		}
 	}
 
 	// 预加载用户信息
@@ -204,13 +223,18 @@ func (cs *ChatService) GetMessagesByConversation(conversationID uint, userID uin
 		return nil, 0, err
 	}
 	
-	// 查询消息
+	// 查询消息 - 先按时间倒序获取最新消息，然后再正序排列
 	err = query.Preload("Sender").Preload("Receiver").Preload("Emoji").
-		Order("created_at ASC").
+		Order("created_at DESC").
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&messages).Error
 	if err != nil {
 		return nil, 0, err
+	}
+
+	// 将消息重新按时间正序排列，确保UI中旧消息在上，新消息在下
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
 	}
 	
 	return messages, total, nil

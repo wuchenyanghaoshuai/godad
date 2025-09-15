@@ -131,7 +131,7 @@
 
               <!-- 表情消息 -->
               <div v-else-if="message.message_type === 'emoji'" class="text-2xl">
-                {{ message.emoji?.unicode || '😀' }}
+                {{ message.emoji?.image_url || '😀' }}
               </div>
 
               <!-- 消息状态指示器 -->
@@ -241,7 +241,7 @@ const currentConversation = computed(() => props.conversation)
 const currentUserId = computed(() => authStore.user?.id)
 
 // 方法
-const loadMessages = async (page = 1, scrollToBottom = true) => {
+const loadMessages = async (page = 1) => {
   if (!currentConversation.value) return
 
   if (page === 1) {
@@ -266,14 +266,14 @@ const loadMessages = async (page = 1, scrollToBottom = true) => {
     currentPage.value = page
     hasMore.value = response.data.pagination.page < response.data.pagination.total_pages
 
-    if (scrollToBottom && page === 1) {
-      await nextTick()
-      scrollToBottomAnimated()
-    }
-
-    // 标记消息为已读
+    // 确保首次加载时滚动到底部
     if (page === 1) {
-      markAsRead()
+      await nextTick()
+      // 使用 setTimeout 确保 DOM 完全渲染后再滚动
+      setTimeout(() => {
+        scrollToBottomAnimated()
+        markAsRead()
+      }, 100)
     }
   } catch (error: any) {
     showToast(error.message || '加载消息失败', 'error')
@@ -295,7 +295,7 @@ const loadMore = async () => {
   const scrollHeight = messagesContainer.value?.scrollHeight || 0
   const scrollTop = messagesContainer.value?.scrollTop || 0
   
-  await loadMessages(currentPage.value + 1, false)
+  await loadMessages(currentPage.value + 1)
   
   // 保持滚动位置
   await nextTick()
@@ -317,11 +317,9 @@ const markAsRead = async () => {
 
 const scrollToBottomAnimated = () => {
   if (!messagesContainer.value) return
-  
-  messagesContainer.value.scrollTo({
-    top: messagesContainer.value.scrollHeight,
-    behavior: 'smooth'
-  })
+
+  // 强制滚动到底部，不使用动画确保立即生效
+  messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
 }
 
 const shouldShowDateSeparator = (message: ChatMessage): boolean => {
@@ -390,21 +388,26 @@ const addMessage = (message: ChatMessage) => {
   // 检查消息是否已存在，避免重复添加
   const existingMessage = messages.value.find(msg => msg.id === message.id)
   if (!existingMessage) {
-    messages.value.push(message)
-
-    // 临时停止轮询3秒，给服务器时间同步数据
-    if (pollingTimer) {
-      clearInterval(pollingTimer)
-      pollingTimer = null
-
-      setTimeout(() => {
-        startPolling() // 3秒后重新开始轮询
-      }, 3000)
+    // 暂时停止轮询，避免干扰
+    const wasPolling = pollingTimer !== null
+    if (wasPolling) {
+      stopPolling()
     }
 
+    // 添加到消息列表末尾
+    messages.value.push(message)
+
+    // 立即滚动到底部并标记为已读
     nextTick(() => {
       scrollToBottomAnimated()
       markAsRead()
+
+      // 延迟重启轮询，给消息显示足够时间
+      if (wasPolling) {
+        setTimeout(() => {
+          startPolling()
+        }, 2000)
+      }
     })
   }
 }
@@ -430,11 +433,14 @@ const startPolling = () => {
           const latestNewMessage = sortedNewMessages[sortedNewMessages.length - 1]
           const currentLatestMessage = messages.value[messages.value.length - 1]
 
-          // 检查是否有真正的新消息
+          // 简单的新消息检查逻辑
           if (!currentLatestMessage || latestNewMessage.id > currentLatestMessage.id) {
             // 如果当前没有消息，直接设置所有消息
             if (messages.value.length === 0) {
               messages.value = sortedNewMessages
+              await nextTick()
+              scrollToBottomAnimated()
+              markAsRead()
             } else {
               // 只添加新消息，避免重复
               const newMessagesToAdd = sortedNewMessages.filter(msg =>
@@ -442,36 +448,11 @@ const startPolling = () => {
               )
               if (newMessagesToAdd.length > 0) {
                 messages.value.push(...newMessagesToAdd)
+                await nextTick()
+                scrollToBottomAnimated()
+                markAsRead()
               }
             }
-          } else if (sortedNewMessages.length !== messages.value.length) {
-            // 消息数量不一致时，可能是由于数据同步延迟
-            // 检查是否所有已有消息都在新消息列表中
-            const allExistingMessagesPresent = messages.value.every(msg =>
-              sortedNewMessages.some(newMsg => newMsg.id === msg.id)
-            )
-
-            if (allExistingMessagesPresent && sortedNewMessages.length > messages.value.length) {
-              // 服务器有更多消息，直接更新
-              messages.value = sortedNewMessages
-              await nextTick()
-              scrollToBottomAnimated()
-              markAsRead()
-            } else if (!allExistingMessagesPresent) {
-              // 本地有服务器没有的消息（可能是刚发送的），合并消息
-              const serverMessageIds = new Set(sortedNewMessages.map(msg => msg.id))
-              const localOnlyMessages = messages.value.filter(msg => !serverMessageIds.has(msg.id))
-
-              // 将本地独有的消息与服务器消息合并，按时间正序排序
-              const mergedMessages = [...sortedNewMessages, ...localOnlyMessages]
-              mergedMessages.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-
-              messages.value = mergedMessages
-              await nextTick()
-              scrollToBottomAnimated()
-              markAsRead()
-            }
-            // else: 服务器消息较少，等待下次轮询
           }
         }
       } catch (error) {
