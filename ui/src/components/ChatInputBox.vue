@@ -60,6 +60,8 @@
           ref="messageInput"
           v-model="messageText"
           @keydown="handleKeydown"
+          @compositionstart="handleCompositionStart"
+          @compositionend="handleCompositionEnd"
           @input="adjustTextareaHeight"
           :placeholder="placeholder"
           :disabled="sending"
@@ -160,6 +162,7 @@ const sending = ref(false)
 const showEmojiPicker = ref(false)
 const emojis = ref<ChatEmoji[]>([])
 const loadingEmojis = ref(false)
+const isComposing = ref(false)
 
 // DOM refs
 const messageInput = ref<HTMLTextAreaElement>()
@@ -169,7 +172,7 @@ const imageInput = ref<HTMLInputElement>()
 const placeholder = computed(() => {
   if (props.disabled) return '请先选择一个对话'
   if (!props.conversation) return '请先选择一个对话'
-  return `给 ${props.conversation.other_user?.nickname || props.conversation.other_user?.username || '对方'} 发消息...`
+  return `给 ${props.conversation.other_user?.nickname || props.conversation.other_user?.username || '对方'} 发消息... (Ctrl+Enter发送)`
 })
 
 const canSend = computed(() => {
@@ -179,12 +182,30 @@ const canSend = computed(() => {
 
 // 方法
 const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Enter' && !event.shiftKey) {
+  // Ctrl+Enter 或 Cmd+Enter 发送消息
+  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    event.preventDefault()
+    if (canSend.value) {
+      sendMessage()
+    }
+    return
+  }
+
+  // 单纯 Enter 键：只有在不是输入法状态下才发送
+  if (event.key === 'Enter' && !event.shiftKey && !isComposing.value) {
     event.preventDefault()
     if (canSend.value) {
       sendMessage()
     }
   }
+}
+
+const handleCompositionStart = () => {
+  isComposing.value = true
+}
+
+const handleCompositionEnd = () => {
+  isComposing.value = false
 }
 
 const adjustTextareaHeight = () => {
@@ -338,27 +359,27 @@ const loadEmojis = async () => {
   }
 }
 
-const selectEmoji = async (emoji: ChatEmoji) => {
-  if (!props.conversation) return
-  
-  sending.value = true
+const selectEmoji = (emoji: ChatEmoji) => {
+  // 将表情插入到输入框中
+  const cursorPosition = messageInput.value?.selectionStart || messageText.value.length
+  const textBefore = messageText.value.slice(0, cursorPosition)
+  const textAfter = messageText.value.slice(cursorPosition)
+
+  // 插入表情
+  messageText.value = textBefore + emoji.image_url + textAfter
+
+  // 关闭表情选择器
   showEmojiPicker.value = false
-  
-  try {
-    const messageData = {
-      sender_id: authStore.user?.id,
-      receiver_id: props.conversation?.other_user?.id,
-      message_type: 'emoji' as const,
-      emoji_id: emoji.id
+
+  // 聚焦输入框并设置光标位置
+  nextTick(() => {
+    if (messageInput.value) {
+      messageInput.value.focus()
+      const newPosition = cursorPosition + emoji.image_url.length
+      messageInput.value.setSelectionRange(newPosition, newPosition)
     }
-    
-    const response = await ChatAPI.sendMessage(messageData)
-    emit('message-sent', response.data)
-  } catch (error: any) {
-    showToast(error.message || '发送表情失败', 'error')
-  } finally {
-    sending.value = false
-  }
+    adjustTextareaHeight()
+  })
 }
 
 // 生命周期

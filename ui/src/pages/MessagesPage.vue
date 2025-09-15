@@ -99,9 +99,6 @@ const handleMessageSent = (message: ChatMessage) => {
   if (conversationListRef.value) {
     conversationListRef.value.refreshConversations()
   }
-
-  // 显示发送成功提示
-  showToast('消息发送成功', 'success')
 }
 
 // 处理路由参数（支持直接打开某个对话）
