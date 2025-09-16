@@ -474,7 +474,7 @@ const startChat = async () => {
   try {
     chatLoading.value = true
     // 跳转到私信页面，传递用户ID参数
-    await router.push(`/messages?user=${userId.value}`)
+    await router.push(`/notifications?user=${userId.value}`)
   } catch (error) {
     showToast('无法发送私信', 'error')
   } finally {

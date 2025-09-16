@@ -416,9 +416,9 @@ const handleNotificationClick = async (notification: Notification) => {
       if (!notification.is_read) {
         await markAsRead([notification.id])
       }
-      // 跳转到消息页面，并且携带用户ID参数以便打开对应的对话
+      // 跳转到通知页面，并且携带用户ID参数以便打开对应的对话
       await router.push({
-        path: '/messages',
+        path: '/notifications',
         query: { user: notification.actor_id }
       })
     }

@@ -64,12 +64,6 @@ const router = createRouter({
       meta: { requiresFromArticle: true }
     },
     {
-      path: '/messages',
-      name: 'Messages',
-      component: () => import('@/pages/MessagesPage.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
       path: '/notifications',
       name: 'Notifications',
       component: NotificationsPage,

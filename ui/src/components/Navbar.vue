@@ -395,7 +395,7 @@ const totalUnreadCount = computed(() => {
 
 // 监听路由变化，当进入通知页面时清除计数
 watch(() => route.path, async (newPath) => {
-  if (newPath === '/notifications' || newPath === '/messages') {
+  if (newPath === '/notifications') {
     await clearUnreadNotifications()
   }
 })
