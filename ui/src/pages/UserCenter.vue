@@ -791,7 +791,7 @@ const updateProfile = async () => {
       nickname: profileForm.nickname,
       phone: profileForm.phone,
       gender: profileForm.gender ? parseInt(profileForm.gender) : undefined,
-      birthday: profileForm.birthday || undefined,
+      birthday: profileForm.birthday ? `${profileForm.birthday}T00:00:00Z` : undefined,
       bio: profileForm.bio,
       avatar: profileForm.avatar
     }

@@ -368,7 +368,7 @@ func (cs *ChatService) checkDailyLimit(senderID, receiverID uint) (bool, error) 
 		return false, err
 	}
 	
-	return limit.CanSendMessage(100), nil  // 默认每日限制100条消息
+	return limit.CanSendMessage(3), nil  // 默认每日限制3条消息
 }
 
 // 辅助函数：更新每日限制计数
@@ -418,6 +418,38 @@ func (cs *ChatService) updateConversationAfterMessage(tx *gorm.DB, conversation 
 	}
 	
 	return tx.Model(conversation).Updates(updates).Error
+}
+
+// CheckMessageLimit 检查消息发送限制
+func (cs *ChatService) CheckMessageLimit(senderID, receiverID uint) (bool, bool, int, error) {
+	// 检查互相关注关系
+	mutualFollow, err := cs.checkMutualFollow(senderID, receiverID)
+	if err != nil {
+		return false, false, 0, err
+	}
+
+	// 如果是互相关注，没有限制
+	if mutualFollow {
+		return true, true, 0, nil
+	}
+
+	// 获取今日发送的消息数量
+	today := models.GetTodayDate()
+	var limit models.ChatDailyLimit
+	err = cs.db.Where("sender_id = ? AND receiver_id = ? AND date = ?", senderID, receiverID, today).
+		First(&limit).Error
+
+	messageCount := 0
+	if err == nil {
+		messageCount = int(limit.MessageCount)
+	} else if err != gorm.ErrRecordNotFound {
+		return false, false, 0, err
+	}
+
+	// 检查是否还能发送
+	canSend := messageCount < 3
+
+	return canSend, false, messageCount, nil
 }
 
 // 请求结构体

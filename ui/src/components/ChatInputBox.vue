@@ -23,19 +23,35 @@
       </div>
     </div>
 
+    <!-- 消息限制警告 -->
+    <div v-if="showMessageLimitWarning" class="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+      <div class="flex items-center">
+        <svg class="w-5 h-5 text-amber-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+        <span class="text-amber-700 text-sm">
+          非互相关注的用户每日只能发送3条消息，您今日已发送 {{ messageCount }}/3 条消息
+        </span>
+      </div>
+    </div>
+
     <!-- 输入区域 -->
     <div class="flex items-end space-x-2">
       <!-- 工具栏 -->
       <div class="flex items-center space-x-1">
         <!-- 图片上传按钮 -->
-        <label class="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors">
-          <input 
+        <label
+          class="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
+          :class="{ 'opacity-50 cursor-not-allowed': !canSendMessage }"
+        >
+          <input
             ref="imageInput"
-            type="file" 
-            multiple 
+            type="file"
+            multiple
             accept="image/*"
-            class="hidden" 
+            class="hidden"
             @change="handleImageSelect"
+            :disabled="!canSendMessage"
           >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -43,10 +59,14 @@
         </label>
 
         <!-- 表情按钮 -->
-        <button 
+        <button
           @click="toggleEmojiPicker"
+          :disabled="!canSendMessage"
           class="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
-          :class="{ 'text-blue-500 bg-blue-50': showEmojiPicker }"
+          :class="{
+            'text-blue-500 bg-blue-50': showEmojiPicker,
+            'opacity-50 cursor-not-allowed': !canSendMessage
+          }"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -64,17 +84,18 @@
           @compositionend="handleCompositionEnd"
           @input="adjustTextareaHeight"
           :placeholder="placeholder"
-          :disabled="sending"
+          :disabled="sending || !canSendMessage"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          :class="{ 'opacity-50': !canSendMessage }"
           :style="{ minHeight: '40px', maxHeight: '120px' }"
           rows="1"
         />
       </div>
 
       <!-- 发送按钮 -->
-      <button 
+      <button
         @click="sendMessage"
-        :disabled="!canSend || sending"
+        :disabled="!canSend || sending || !canSendMessage"
         class="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
       >
         <svg v-if="sending" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -132,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ChatAPI, UploadApi, type ChatEmoji, type ConversationResponse, type ImageInfo } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -164,6 +185,12 @@ const emojis = ref<ChatEmoji[]>([])
 const loadingEmojis = ref(false)
 const isComposing = ref(false)
 
+// 消息限制相关
+const canSendMessage = ref(true)
+const mutualFollow = ref(false)
+const messageCount = ref(0)
+const checkingLimit = ref(false)
+
 // DOM refs
 const messageInput = ref<HTMLTextAreaElement>()
 const imageInput = ref<HTMLInputElement>()
@@ -178,6 +205,10 @@ const placeholder = computed(() => {
 const canSend = computed(() => {
   if (props.disabled || !props.conversation || sending.value) return false
   return messageText.value.trim().length > 0 || selectedImages.value.length > 0
+})
+
+const showMessageLimitWarning = computed(() => {
+  return props.conversation && !mutualFollow.value && messageCount.value >= 3
 })
 
 // 方法
@@ -286,8 +317,8 @@ const uploadImages = async (): Promise<ImageInfo[]> => {
 }
 
 const sendMessage = async () => {
-  if (!canSend.value || !props.conversation) return
-  
+  if (!canSend.value || !props.conversation || !canSendMessage.value) return
+
   sending.value = true
   
   try {
@@ -329,7 +360,10 @@ const sendMessage = async () => {
     
     // 发送成功事件
     emit('message-sent', response.data)
-    
+
+    // 重新检查消息限制（因为消息数量可能已改变）
+    await checkMessageLimit()
+
     // 聚焦输入框
     messageInput.value?.focus()
   } catch (error: any) {
@@ -381,6 +415,48 @@ const selectEmoji = (emoji: ChatEmoji) => {
     adjustTextareaHeight()
   })
 }
+
+// 检查消息发送限制
+const checkMessageLimit = async () => {
+  if (!props.conversation?.other_user?.id || !authStore.user?.id) {
+    canSendMessage.value = true
+    mutualFollow.value = false
+    messageCount.value = 0
+    return
+  }
+
+  checkingLimit.value = true
+  try {
+    const response = await ChatAPI.checkMessageLimit(props.conversation.other_user.id)
+    canSendMessage.value = response.data.can_send
+    mutualFollow.value = response.data.mutual_follow
+    messageCount.value = response.data.message_count
+  } catch (error: any) {
+    console.error('检查消息限制失败:', error)
+    // 发生错误时默认允许发送，避免影响正常聊天
+    canSendMessage.value = true
+    mutualFollow.value = false
+    messageCount.value = 0
+  } finally {
+    checkingLimit.value = false
+  }
+}
+
+// 监听对话变化，检查消息限制
+watch(
+  () => props.conversation,
+  () => {
+    if (props.conversation) {
+      checkMessageLimit()
+    } else {
+      // 没有对话时重置状态
+      canSendMessage.value = true
+      mutualFollow.value = false
+      messageCount.value = 0
+    }
+  },
+  { immediate: true }
+)
 
 // 生命周期
 onMounted(() => {

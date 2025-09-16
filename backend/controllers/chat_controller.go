@@ -344,3 +344,43 @@ func (cc *ChatController) GetOrCreateConversation(c *gin.Context) {
 		"data":    response,
 	})
 }
+
+// CheckMessageLimit 检查消息发送限制
+func (cc *ChatController) CheckMessageLimit(c *gin.Context) {
+	userID, _ := middleware.GetCurrentUserID(c)
+
+	var req struct {
+		ReceiverID uint `json:"receiver_id" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    400,
+			"message": "参数格式错误",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// 检查是否可以发送消息
+	canSend, mutualFollow, messageCount, err := cc.chatService.CheckMessageLimit(userID, req.ReceiverID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    500,
+			"message": "检查消息限制失败",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "检查成功",
+		"data": gin.H{
+			"can_send":       canSend,
+			"mutual_follow":  mutualFollow,
+			"message_count":  messageCount,
+			"daily_limit":    3,
+		},
+	})
+}

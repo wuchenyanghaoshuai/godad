@@ -53,6 +53,16 @@ export class ChatAPI {
   static async getEmojis() {
     return http.get<ChatEmoji[]>('/chat/emojis')
   }
+
+  // 检查消息发送限制
+  static async checkMessageLimit(receiverId: number) {
+    return http.post<{
+      can_send: boolean
+      mutual_follow: boolean
+      message_count: number
+      daily_limit: number
+    }>('/chat/check-limit', { receiver_id: receiverId })
+  }
 }
 
 // 导出聊天相关API方法
@@ -63,5 +73,6 @@ export const {
   getMessages,
   sendMessage,
   markAsRead,
-  getEmojis
+  getEmojis,
+  checkMessageLimit
 } = ChatAPI

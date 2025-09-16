@@ -23,5 +23,8 @@ func SetupChatRoutes(router *gin.Engine, chatController *controllers.ChatControl
 		
 		// 表情相关
 		chatGroup.GET("/emojis", chatController.GetEmojis)
+
+		// 检查消息限制
+		chatGroup.POST("/check-limit", chatController.CheckMessageLimit)
 	}
 }
