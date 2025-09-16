@@ -19,41 +19,51 @@
     </div>
 
     <!-- 详细模式 -->
-    <div v-else-if="mode === 'detailed'" class="space-y-3">
-      <!-- 等级和积分信息 -->
-      <div class="flex items-center justify-between">
-        <UserLevelBadge
-          :level="userPoints?.current_level"
-          :points="userPoints?.total_points"
-          size="lg"
-          :show-text="true"
-          :show-points="true"
-        />
-        <div class="text-right">
-          <div class="text-lg font-bold text-gray-900">
-            {{ formatPoints(userPoints?.total_points || 0) }}
+    <div v-else-if="mode === 'detailed'" class="space-y-4">
+      <!-- 当前积分和等级卡片 -->
+      <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-100">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="text-2xl font-bold text-gray-900">
+              {{ userPoints?.total_points || 0 }} 积分
+            </div>
+            <div class="text-sm text-gray-600">当前积分总数</div>
           </div>
-          <div class="text-xs text-gray-500">总积分</div>
-        </div>
-      </div>
-
-      <!-- 升级进度条 -->
-      <div v-if="showProgress && progressData.showProgress" class="space-y-1">
-        <div class="flex justify-between text-sm">
-          <span class="text-gray-600">距离下一级</span>
-          <span class="font-medium text-gray-900">
-            {{ progressData.needPoints }}积分
-          </span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-          <div
-            class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
-            :style="{ width: `${progressData.progressPercent}%` }"
+          <UserLevelBadge
+            :level="userPoints?.current_level"
+            :points="userPoints?.total_points"
+            size="lg"
+            :show-text="true"
+            :show-points="false"
           />
         </div>
-        <div class="flex justify-between text-xs text-gray-500">
-          <span>{{ formatPoints(progressData.currentLevelMin) }}</span>
-          <span>{{ formatPoints(progressData.nextLevelMin) }}</span>
+
+        <!-- 等级进度信息 -->
+        <div v-if="progressData.showProgress" class="space-y-2">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-700">
+              {{ progressData.currentLevelName }} → {{ progressData.nextLevelName }}
+            </span>
+            <span class="font-medium text-blue-600">
+              还需 {{ progressData.needPoints }} 积分升级
+            </span>
+          </div>
+          <!-- 进度条 -->
+          <div class="w-full bg-gray-200 rounded-full h-2">
+            <div
+              class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+              :style="{ width: `${progressData.progressPercent}%` }"
+            />
+          </div>
+          <div class="flex justify-between text-xs text-gray-500">
+            <span>{{ formatPoints(progressData.currentLevelMin) }}</span>
+            <span>{{ formatPoints(progressData.nextLevelMin) }}</span>
+          </div>
+        </div>
+
+        <!-- 已达到最高等级 -->
+        <div v-else class="text-center py-2">
+          <span class="text-sm font-medium text-purple-600">🎉 已达到最高等级！</span>
         </div>
       </div>
 
@@ -123,7 +133,9 @@ const progressData = computed(() => {
       progressPercent: 0,
       needPoints: 0,
       currentLevelMin: 0,
-      nextLevelMin: 0
+      nextLevelMin: 0,
+      currentLevelName: '',
+      nextLevelName: ''
     }
   }
 
@@ -136,7 +148,9 @@ const progressData = computed(() => {
       progressPercent: 100,
       needPoints: 0,
       currentLevelMin: currentLevel?.min_points || 0,
-      nextLevelMin: currentLevel?.max_points || 0
+      nextLevelMin: currentLevel?.max_points || 0,
+      currentLevelName: currentLevel?.name || '',
+      nextLevelName: ''
     }
   }
 
@@ -151,7 +165,9 @@ const progressData = computed(() => {
     progressPercent,
     needPoints: Math.max(needPoints, 0),
     currentLevelMin: currentLevel.min_points,
-    nextLevelMin: nextLevel.min_points
+    nextLevelMin: nextLevel.min_points,
+    currentLevelName: currentLevel.name,
+    nextLevelName: nextLevel.name
   }
 })
 
