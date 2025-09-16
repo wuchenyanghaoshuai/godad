@@ -55,6 +55,15 @@
                 {{ roleText }}
               </span>
               
+              <!-- 用户等级和积分 -->
+              <div class="mt-4 pt-4 border-t border-gray-200">
+                <UserPointsDisplay
+                  mode="detailed"
+                  :auto-refresh="true"
+                  class="mb-4"
+                />
+              </div>
+
               <!-- 关注统计信息 -->
               <div class="flex justify-center space-x-6 mt-4 pt-4 border-t border-gray-200">
                 <div class="text-center cursor-pointer hover:text-pink-600 transition-colors" @click="activeTab = 'following'">
@@ -532,6 +541,32 @@
               </div>
             </div>
 
+            <!-- 积分中心 -->
+            <div v-else-if="activeTab === 'points'" class="p-6">
+              <div class="space-y-6">
+                <!-- 积分总览 -->
+                <div>
+                  <h3 class="text-lg font-medium text-gray-900 mb-4">积分总览</h3>
+                  <UserPointsDisplay
+                    mode="detailed"
+                    :auto-refresh="true"
+                  />
+                </div>
+
+                <!-- 积分规则 -->
+                <div>
+                  <h3 class="text-lg font-medium text-gray-900 mb-4">积分规则</h3>
+                  <PointsRules />
+                </div>
+
+                <!-- 积分历史记录 -->
+                <div>
+                  <h3 class="text-lg font-medium text-gray-900 mb-4">积分记录</h3>
+                  <PointsHistory />
+                </div>
+              </div>
+            </div>
+
             <!-- 设置 -->
             <div v-else-if="activeTab === 'settings'" class="p-6">
               <h3 class="text-lg font-medium text-gray-900 mb-6">账户设置</h3>
@@ -627,6 +662,9 @@ import {
 import { useAuthStore } from '../stores/auth'
 import AvatarModal from '../components/AvatarModal.vue'
 import NotificationList from '../components/NotificationList.vue'
+import UserPointsDisplay from '../components/UserPointsDisplay.vue'
+import PointsRules from '../components/PointsRules.vue'
+import PointsHistory from '../components/PointsHistory.vue'
 import { useToast } from '../composables/useToast'
 import { useUserDataSync } from '../composables/useUserDataSync'
 import { UserApi } from '../api/user'
@@ -703,6 +741,7 @@ const roleClasses = computed(() => {
 // 菜单项
 const menuItems = [
   { key: 'profile', label: '个人信息', icon: UserIcon },
+  { key: 'points', label: '积分中心', icon: StarIcon },
   { key: 'articles', label: '我的文章', icon: FileTextIcon },
   { key: 'favorites', label: '我的收藏', icon: StarIcon },
   { key: 'notifications', label: '消息通知', icon: BellIcon },
@@ -1040,7 +1079,7 @@ onMounted(() => {
   // 处理URL参数中的tab
   const urlParams = new URLSearchParams(window.location.search)
   const tab = urlParams.get('tab')
-  if (tab && ['profile', 'articles', 'notifications', 'following', 'followers', 'mutual', 'settings'].includes(tab)) {
+  if (tab && ['profile', 'points', 'articles', 'notifications', 'following', 'followers', 'mutual', 'settings'].includes(tab)) {
     activeTab.value = tab
   }
   

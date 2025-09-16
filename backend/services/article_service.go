@@ -18,6 +18,8 @@ import (
 type ArticleService struct {
 	db           *gorm.DB
 	cacheService *CacheService
+	pointsService *PointsService
+	likeService  *LikeService
 }
 
 // NewArticleService 创建文章服务实例
@@ -25,6 +27,8 @@ func NewArticleService() *ArticleService {
 	return &ArticleService{
 		db:           config.GetDB(),
 		cacheService: NewCacheService(),
+		pointsService: NewPointsService(config.GetDB()),
+		likeService:  NewLikeService(config.GetDB()),
 	}
 }
 
@@ -85,6 +89,14 @@ func (s *ArticleService) CreateArticle(userID uint, req *models.ArticleCreateReq
 	// 清理相关缓存
 	s.cacheService.DeletePattern("articles:*")
 	s.cacheService.DeletePattern("search:*")
+
+	// 奖励发布文章积分
+	go func() {
+		err := s.pointsService.AwardPoints(userID, "publish_article", "article", article.ID, "发布文章")
+		if err != nil {
+			fmt.Printf("发布文章积分奖励失败: %v\n", err)
+		}
+	}()
 
 	return article, nil
 }
@@ -391,9 +403,9 @@ func (s *ArticleService) LikeArticle(articleID, userID uint) error {
 		return fmt.Errorf("查询文章失败: %v", err)
 	}
 
-	// 这里可以实现点赞逻辑，比如记录到点赞表
-	// 暂时直接增加点赞数
-	if err := s.db.Model(&article).UpdateColumn("like_count", gorm.Expr("like_count + ?", 1)).Error; err != nil {
+	// 使用 LikeService 来处理点赞逻辑，这样会自动记录点赞记录并奖励积分
+	_, err := s.likeService.ToggleLike(userID, "article", articleID)
+	if err != nil {
 		return fmt.Errorf("点赞失败: %v", err)
 	}
 

@@ -166,6 +166,10 @@
                   <div class="px-4 py-2 border-b border-gray-100">
                     <div class="text-sm font-medium text-gray-900 truncate">{{ authStore.user?.nickname || authStore.user?.username }}</div>
                     <div class="text-xs text-gray-500 truncate" :title="authStore.user?.email">{{ authStore.user?.email }}</div>
+                    <!-- 用户积分显示 -->
+                    <div class="mt-2">
+                      <UserPointsDisplay mode="simple" size="sm" />
+                    </div>
                   </div>
                   <router-link
                     to="/user-center"
@@ -174,6 +178,14 @@
                   >
                     <UserIcon class="h-4 w-4 mr-3" />
                     个人中心
+                  </router-link>
+                  <router-link
+                    to="/user-center?tab=points"
+                    class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors"
+                    @click="showUserMenu = false"
+                  >
+                    <CogIcon class="h-4 w-4 mr-3" />
+                    积分中心
                   </router-link>
                   <router-link
                     :to="`/users/${authStore.user?.username}`"
@@ -282,6 +294,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { NotificationApi } from '@/api/notification'
 import { useNotificationSync } from '@/composables/useNotificationSync'
+import UserPointsDisplay from './UserPointsDisplay.vue'
 
 const router = useRouter()
 const route = useRoute()

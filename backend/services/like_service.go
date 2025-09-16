@@ -13,6 +13,7 @@ type LikeService struct {
 	db                  *gorm.DB
 	cacheService        *CacheService
 	notificationService *NotificationService
+	pointsService       *PointsService
 }
 
 // NewLikeService 创建点赞服务实例
@@ -21,6 +22,7 @@ func NewLikeService(db *gorm.DB) *LikeService {
 		db:                  db,
 		cacheService:        NewCacheService(),
 		notificationService: NewNotificationService(db),
+		pointsService:       NewPointsService(db),
 	}
 }
 
@@ -35,12 +37,28 @@ func (s *LikeService) ToggleLike(userID uint, targetType string, targetID uint) 
 		if err := s.db.Delete(&existingLike).Error; err != nil {
 			return nil, fmt.Errorf("取消点赞失败: %v", err)
 		}
-		
+
 		// 更新点赞计数
 		if err := s.updateLikeCount(targetType, targetID, -1); err != nil {
 			return nil, fmt.Errorf("更新点赞计数失败: %v", err)
 		}
-		
+
+		// 取消点赞时扣除作者积分（仅对文章点赞）
+		if targetType == "article" {
+			var article models.Article
+			if err := s.db.First(&article, targetID).Error; err == nil {
+				if article.AuthorID != userID { // 避免影响自己的积分
+					// 扣除文章作者被点赞的积分
+					go func() {
+						err := s.pointsService.DeductPoints(article.AuthorID, "article_unliked", "like", existingLike.ID, "取消点赞", 2)
+						if err != nil {
+							fmt.Printf("取消点赞扣除积分失败: %v\n", err)
+						}
+					}()
+				}
+			}
+		}
+
 		return nil, nil // 返回 nil 表示取消点赞
 	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("查询点赞记录失败: %v", result.Error)
@@ -72,6 +90,14 @@ func (s *LikeService) ToggleLike(userID uint, targetType string, targetID uint) 
 					// 通知发送失败不影响点赞操作，只记录错误
 					fmt.Printf("发送点赞通知失败: %v\n", err)
 				}
+
+				// 奖励文章作者被点赞积分
+				go func() {
+					err := s.pointsService.AwardPoints(article.AuthorID, "article_liked", "like", like.ID, "文章被点赞")
+					if err != nil {
+						fmt.Printf("文章被点赞积分奖励失败: %v\n", err)
+					}
+				}()
 			}
 		}
 	}
