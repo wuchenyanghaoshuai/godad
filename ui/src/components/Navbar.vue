@@ -180,14 +180,6 @@
                     个人中心
                   </router-link>
                   <router-link
-                    to="/user-center?tab=points"
-                    class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors"
-                    @click="showUserMenu = false"
-                  >
-                    <CogIcon class="h-4 w-4 mr-3" />
-                    积分中心
-                  </router-link>
-                  <router-link
                     :to="`/users/${authStore.user?.username}`"
                     class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-colors"
                     @click="showUserMenu = false"
