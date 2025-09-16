@@ -145,7 +145,11 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                   <tr v-for="article in articles" :key="article.id">
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm font-medium text-gray-900 max-w-xs truncate">
+                      <div
+                        class="text-sm font-medium text-gray-900 max-w-xs truncate cursor-pointer hover:text-blue-600 hover:underline"
+                        @click="openArticle(article.id)"
+                        :title="article.title"
+                      >
                         {{ article.title }}
                       </div>
                     </td>
@@ -834,6 +838,12 @@ const formatDate = (dateString) => {
 const logout = () => {
   authStore.logout()
   router.push('/login')
+}
+
+// 打开文章页面
+const openArticle = (articleId) => {
+  const url = `/articles/${articleId}`
+  window.open(url, '_blank')
 }
 
 // 初始化

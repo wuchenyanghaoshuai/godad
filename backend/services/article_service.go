@@ -109,8 +109,15 @@ func (s *ArticleService) UpdateArticle(articleID, userID uint, req *models.Artic
 		return nil, err
 	}
 
-	// 检查权限（只有作者可以编辑）
-	if article.AuthorID != userID {
+	// 检查权限（作者或管理员可以编辑）
+	userService := NewUserService()
+	user, err := userService.GetUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 只有作者或管理员可以编辑
+	if article.AuthorID != userID && user.Role != 2 {
 		return nil, errors.New("无权限编辑此文章")
 	}
 
@@ -178,8 +185,16 @@ func (s *ArticleService) DeleteArticle(articleID, userID uint) error {
 		return err
 	}
 
-	// 检查权限（只有作者可以删除）
-	if article.AuthorID != userID {
+	// 检查权限（作者或管理员可以删除）
+	// 获取用户信息检查是否为管理员
+	userService := NewUserService()
+	user, err := userService.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+
+	// 只有作者或管理员可以删除
+	if article.AuthorID != userID && user.Role != 2 {
 		return errors.New("无权限删除此文章")
 	}
 
