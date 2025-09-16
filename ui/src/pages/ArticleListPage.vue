@@ -3,6 +3,13 @@
     <!-- 导航栏 -->
     <Navbar />
 
+    <!-- 热门文章 - 只在有数据时显示 -->
+    <div v-if="hasHotArticles" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 mb-6">
+        <HotArticles :limit="5" :default-period="'week'" ref="hotArticlesRef" />
+      </div>
+    </div>
+
     <!-- 搜索和筛选 -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
       <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
@@ -54,7 +61,6 @@
             >
               <option value="created_at">最新发布</option>
               <option value="updated_at">最近更新</option>
-              <option value="views">浏览量</option>
               <option value="likes">点赞数</option>
             </select>
             <ChevronDownIcon class="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
@@ -135,12 +141,6 @@
             <div class="flex items-center justify-between">
               <!-- 互动按钮 -->
               <div class="flex items-center space-x-2">
-                <!-- 浏览量 -->
-                <div class="flex items-center px-2.5 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-medium hover:bg-blue-100 transition-all duration-300">
-                  <EyeIcon class="h-3.5 w-3.5 mr-1" />
-                  <span>{{ article.view_count || 0 }}</span>
-                </div>
-                
                 <!-- 点赞 -->
                 <button class="flex items-center px-2.5 py-1.5 bg-red-50 text-red-700 rounded-full text-xs font-medium hover:bg-red-100 hover:scale-105 transition-all duration-300 group" @click.stop="quickLike(article)">
                   <HeartIcon class="h-3.5 w-3.5 mr-1 group-hover:scale-110 transition-transform" />
@@ -260,7 +260,6 @@ import { useRouter } from 'vue-router'
 import {
   SearchIcon,
   FilterIcon,
-  EyeIcon,
   HeartIcon,
   UserIcon,
   PlusIcon,
@@ -278,6 +277,7 @@ import { CategoryApi } from '@/api/category'
 import { FavoriteApi } from '@/api/favorite'
 import type { Article, Category } from '@/api/types'
 import Navbar from '@/components/Navbar.vue'
+import HotArticles from '@/components/HotArticles.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -288,6 +288,12 @@ const categories = ref<Category[]>([])
 const isLoading = ref(false)
 const error = ref('')
 const bookmarkStatus = ref<Record<number, boolean>>({})
+
+// 热门文章相关
+const hotArticlesRef = ref()
+const hasHotArticles = computed(() => {
+  return hotArticlesRef.value?.articles && hotArticlesRef.value.articles.length > 0
+})
 
 // 搜索和筛选
 const searchQuery = ref('')

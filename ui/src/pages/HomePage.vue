@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MenuIcon, XIcon, UserIcon, LogOutIcon, ArrowRightIcon, UsersIcon, HeartIcon, TrendingUpIcon, ChevronDownIcon, SettingsIcon, PlusIcon, MailIcon, PhoneIcon, MapPinIcon, CogIcon } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
+import HotArticles from '@/components/HotArticles.vue'
 
 // 路由
 const router = useRouter()
@@ -14,6 +15,12 @@ const authStore = useAuthStore()
 const showUserMenu = ref(false)
 const showMobileMenu = ref(false)
 const userMenuButton = ref<HTMLElement>()
+
+// 热门文章相关
+const hotArticlesRef = ref()
+const hasHotArticles = computed(() => {
+  return hotArticlesRef.value?.articles && hotArticlesRef.value.articles.length > 0
+})
 
 // 退出登录
 const handleLogout = async () => {
@@ -343,8 +350,15 @@ onUnmounted(() => {
         </div>
       </section>
 
+      <!-- 热门文章 - 只在有数据时显示 -->
+      <section v-if="hasHotArticles" class="py-12 sm:py-16 md:py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <HotArticles ref="hotArticlesRef" />
+        </div>
+      </section>
+
       <!-- 最新文章预览 -->
-      <section class="py-12 sm:py-16 md:py-20 bg-gray-50">
+      <section class="py-12 sm:py-16 md:py-20 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center mb-8 sm:mb-12 md:mb-16">
             <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">最新文章</h2>

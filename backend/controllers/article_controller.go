@@ -267,3 +267,54 @@ func (c *ArticleController) LikeArticle(ctx *gin.Context) {
 
 	utils.Success(ctx, nil)
 }
+
+// GetHotArticles 获取热门文章
+// @Summary 获取热门文章
+// @Description 根据时间周期获取热门文章排行榜
+// @Tags 文章管理
+// @Accept json
+// @Produce json
+// @Param period query string false "时间周期：today(今日)、week(本周)、month(本月)、all(全部)" default(today)
+// @Param limit query int false "返回数量" default(10)
+// @Success 200 {object} utils.Response{data=[]models.ArticleResponse}
+// @Failure 400 {object} utils.Response
+// @Failure 500 {object} utils.Response
+// @Router /api/articles/hot [get]
+func (c *ArticleController) GetHotArticles(ctx *gin.Context) {
+	// 获取参数
+	period := ctx.DefaultQuery("period", "today")
+	limitStr := ctx.DefaultQuery("limit", "10")
+
+	// 验证时间周期参数
+	validPeriods := map[string]bool{
+		"today": true,
+		"week":  true,
+		"month": true,
+		"all":   true,
+	}
+	if !validPeriods[period] {
+		utils.Error(ctx, utils.CodeBadRequest, "时间周期参数无效，支持：today, week, month, all")
+		return
+	}
+
+	// 解析限制数量
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 || limit > 100 {
+		limit = 10
+	}
+
+	// 获取热门文章
+	articles, err := c.articleService.GetHotArticles(period, limit)
+	if err != nil {
+		utils.Error(ctx, utils.CodeInternalError, err.Error())
+		return
+	}
+
+	// 转换为响应格式
+	var responses []*models.ArticleResponse
+	for _, article := range articles {
+		responses = append(responses, article.ToResponse(false))
+	}
+
+	utils.Success(ctx, responses)
+}

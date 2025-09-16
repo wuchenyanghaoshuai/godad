@@ -21,6 +21,8 @@ func SetupArticleRoutes(router *gin.Engine) {
 	{
 		// 获取文章列表
 		articlePublic.GET("", articleController.GetArticleList)
+		// 获取热门文章 - 必须在 /:id 路由之前
+		articlePublic.GET("/hot", articleController.GetHotArticles)
 		// 获取文章详情
 		articlePublic.GET("/:id", articleController.GetArticle)
 	}

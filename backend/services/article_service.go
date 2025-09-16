@@ -572,3 +572,49 @@ func (s *ArticleService) cleanHTMLContent(content string) string {
 	
 	return content
 }
+
+// GetHotArticles 获取热门文章
+func (s *ArticleService) GetHotArticles(period string, limit int) ([]*models.Article, error) {
+	var articles []*models.Article
+
+	// 构建基本查询
+	query := s.db.Preload("Author").Preload("Category").
+		Where("status = ? AND deleted_at IS NULL", 1)
+
+	// 根据时间周期添加条件
+	switch period {
+	case "today":
+		// 今日热门
+		today := time.Now().Format("2006-01-02")
+		query = query.Where("DATE(created_at) = ?", today)
+	case "week":
+		// 本周热门
+		weekStart := time.Now().AddDate(0, 0, -int(time.Now().Weekday())+1)
+		weekStart = time.Date(weekStart.Year(), weekStart.Month(), weekStart.Day(), 0, 0, 0, 0, weekStart.Location())
+		query = query.Where("created_at >= ?", weekStart)
+	case "month":
+		// 本月热门
+		monthStart := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.Now().Location())
+		query = query.Where("created_at >= ?", monthStart)
+	case "all":
+		// 全部时间，不添加时间限制
+	default:
+		// 默认为今日热门
+		today := time.Now().Format("2006-01-02")
+		query = query.Where("DATE(created_at) = ?", today)
+	}
+
+	// 按热度值排序：浏览量*0.6 + 点赞数*0.3 + 评论数*0.1
+	// 使用原生SQL计算热度值并排序
+	err := query.
+		Select("articles.*, (view_count * 0.6 + like_count * 0.3 + comment_count * 0.1) as heat_score").
+		Order("heat_score DESC").
+		Limit(limit).
+		Find(&articles).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("查询热门文章失败: %v", err)
+	}
+
+	return articles, nil
+}

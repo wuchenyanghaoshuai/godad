@@ -77,4 +77,9 @@ export class ArticleApi {
   static async getRelatedArticles(id: number, limit: number = 5): Promise<ApiResponse<Article[]>> {
     return http.get<Article[]>(`${API_CONFIG.ENDPOINTS.ARTICLE.LIST}/${id}/related`, { limit })
   }
+
+  // 获取热门文章
+  static async getHotArticles(params?: { period?: 'today' | 'week' | 'month' | 'all', limit?: number }): Promise<ApiResponse<Article[]>> {
+    return http.get<Article[]>('/articles/hot', params)
+  }
 }
