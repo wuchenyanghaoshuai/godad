@@ -43,21 +43,23 @@ func (cs *ChatService) GetOrCreateConversation(user1ID, user2ID uint) (*models.C
 	} else if err != nil {
 		return nil, err
 	} else {
-		// 如果对话存在但被删除，则恢复对话
-		needUpdate := false
-		updates := make(map[string]interface{})
-
+		// 检查对话是否被删除
 		if conversation.User1Deleted || conversation.User2Deleted {
 			// 恢复对话：重置删除标记
-			updates["user1_deleted"] = false
-			updates["user2_deleted"] = false
-			needUpdate = true
-		}
+			// 确定当前用户是user1还是user2，只重置对应的删除标记
+			updates := make(map[string]interface{})
 
-		if needUpdate {
+			if user1ID == userID1 {
+				// 当前用户是user1
+				updates["user1_deleted"] = false
+			} else {
+				// 当前用户是user2
+				updates["user2_deleted"] = false
+			}
+
 			err = cs.db.Model(&conversation).Updates(updates).Error
 			if err != nil {
-				return nil, fmt.Errorf("恢复对话失败: %v", err)
+				return nil, err
 			}
 		}
 	}

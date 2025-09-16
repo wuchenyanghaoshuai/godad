@@ -120,24 +120,38 @@ const handleRouteParams = async () => {
     }
   } else if (userId && typeof userId === 'string') {
     try {
-      // 根据用户ID创建或获取对话
-      const response = await ChatAPI.getOrCreateConversation({ other_user_id: parseInt(userId) })
-
-      if (response.data && conversationListRef.value) {
-        // 刷新对话列表
+      // 先刷新对话列表，检查是否已存在对话
+      if (conversationListRef.value) {
         conversationListRef.value.refreshConversations()
-
-        // 等待列表更新后，通过对话ID选择对话（而不是使用response.data对象）
         await nextTick()
-        // 在刷新后的列表中找到对应的对话
+
+        // 检查列表中是否已有与目标用户的对话
         const conversations = conversationListRef.value.conversations || []
-        const targetConversation = conversations.find(conv => conv.id === response.data.id)
+        let targetConversation = conversations.find(conv => {
+          const otherUserId = conv.other_user?.id
+          return otherUserId === parseInt(userId)
+        })
+
         if (targetConversation) {
+          // 如果已存在对话，直接选中
           conversationListRef.value.selectConversation(targetConversation)
+        } else {
+          // 如果不存在，创建新对话
+          const response = await ChatAPI.getOrCreateConversation({ other_user_id: parseInt(userId) })
+
+          if (response.data) {
+            // 直接使用返回的对话数据，避免不必要的刷新
+            // 创建后直接选中，因为后端已经保证不会重复创建
+            const newConversation = response.data
+            conversationListRef.value.selectConversation(newConversation)
+
+            // 只在必要时刷新列表以更新UI显示
+            conversationListRef.value.refreshConversations()
+          }
         }
       }
     } catch (error) {
-      console.error('创建对话失败:', error)
+      console.error('处理对话失败:', error)
       showToast('无法与该用户开始对话', 'error')
     }
   }

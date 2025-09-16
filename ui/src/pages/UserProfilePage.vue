@@ -295,22 +295,17 @@ const checkFollowStatus = async () => {
   try {
     // 检查我是否关注了对方
     const myFollowResponse = await FollowApi.checkFollowStatus(userId.value)
-    console.log('关注状态API响应:', myFollowResponse)
     isFollowing.value = myFollowResponse.data?.is_following || myFollowResponse.is_following || false
-    console.log('是否关注:', isFollowing.value)
 
     // 如果我关注了对方，再检查是否为互关
     if (isFollowing.value) {
       try {
         // 检查互关列表，看目标用户是否在我的互关列表中
         const mutualResponse = await FollowApi.getMutualFollows({ page: 1, limit: 100 })
-        console.log('互关列表API响应:', mutualResponse)
         const mutualUsers = mutualResponse.data?.users || mutualResponse.users || []
-        console.log('互关用户列表:', mutualUsers)
 
         // 检查目标用户是否在互关列表中
         isMutualFollow.value = mutualUsers.some((user: any) => user.id === userId.value)
-        console.log('是否互关:', isMutualFollow.value)
       } catch (error) {
         console.error('检查互关状态失败:', error)
         isMutualFollow.value = false
@@ -491,18 +486,11 @@ const startChat = async () => {
 // 监听用户ID变化，当用户数据加载完成后立即检查关注状态
 watch(userId, async (newUserId) => {
   if (newUserId && !isOwnProfile.value && authStore.isAuthenticated) {
-    console.log('=== userId变化，立即检查关注状态 ===')
-    console.log('新的userId:', newUserId)
     await checkFollowStatus()
   }
 }, { immediate: true })
 
 onMounted(async () => {
-  console.log('=== UserProfilePage onMounted 开始 ===')
-  console.log('当前用户名参数:', username.value)
-  console.log('当前认证状态:', authStore.isAuthenticated)
-  console.log('当前用户:', authStore.user)
-
   // 初始化用户数据
   await userDataSync.initUserData()
 })

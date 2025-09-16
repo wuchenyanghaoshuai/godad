@@ -74,11 +74,13 @@
       </div>
 
       <!-- 消息列表 -->
-      <div v-for="message in messages" :key="message.id" class="message-group">
-        <!-- 日期分隔符 -->
-        <div v-if="shouldShowDateSeparator(message)" class="flex items-center justify-center my-4">
+      <div v-for="(message, index) in messages" :key="message.id" class="message-group">
+        <!-- 居中时间戳分隔符 -->
+        <div v-if="shouldShowCenterTime(index).show" class="flex items-center justify-center my-4">
           <div class="px-3 py-1 bg-white text-xs text-gray-500 rounded-full shadow-sm">
-            {{ formatDateSeparator(message.created_at) }}
+            {{ shouldShowCenterTime(index).type === 'date' ?
+                formatDateTimeSeparator(message.created_at) :
+                formatTimeSeparator(message.created_at) }}
           </div>
         </div>
 
@@ -95,11 +97,19 @@
           </div>
 
           <!-- 消息内容 -->
-          <div class="max-w-xs lg:max-w-md">
-            <div 
+          <div class="max-w-xs lg:max-w-md group relative">
+            <!-- 悬停时间戳（所有消息都有） -->
+            <div
+              class="absolute top-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-lg whitespace-nowrap"
+              :class="message.sender_id === currentUserId ? '-left-20' : '-right-20'"
+            >
+              {{ formatDetailTime(message.created_at) }}
+            </div>
+
+            <div
               class="relative rounded-2xl px-4 py-2 shadow-sm"
-              :class="message.sender_id === currentUserId 
-                ? 'bg-blue-500 text-white' 
+              :class="message.sender_id === currentUserId
+                ? 'bg-blue-500 text-white'
                 : 'bg-white text-gray-900'"
             >
               <!-- 文本消息 -->
@@ -135,10 +145,7 @@
               </div>
 
               <!-- 消息状态指示器 -->
-              <div class="flex items-center justify-end mt-1 space-x-1">
-                <span class="text-xs opacity-75">
-                  {{ formatMessageTime(message.created_at) }}
-                </span>
+              <div class="flex items-center justify-end mt-1">
                 <!-- 已读状态（仅发送的消息显示） -->
                 <div v-if="message.sender_id === currentUserId" class="flex items-center">
                   <svg 
@@ -359,41 +366,75 @@ const scrollToBottomAnimated = () => {
   messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
 }
 
-const shouldShowDateSeparator = (message: ChatMessage): boolean => {
-  const messageIndex = messages.value.findIndex(m => m.id === message.id)
-  if (messageIndex === 0) return true // 第一条消息总是显示日期
-  
-  const prevMessage = messages.value[messageIndex - 1]
-  const prevDate = new Date(prevMessage.created_at).toDateString()
-  const currentDate = new Date(message.created_at).toDateString()
-  
-  return prevDate !== currentDate
+
+// 格式化详细时间（悬停显示）
+const formatDetailTime = (timeString: string): string => {
+  const date = new Date(timeString)
+  return date.toLocaleString('zh-CN', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
 }
 
-const formatDateSeparator = (timeString: string): string => {
+// 格式化日期时间分隔符（每天第一条消息）
+const formatDateTimeSeparator = (timeString: string): string => {
   const date = new Date(timeString)
   const today = new Date()
   const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
+  yesterday.setDate(today.getDate() - 1)
 
   if (date.toDateString() === today.toDateString()) {
-    return '今天'
+    return `今天 ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
   } else if (date.toDateString() === yesterday.toDateString()) {
-    return '昨天'
+    return `昨天 ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`
   } else {
-    return date.toLocaleDateString('zh-CN', { 
-      month: 'long', 
-      day: 'numeric' 
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
   }
 }
 
-const formatMessageTime = (timeString: string): string => {
+// 格式化时间分隔符（间隔1小时以上）
+const formatTimeSeparator = (timeString: string): string => {
   const date = new Date(timeString)
-  return date.toLocaleTimeString('zh-CN', { 
-    hour: '2-digit', 
-    minute: '2-digit' 
+  return date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit'
   })
+}
+
+// 判断是否应该显示居中时间戳
+const shouldShowCenterTime = (currentIndex: number): { show: boolean, type: 'date' | 'time' } => {
+  if (currentIndex === 0) return { show: true, type: 'date' } // 第一条消息显示日期
+
+  const currentMessage = messages.value[currentIndex]
+  const previousMessage = messages.value[currentIndex - 1]
+
+  if (!currentMessage || !previousMessage) return { show: true, type: 'date' }
+
+  const currentTime = new Date(currentMessage.created_at)
+  const prevTime = new Date(previousMessage.created_at)
+
+  // 检查是否跨天
+  const isDifferentDay = currentTime.toDateString() !== prevTime.toDateString()
+  if (isDifferentDay) {
+    return { show: true, type: 'date' }
+  }
+
+  // 检查是否超过1小时
+  const diffHours = (currentTime.getTime() - prevTime.getTime()) / (1000 * 60 * 60)
+  if (diffHours >= 1) {
+    return { show: true, type: 'time' }
+  }
+
+  return { show: false, type: 'time' }
 }
 
 const formatImageSize = (size: number): string => {

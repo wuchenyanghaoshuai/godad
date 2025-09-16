@@ -605,19 +605,15 @@ const loadConversationByUserId = async (actorId: number) => {
 
 // 处理消息发送
 const handleMessageSent = async (message: any) => {
-  console.log('NotificationsPage: 新消息已发送:', message)
 
   // 立即将新消息添加到聊天列表中
   if (chatMessageListRef.value && chatMessageListRef.value.addMessage) {
-    console.log('NotificationsPage: 调用 addMessage')
     chatMessageListRef.value.addMessage(message)
   } else {
-    console.log('NotificationsPage: chatMessageListRef 不可用')
   }
 
   // 强制刷新消息列表确保同步
   if (chatMessageListRef.value && chatMessageListRef.value.refreshMessages) {
-    console.log('NotificationsPage: 延迟刷新消息列表')
     setTimeout(() => {
       if (chatMessageListRef.value && chatMessageListRef.value.refreshMessages) {
         chatMessageListRef.value.refreshMessages()
@@ -668,7 +664,7 @@ const startPrivateChatByUserId = async (userId: number) => {
       router.replace({ query: {} })
     }
 
-    showToast(`开始与 ${currentConversation.value.other_user?.nickname || currentConversation.value.other_user?.username} 的对话`, 'success')
+    // 已成功开始对话
   } catch (error: any) {
     console.error('开始私信聊天失败:', error)
     showToast('开始对话失败', 'error')

@@ -705,44 +705,33 @@ const deleteArticle = async () => {
 
 // 聚焦到评论区
 const focusToComments = async () => {
-  // console.log('开始聚焦到评论区')
   
   // 展开评论区
   showComments.value = true
-  // console.log('评论区已展开:', showComments.value)
   
   // 等待DOM更新
   await nextTick()
-  // console.log('DOM更新完成')
   
   try {
     // 滚动到评论区
     if (commentsSectionRef.value) {
-      // console.log('找到评论区引用，开始滚动')
       commentsSectionRef.value.scrollIntoView({
         behavior: 'smooth',
         block: 'start'
       })
-      // console.log('滚动完成')
     } else {
       // console.warn('评论区引用不存在')
     }
     
     // 等待一下再聚焦输入框，确保评论区已完全展开
     setTimeout(() => {
-      // console.log('准备聚焦输入框')
-      // console.log('commentSectionRef.value:', commentSectionRef.value)
       
       // 如果评论组件有focusCommentInput方法，调用它
       if (commentSectionRef.value && typeof commentSectionRef.value.focusCommentInput === 'function') {
-        // console.log('调用focusCommentInput方法')
         commentSectionRef.value.focusCommentInput()
-        // console.log('focusCommentInput方法调用完成')
       } else {
         // console.warn('commentSectionRef不存在或focusCommentInput方法不可用')
-        // console.log('commentSectionRef类型:', typeof commentSectionRef.value)
         if (commentSectionRef.value) {
-          // console.log('commentSectionRef可用方法:', Object.keys(commentSectionRef.value))
         }
       }
     }, 300)
@@ -753,18 +742,15 @@ const focusToComments = async () => {
 
 // 聚焦到特定评论
 const focusToSpecificComment = async (actorId: number, commentContent?: string) => {
-  // console.log('开始聚焦到特定评论，作者ID:', actorId, '评论内容:', commentContent)
   
   // 确保评论区展开
   showComments.value = true
   
   // 等待DOM更新
   await nextTick()
-  // console.log('评论区已展开，开始查找评论')
   
   // 滚动到评论区
   if (commentsSectionRef.value) {
-    // console.log('找到评论区，立即跳转')
     commentsSectionRef.value.scrollIntoView({ 
       behavior: 'instant', 
       block: 'start' 
@@ -773,9 +759,7 @@ const focusToSpecificComment = async (actorId: number, commentContent?: string) 
     // 立即查找特定评论
     await nextTick()
     setTimeout(() => {
-      // console.log('开始查找评论，作者ID:', actorId, '评论内容:', commentContent)
       const commentItems = document.querySelectorAll('[data-author-id]')
-      // console.log('找到', commentItems.length, '个评论元素')
       
       let targetComment: HTMLElement | null = null
       
@@ -786,10 +770,8 @@ const focusToSpecificComment = async (actorId: number, commentContent?: string) 
           const authorId = element.getAttribute('data-author-id')
           const content = element.getAttribute('data-comment-content')
           
-          // console.log('检查评论，作者ID:', authorId, '评论内容:', content)
           
           if (authorId === actorId.toString() && content && content.includes(commentContent)) {
-            // console.log('找到精确匹配的评论')
             targetComment = element
             break
           }
@@ -798,13 +780,11 @@ const focusToSpecificComment = async (actorId: number, commentContent?: string) 
       
       // 如果没有找到精确匹配，回退到仅根据作者ID匹配最新的评论
       if (!targetComment) {
-        // console.log('没有找到精确匹配，回退到作者ID匹配')
         for (let i = commentItems.length - 1; i >= 0; i--) {
           const element = commentItems[i] as HTMLElement
           const authorId = element.getAttribute('data-author-id')
           
           if (authorId === actorId.toString()) {
-            // console.log('找到作者ID匹配的评论')
             targetComment = element
             break
           }
@@ -813,7 +793,6 @@ const focusToSpecificComment = async (actorId: number, commentContent?: string) 
       
       // 如果找到目标评论，直接滚动并点击回复按钮
       if (targetComment) {
-        // console.log('找到目标评论，准备滚动和点击回复')
         
         // 直接滚动到该评论（使用instant模式，立即跳转）
         targetComment.scrollIntoView({ 
@@ -823,7 +802,6 @@ const focusToSpecificComment = async (actorId: number, commentContent?: string) 
         
         // 立即查找并点击回复按钮
         requestAnimationFrame(() => {
-          // console.log('开始查找并点击回复按钮')
           // 在当前评论元素内查找所有按钮，找到包含"回复"文字的按钮
           const buttons = targetComment!.querySelectorAll('button')
           let replyButton: HTMLButtonElement | null = null
@@ -832,7 +810,6 @@ const focusToSpecificComment = async (actorId: number, commentContent?: string) 
             const span = button.querySelector('span')
             if (span && span.textContent?.includes('回复')) {
               replyButton = button as HTMLButtonElement
-              // console.log('找到回复按钮，准备点击')
               break
             }
           }
@@ -844,7 +821,6 @@ const focusToSpecificComment = async (actorId: number, commentContent?: string) 
             requestAnimationFrame(() => {
               const textarea = targetComment!.querySelector('textarea[placeholder*="回复"]') as HTMLTextAreaElement
               if (textarea) {
-                // console.log('找到回复输入框，准备聚焦')
                 textarea.focus()
               } else {
                 // console.warn('没有找到回复输入框')
@@ -1107,8 +1083,6 @@ const handleFocusParameter = async () => {
     await nextTick()
     await focusToComments()
   } else if (route.query.focus === 'comment' && route.query.actor_id) {
-    // console.log('发现focus=comment参数，准备聚焦到特定评论，作者ID:', route.query.actor_id)
-    // console.log('评论内容:', route.query.comment_content)
     
     // 立即清除URL参数，防止刷新页面时重复触发
     router.replace({
@@ -1123,13 +1097,11 @@ const handleFocusParameter = async () => {
       route.query.comment_content as string
     )
   } else {
-    // console.log('没有focus参数')
   }
 }
 
 // 监听路由查询参数变化
 watch(() => route.query.focus, async (newFocus) => {
-  // console.log('路由focus参数变化:', newFocus)
   if ((newFocus === 'comments' || newFocus === 'comment') && article.value) {
     await handleFocusParameter()
   }

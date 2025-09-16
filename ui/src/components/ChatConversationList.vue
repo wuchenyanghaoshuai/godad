@@ -183,6 +183,10 @@ const totalUnreadCount = computed(() => {
 
 // 方法
 const loadConversations = async (page = 1) => {
+  // 防止并发请求
+  if (page === 1 && loading.value) return
+  if (page > 1 && loadingMore.value) return
+
   if (page === 1) {
     loading.value = true
   } else {
@@ -198,25 +202,8 @@ const loadConversations = async (page = 1) => {
     const newConversations = response.data.conversations || []
 
     if (page === 1) {
-      // 第一页也需要去重，防止重复显示同一对话
-      const existingConversations = conversations.value || []
-
-      if (existingConversations.length === 0) {
-        // 如果当前没有对话，直接设置
-        conversations.value = newConversations
-      } else {
-        // 如果已有对话，进行去重合并
-        const existingIds = new Set(existingConversations.map(conv => conv.id))
-        const uniqueNewConversations = newConversations.filter(conv => !existingIds.has(conv.id))
-
-        // 保留现有对话，添加新的对话，按时间排序
-        const allConversations = [...existingConversations, ...uniqueNewConversations]
-        conversations.value = allConversations.sort((a, b) => {
-          const timeA = new Date(a.last_message_time || a.created_at).getTime()
-          const timeB = new Date(b.last_message_time || b.created_at).getTime()
-          return timeB - timeA // 最新的在前
-        })
-      }
+      // 第一页时直接替换整个对话列表，因为服务器返回的是完整列表
+      conversations.value = newConversations
     } else {
       // 分页加载时进行去重，防止重复对话出现
       const existingConversations = conversations.value || []

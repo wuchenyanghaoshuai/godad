@@ -126,7 +126,7 @@ export function useUserDataSync(username?: string) {
           const stats = response.data || response
           state.value.stats.following_count = stats.following_count || 0
           state.value.stats.followers_count = stats.followers_count || 0
-          console.log('成功获取用户关注统计:', stats)
+          // 成功获取统计数据
         } catch (error) {
           console.error('获取关注统计失败:', error)
         }

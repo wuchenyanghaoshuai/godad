@@ -326,15 +326,8 @@ const loadMoreComments = async () => {
 
 // 聚焦评论输入框
 const focusCommentInput = () => {
-  console.log('focusCommentInput被调用')
-  console.log('commentTextareaRef.value:', commentTextareaRef.value)
-  
   if (commentTextareaRef.value) {
-    console.log('找到评论输入框，开始聚焦')
     commentTextareaRef.value.focus()
-    console.log('评论输入框聚焦完成')
-  } else {
-    console.warn('评论输入框引用不存在')
   }
 }
 

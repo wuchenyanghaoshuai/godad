@@ -222,7 +222,6 @@ const sendMessage = async () => {
     const message = response.data || response
     messages.value.push(message)
     scrollToBottom()
-    showToast('消息发送成功', 'success')
   } catch (error: any) {
     console.error('发送消息失败:', error)
     showToast('发送消息失败', 'error')

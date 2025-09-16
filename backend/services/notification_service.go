@@ -181,6 +181,13 @@ func (s *NotificationService) CreateMessageNotification(actorID, receiverID uint
 		return err
 	}
 
+	// 如果没有找到对话，说明这可能是一个无效的消息通知请求
+	if err == gorm.ErrRecordNotFound || conversation.ID == 0 {
+		// 记录警告日志，但不创建通知
+		log.Printf("警告：尝试为不存在的对话创建消息通知 (actorID: %d, receiverID: %d)", actorID, receiverID)
+		return nil
+	}
+
 	// 查找是否已存在基于这个对话的未读私信通知
 	var existingNotification models.Notification
 	err = s.db.Where("receiver_id = ? AND type = ? AND resource_id = ? AND is_read = false AND deleted_at IS NULL",

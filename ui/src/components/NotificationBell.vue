@@ -246,7 +246,7 @@ const markAllAsRead = async () => {
 
 // 处理通知点击
 const handleNotificationClick = async (notification: Notification) => {
-  console.log('NotificationBell: 通知被点击:', notification)
+  // 处理通知点击
   
   // 关闭下拉菜单
   closeDropdown()
@@ -254,13 +254,11 @@ const handleNotificationClick = async (notification: Notification) => {
   try {
     // 先标记为已读
     if (!notification.is_read) {
-      console.log('NotificationBell: 标记通知为已读')
       await markAsRead([notification.id])
     }
     
     if (notification.type === 'comment' && notification.resource_id) {
       // 评论通知跳转到文章并聚焦到具体评论
-      console.log('NotificationBell: 评论通知，跳转到文章:', notification.resource_id)
       // 从通知消息中提取评论内容
       const commentContent = extractCommentContent(notification.message)
       await router.push({
@@ -271,16 +269,13 @@ const handleNotificationClick = async (notification: Notification) => {
           comment_content: commentContent
         }
       })
-      console.log('NotificationBell: 路由跳转完成')
       
     } else if (notification.type === 'like' && notification.resource_id) {
       // 点赞通知跳转到文章
-      console.log('NotificationBell: 点赞通知，跳转到文章:', notification.resource_id)
       await router.push(`/articles/${notification.resource_id}`)
       
     } else if (notification.type === 'follow') {
       // 关注通知跳转到用户页面
-      console.log('NotificationBell: 关注通知，跳转到用户页面:', notification.actor_id)
       await router.push(`/user/${notification.actor_id}`)
     }
   } catch (error) {
@@ -301,7 +296,7 @@ const handleClickOutside = (event: Event) => {
 const startAutoRefresh = () => {
   refreshTimer = window.setInterval(() => {
     loadStats()
-  }, 30000) // 每30秒刷新一次统计
+  }, 3000) // 每3秒刷新一次统计
 }
 
 const stopAutoRefresh = () => {

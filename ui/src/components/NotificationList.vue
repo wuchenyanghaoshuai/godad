@@ -189,7 +189,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   autoRefresh: false,
-  refreshInterval: 30000 // 30秒
+  refreshInterval: 3000 // 3秒
 })
 
 // 路由
@@ -207,6 +207,51 @@ const hasMore = ref(true)
 // 获取通知图标
 const getNotificationIcon = (type: string) => {
   return notificationIconMap[type as keyof typeof notificationIconMap] || '📢'
+}
+
+// 对消息通知进行分组处理
+const groupMessageNotifications = (notifications: Notification[]): Notification[] => {
+  const messageGroups = new Map<string, Notification[]>()
+  const otherNotifications: Notification[] = []
+
+  // 按类型分组
+  for (const notification of notifications) {
+    if (notification.type === 'message') {
+      // 为消息通知创建分组key: actor_id-receiver_id的组合（不考虑resource_id）
+      const groupKey = `${notification.actor_id}-${notification.receiver_id}`
+
+      if (!messageGroups.has(groupKey)) {
+        messageGroups.set(groupKey, [])
+      }
+      messageGroups.get(groupKey)!.push(notification)
+    } else {
+      otherNotifications.push(notification)
+    }
+  }
+
+  // 处理分组后的消息通知
+  const groupedMessages: Notification[] = []
+  for (const [groupKey, groupNotifications] of messageGroups) {
+    if (groupNotifications.length > 0) {
+      // 取最新的通知作为代表
+      const latestNotification = groupNotifications.reduce((latest, current) => {
+        return new Date(current.created_at) > new Date(latest.created_at) ? current : latest
+      })
+
+      // 如果有多条消息，更新消息内容以显示数量
+      if (groupNotifications.length > 1) {
+        const unreadCount = groupNotifications.filter(n => !n.is_read).length
+        latestNotification.message = `发来了 ${groupNotifications.length} 条消息${unreadCount > 0 ? ` (${unreadCount} 条未读)` : ''}`
+      }
+
+      groupedMessages.push(latestNotification)
+    }
+  }
+
+  // 合并其他类型的通知和分组后的消息通知，保持时间顺序
+  return [...otherNotifications, ...groupedMessages].sort((a, b) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
 }
 
 // 加载通知统计
@@ -237,13 +282,16 @@ const loadNotifications = async (reset = false) => {
 
     if (response.code === 200) {
       const { notifications: newNotifications, pagination } = response.data
-      
+
       if (reset) {
         notifications.value = newNotifications
       } else {
         notifications.value?.push(...newNotifications)
       }
-      
+
+      // 对所有已加载的通知进行重新分组
+      notifications.value = groupMessageNotifications(notifications.value || [])
+
       hasMore.value = currentPage.value < pagination.total_pages
     }
   } catch (error) {
@@ -335,30 +383,22 @@ const clearAllNotifications = async () => {
 
 // 处理通知点击
 const handleNotificationClick = async (notification: Notification) => {
-  console.log('通知被点击:', notification)
-  
   try {
     // 如果是评论通知，跳转到文章并聚焦评论区
     if (notification.type === 'comment' && notification.resource_id) {
-      console.log('评论通知，准备跳转到文章:', notification.resource_id)
-      
       // 先标记为已读
       if (!notification.is_read) {
-        console.log('标记通知为已读')
         await markAsRead([notification.id])
       }
-      
+
       // 跳转到文章页面，并通过URL参数指示聚焦评论区
-      console.log('执行路由跳转')
       await router.push({
         path: `/articles/${notification.resource_id}`,
         query: { focus: 'comments' }
       })
-      console.log('路由跳转完成')
       
     } else if (notification.type === 'like' && notification.resource_id) {
       // 点赞通知跳转到文章
-      console.log('点赞通知，跳转到文章:', notification.resource_id)
       if (!notification.is_read) {
         await markAsRead([notification.id])
       }
@@ -366,7 +406,6 @@ const handleNotificationClick = async (notification: Notification) => {
       
     } else if (notification.type === 'follow') {
       // 关注通知跳转到用户页面
-      console.log('关注通知，跳转到用户页面:', notification.actor_id)
       if (!notification.is_read) {
         await markAsRead([notification.id])
       }
@@ -374,7 +413,6 @@ const handleNotificationClick = async (notification: Notification) => {
 
     } else if (notification.type === 'message') {
       // 私信通知跳转到消息页面
-      console.log('私信通知，跳转到消息页面，发送者:', notification.actor_id)
       if (!notification.is_read) {
         await markAsRead([notification.id])
       }
