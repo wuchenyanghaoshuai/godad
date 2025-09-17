@@ -138,6 +138,7 @@ import { useAuthStore } from '@/stores/auth'
 import { CommentApi } from '@/api/comment'
 import CommentItem from './CommentItem.vue'
 import type { Comment, CommentCreateRequest } from '@/api/types'
+import { useToast } from '@/composables/useToast'
 
 // 组件属性
 interface Props {
@@ -157,6 +158,7 @@ const emit = defineEmits<Emits>()
 
 // 状态管理
 const authStore = useAuthStore()
+const { toast } = useToast()
 
 // 响应式数据
 const comments = ref<Comment[]>([])
@@ -202,7 +204,7 @@ const submitComment = async () => {
     
   } catch (err: any) {
     console.error('发表评论失败:', err)
-    alert('发表评论失败：' + (err.message || '未知错误'))
+    toast.error('发表评论失败：' + (err.message || '未知错误'))
   } finally {
     isSubmitting.value = false
   }

@@ -405,7 +405,7 @@ const submitArticle = async () => {
     router.push(`/articles/${originalArticle.value.id}`)
   } catch (err: any) {
     console.error('更新文章失败:', err)
-    alert('更新失败：' + (err.message || '未知错误'))
+    toast.error('更新失败：' + (err.message || '未知错误'))
   } finally {
     isSubmitting.value = false
   }

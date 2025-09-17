@@ -859,7 +859,7 @@ const updateProfile = async () => {
 const changePassword = async () => {
   try {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert('新密码和确认密码不一致')
+      toast.error('新密码和确认密码不一致')
       return
     }
 

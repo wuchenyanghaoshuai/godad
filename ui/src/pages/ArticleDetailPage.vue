@@ -597,7 +597,7 @@ const toggleLike = async () => {
   } catch (err: any) {
     console.error('点赞操作失败:', err)
     // 显示错误提示但不更改状态
-    alert('点赞失败：' + (err.message || '未知错误'))
+    toast.error('点赞失败：' + (err.message || '未知错误'))
   } finally {
     isLiking.value = false
   }
@@ -615,7 +615,7 @@ const shareArticle = () => {
     // 复制链接到剪贴板
     navigator.clipboard.writeText(window.location.href)
     // 这里可以显示复制成功的提示
-    alert('链接已复制到剪贴板')
+    toast.success('链接已复制到剪贴板')
   }
 }
 
@@ -699,7 +699,7 @@ const deleteArticle = async () => {
     router.push('/articles')
   } catch (err: any) {
     console.error('删除文章失败:', err)
-    alert('删除失败：' + (err.message || '未知错误'))
+    toast.error('删除失败：' + (err.message || '未知错误'))
   }
 }
 

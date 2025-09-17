@@ -367,7 +367,13 @@
               </button>
             </div>
 
-            <div class="overflow-hidden">
+            <!-- 加载状态 -->
+            <div v-if="categoryLoading" class="text-center py-8">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+              <p class="mt-4 text-gray-500">加载中...</p>
+            </div>
+
+            <div v-else class="overflow-hidden">
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
@@ -455,6 +461,29 @@
                 </tbody>
               </table>
             </div>
+
+            <!-- 分页 -->
+            <div class="flex justify-between items-center mt-4">
+              <span class="text-sm text-gray-700">
+                显示 {{ categoryPagination.offset + 1 }} 到 {{ Math.min(categoryPagination.offset + categoryPagination.limit, categoryPagination.total) }} 条，共 {{ categoryPagination.total }} 条
+              </span>
+              <div class="flex space-x-2">
+                <button
+                  @click="prevPage('category')"
+                  :disabled="categoryPagination.page === 1"
+                  class="px-3 py-1 border rounded-md text-sm disabled:opacity-50"
+                >
+                  上一页
+                </button>
+                <button
+                  @click="nextPage('category')"
+                  :disabled="categoryPagination.page >= Math.ceil(categoryPagination.total / categoryPagination.limit)"
+                  class="px-3 py-1 border rounded-md text-sm disabled:opacity-50"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -528,6 +557,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { http } from '../api/http'
+import { useToast } from '../composables/useToast'
 
 // Icons
 import {
@@ -539,6 +569,7 @@ import {
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { toast } = useToast()
 
 // 响应式数据
 const activeTab = ref('articles')
@@ -584,12 +615,19 @@ const userPagination = reactive({
 const categories = ref([])
 const showCreateCategoryModal = ref(false)
 const showEditCategoryModal = ref(false)
+const categoryLoading = ref(false)
 const categoryForm = reactive({
   id: null,
   name: '',
   slug: '',
   description: '',
   color: '#3B82F6'
+})
+const categoryPagination = reactive({
+  page: 1,
+  limit: 10,
+  total: 0,
+  offset: 0
 })
 
 // 加载统计数据
@@ -646,7 +684,7 @@ const toggleArticleStatus = async (article) => {
     article.status = newStatus
   } catch (error) {
     console.error('切换文章状态失败:', error)
-    alert('操作失败，请重试')
+    toast.error('操作失败，请重试')
   }
 }
 
@@ -658,7 +696,7 @@ const deleteArticle = async (articleId) => {
     loadArticles()
   } catch (error) {
     console.error('删除文章失败:', error)
-    alert('删除失败，请重试')
+    toast.error('删除失败，请重试')
   }
 }
 
@@ -697,27 +735,57 @@ const toggleUserStatus = async (user) => {
     user.status = newStatus
   } catch (error) {
     console.error('切换用户状态失败:', error)
-    alert('操作失败，请重试')
+    toast.error('操作失败，请重试')
   }
 }
 
 // 加载分类列表
 const loadCategories = async () => {
   try {
-    const response = await http.get('/admin/categories')
-    
+    categoryLoading.value = true
+    const params = {
+      page: categoryPagination.page,
+      size: categoryPagination.limit
+    }
+    const response = await http.get('/admin/categories', params)
+
     // 处理分页响应格式
-    if (response.data && Array.isArray(response.data)) {
+    // 检查是否是标准分页格式 {data: [], total: x, page: x, size: x}
+    if (response.data && Array.isArray(response.data) && response.total !== undefined) {
       categories.value = response.data
-    } else if (response && response.data && Array.isArray(response.data.data)) {
-      // 处理嵌套的分页响应格式
+      categoryPagination.total = response.total || 0
+    }
+    // 检查是否是嵌套格式 {data: {data: [], total: x}}
+    else if (response.data && response.data.data && Array.isArray(response.data.data)) {
       categories.value = response.data.data
-    } else {
+      categoryPagination.total = response.data.total || 0
+    }
+    // 兜底：直接是数组
+    else if (response.data && Array.isArray(response.data)) {
+      categories.value = response.data
+      categoryPagination.total = response.data.length
+    }
+    else {
       categories.value = []
+      categoryPagination.total = 0
+    }
+
+    categoryPagination.offset = (categoryPagination.page - 1) * categoryPagination.limit
+
+    // 处理边界情况：当前页没有数据且不是第一页时，自动跳转到上一页
+    if (categories.value.length === 0 && categoryPagination.page > 1) {
+      categoryPagination.page = Math.max(1, Math.ceil(categoryPagination.total / categoryPagination.limit))
+      if (categoryPagination.page > 0) {
+        await loadCategories() // 递归加载正确的页面
+        return // 递归调用时不重复设置loading状态
+      }
     }
   } catch (error) {
     console.error('AdminDashboard: 加载分类列表失败:', error)
     categories.value = []
+    categoryPagination.total = 0
+  } finally {
+    categoryLoading.value = false
   }
 }
 
@@ -746,14 +814,17 @@ const submitCategory = async () => {
     
     if (showCreateCategoryModal.value) {
       await http.post('/admin/categories', categoryForm)
+      // 创建分类后重置到第一页，因为新分类可能在任何位置
+      categoryPagination.page = 1
     } else {
       await http.put(`/admin/categories/${categoryForm.id}`, categoryForm)
+      // 编辑分类不需要重置页码
     }
     closeCategoryModal()
     loadCategories()
   } catch (error) {
     console.error('保存分类失败:', error)
-    alert('保存失败，请重试')
+    toast.error('保存失败，请重试')
   }
 }
 
@@ -778,7 +849,7 @@ const toggleCategoryStatus = async (category) => {
     category.status = newStatus
   } catch (error) {
     console.error('切换分类状态失败:', error)
-    alert('操作失败，请重试')
+    toast.error('操作失败，请重试')
   }
 }
 
@@ -787,10 +858,23 @@ const deleteCategory = async (categoryId) => {
   if (!confirm('确定要删除这个分类吗？')) return
   try {
     await http.delete(`/admin/categories/${categoryId}`)
+
+    // 计算删除后的总数和当前页是否还有效
+    const newTotal = categoryPagination.total - 1
+    const maxPage = Math.ceil(newTotal / categoryPagination.limit)
+
+    // 如果当前页超出范围，自动跳转到最后一页
+    if (categoryPagination.page > maxPage && maxPage > 0) {
+      categoryPagination.page = maxPage
+    } else if (maxPage === 0) {
+      // 如果没有数据了，回到第一页
+      categoryPagination.page = 1
+    }
+
     loadCategories()
   } catch (error) {
     console.error('删除分类失败:', error)
-    alert('删除失败，请重试')
+    toast.error('删除失败，请重试')
   }
 }
 
@@ -802,6 +886,9 @@ const prevPage = (type) => {
   } else if (type === 'user' && userPagination.page > 1) {
     userPagination.page--
     loadUsers()
+  } else if (type === 'category' && categoryPagination.page > 1) {
+    categoryPagination.page--
+    loadCategories()
   }
 }
 
@@ -817,6 +904,12 @@ const nextPage = (type) => {
     if (userPagination.page < maxPage) {
       userPagination.page++
       loadUsers()
+    }
+  } else if (type === 'category') {
+    const maxPage = Math.ceil(categoryPagination.total / categoryPagination.limit)
+    if (categoryPagination.page < maxPage) {
+      categoryPagination.page++
+      loadCategories()
     }
   }
 }

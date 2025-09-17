@@ -200,6 +200,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { CommentApi } from '@/api/comment'
 import type { Comment, CommentCreateRequest } from '@/api/types'
+import { useToast } from '@/composables/useToast'
 
 // 组件属性
 interface Props {
@@ -229,6 +230,7 @@ const emit = defineEmits<Emits>()
 
 // 状态管理
 const authStore = useAuthStore()
+const { toast } = useToast()
 
 // 响应式数据
 const showReplyInput = ref(false)
@@ -361,7 +363,7 @@ const submitReply = async () => {
     
   } catch (err: any) {
     console.error('回复失败:', err)
-    alert('回复失败：' + (err.message || '未知错误'))
+    toast.error('回复失败：' + (err.message || '未知错误'))
   } finally {
     isReplying.value = false
   }
@@ -411,7 +413,7 @@ const handleDelete = async () => {
     
   } catch (error) {
     console.error('删除评论失败:', error)
-    alert('删除失败：' + (error.message || '未知错误'))
+    toast.error('删除失败：' + (error.message || '未知错误'))
   }
 }
 </script>

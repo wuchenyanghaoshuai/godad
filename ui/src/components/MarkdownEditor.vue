@@ -268,6 +268,7 @@ import {
 } from 'lucide-vue-next'
 import ImageUpload from './ImageUpload.vue'
 import type { ImageUploadResponse } from '@/api/types'
+import { useToast } from '@/composables/useToast'
 
 // Props
 interface Props {
@@ -300,6 +301,9 @@ const showImageUpload = ref(false)
 const uploadedImageUrl = ref('')
 const isDragOver = ref(false)
 const autoSaveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
+
+// Toast
+const { toast } = useToast()
 const dragCounter = ref(0)
 
 // 计算属性
@@ -538,12 +542,12 @@ const handleDrop = async (e: DragEvent) => {
   
   const file = files[0]
   if (!file.type.startsWith('image/')) {
-    alert('只能上传图片文件')
+    toast.error('只能上传图片文件')
     return
   }
   
   if (file.size > 10 * 1024 * 1024) { // 10MB
-    alert('图片大小不能超过 10MB')
+    toast.error('图片大小不能超过 10MB')
     return
   }
   
@@ -559,7 +563,7 @@ const handleDrop = async (e: DragEvent) => {
     
   } catch (error) {
     console.error('图片上传失败:', error)
-    alert('图片上传失败，请重试')
+    toast.error('图片上传失败，请重试')
   }
 }
 
