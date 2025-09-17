@@ -69,9 +69,37 @@ onUnmounted(() => {
           <!-- Logo -->
           <div class="flex items-center">
             <router-link to="/" class="flex items-center space-x-2 group">
-              <div class="w-8 h-8 bg-gradient-to-r from-pink-500 to-orange-500 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
-                <span class="text-white font-bold text-lg">G</span>
-              </div>
+              <!-- App图标Logo SVG -->
+              <svg width="32" height="32" viewBox="0 0 120 120" class="group-hover:scale-105 transition-transform">
+                <!-- 背景渐变优化 -->
+                <rect x="6" y="6" width="108" height="108" rx="24" fill="url(#navGradient)"/>
+                <!-- 微妙阴影效果 -->
+                <rect x="8" y="8" width="104" height="104" rx="22" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+                <!-- 精细化父子图标 -->
+                <g transform="translate(30, 30)">
+                  <!-- 爸爸头部 -->
+                  <circle cx="20" cy="15" r="8" fill="#ffffff" opacity="0.95"/>
+                  <!-- 爸爸身体 -->
+                  <rect x="15" y="23" width="10" height="20" rx="5" fill="#ffffff" opacity="0.95"/>
+                  <!-- 孩子头部 -->
+                  <circle cx="35" cy="20" r="5" fill="#ffffff" opacity="0.9"/>
+                  <!-- 孩子身体 -->
+                  <rect x="32" y="25" width="6" height="13" rx="3" fill="#ffffff" opacity="0.9"/>
+                  <!-- 手拉手连接 -->
+                  <path d="M25 28 Q30 26 32 28" stroke="#FCD34D" stroke-width="3" stroke-linecap="round" fill="none"/>
+                  <!-- 温馨小星星 -->
+                  <path d="M45 35 L47 37 L45 39 L43 37 Z" fill="#FFE082" opacity="0.7"/>
+                </g>
+                <!-- 文字优化 -->
+                <text x="60" y="90" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">GoDad</text>
+                <defs>
+                  <linearGradient id="navGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#FF8A65;stop-opacity:1" />
+                    <stop offset="50%" style="stop-color:#FF7043;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#FF5722;stop-opacity:1" />
+                  </linearGradient>
+                </defs>
+              </svg>
               <span class="text-xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent">GoDad</span>
             </router-link>
           </div>
@@ -489,9 +517,31 @@ onUnmounted(() => {
           <!-- 品牌信息 -->
           <div class="sm:col-span-2 md:col-span-1">
             <div class="flex items-center mb-3 sm:mb-4">
-              <div class="w-6 h-6 sm:w-8 sm:h-8 bg-gradient-to-r from-pink-500 to-orange-500 rounded-lg flex items-center justify-center mr-2 sm:mr-3 shadow-lg">
-                <span class="text-white font-bold text-sm sm:text-lg">G</span>
-              </div>
+              <!-- 放大版App图标 -->
+              <svg width="48" height="48" viewBox="0 0 120 120" class="mr-2 sm:mr-3 shadow-lg">
+                <rect x="6" y="6" width="108" height="108" rx="24" fill="url(#footerGradient)"/>
+                <!-- 完整尺寸的图标内容 -->
+                <g transform="translate(30, 30)">
+                  <!-- 爸爸头部 -->
+                  <circle cx="20" cy="15" r="8" fill="#ffffff" opacity="0.95"/>
+                  <!-- 爸爸身体 -->
+                  <rect x="15" y="23" width="10" height="20" rx="5" fill="#ffffff" opacity="0.95"/>
+                  <!-- 孩子头部 -->
+                  <circle cx="35" cy="20" r="5" fill="#ffffff" opacity="0.9"/>
+                  <!-- 孩子身体 -->
+                  <rect x="32" y="25" width="6" height="13" rx="3" fill="#ffffff" opacity="0.9"/>
+                  <!-- 手拉手连接 -->
+                  <path d="M25 28 Q30 26 32 28" stroke="#FCD34D" stroke-width="3" stroke-linecap="round" fill="none"/>
+                  <!-- 温馨小星星 -->
+                  <path d="M45 35 L47 37 L45 39 L43 37 Z" fill="#FFE082" opacity="0.7"/>
+                </g>
+                <defs>
+                  <linearGradient id="footerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#FF8A65;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#FF5722;stop-opacity:1" />
+                  </linearGradient>
+                </defs>
+              </svg>
               <span class="text-lg sm:text-xl font-bold">GoDad</span>
             </div>
             <p class="text-gray-400 mb-3 sm:mb-6 text-sm sm:text-base leading-relaxed">
@@ -514,11 +564,31 @@ onUnmounted(() => {
           <div>
             <h3 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-white">快速链接</h3>
             <ul class="space-y-2 sm:space-y-3">
-              <li><a href="#" class="text-gray-400 hover:text-pink-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">关于我们</a></li>
-              <li><a href="#" class="text-gray-400 hover:text-pink-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">联系我们</a></li>
-              <li><a href="#" class="text-gray-400 hover:text-pink-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">隐私政策</a></li>
-              <li><a href="#" class="text-gray-400 hover:text-pink-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">服务条款</a></li>
-              <li><a href="#" class="text-gray-400 hover:text-pink-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">帮助中心</a></li>
+              <li>
+                <router-link to="/about" class="text-gray-400 hover:text-pink-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">
+                  关于我们
+                </router-link>
+              </li>
+              <li>
+                <router-link to="/contact" class="text-gray-400 hover:text-pink-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">
+                  联系我们
+                </router-link>
+              </li>
+              <li>
+                <router-link to="/privacy" class="text-gray-400 hover:text-pink-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">
+                  隐私政策
+                </router-link>
+              </li>
+              <li>
+                <router-link to="/terms" class="text-gray-400 hover:text-pink-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">
+                  服务条款
+                </router-link>
+              </li>
+              <li>
+                <router-link to="/help" class="text-gray-400 hover:text-pink-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">
+                  帮助中心
+                </router-link>
+              </li>
             </ul>
           </div>
           
@@ -526,11 +596,31 @@ onUnmounted(() => {
           <div>
             <h3 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-white">热门分类</h3>
             <ul class="space-y-2 sm:space-y-3">
-              <li><a href="#" class="text-gray-400 hover:text-orange-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">新生儿护理</a></li>
-              <li><a href="#" class="text-gray-400 hover:text-orange-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">营养健康</a></li>
-              <li><a href="#" class="text-gray-400 hover:text-orange-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">早期教育</a></li>
-              <li><a href="#" class="text-gray-400 hover:text-orange-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">心理发展</a></li>
-              <li><a href="#" class="text-gray-400 hover:text-orange-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">安全防护</a></li>
+              <li>
+                <router-link to="/categories?category=newborn" class="text-gray-400 hover:text-orange-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">
+                  新生儿护理
+                </router-link>
+              </li>
+              <li>
+                <router-link to="/categories?category=nutrition" class="text-gray-400 hover:text-orange-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">
+                  营养健康
+                </router-link>
+              </li>
+              <li>
+                <router-link to="/categories?category=education" class="text-gray-400 hover:text-orange-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">
+                  早期教育
+                </router-link>
+              </li>
+              <li>
+                <router-link to="/categories?category=psychology" class="text-gray-400 hover:text-orange-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">
+                  心理发展
+                </router-link>
+              </li>
+              <li>
+                <router-link to="/categories?category=safety" class="text-gray-400 hover:text-orange-400 transition-colors duration-300 text-sm sm:text-base hover:translate-x-1 transform inline-block">
+                  安全防护
+                </router-link>
+              </li>
             </ul>
           </div>
           

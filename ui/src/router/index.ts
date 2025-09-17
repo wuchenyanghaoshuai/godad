@@ -17,10 +17,23 @@ import AboutView from '@/views/AboutView.vue'
 import AdminDashboard from '@/pages/AdminDashboard.vue'
 import AdminLoginPage from '@/pages/AdminLoginPage.vue'
 import NotificationsPage from '@/pages/NotificationsPage.vue'
+import AboutPage from '@/pages/AboutPage.vue'
+import ContactPage from '@/pages/ContactPage.vue'
+import PrivacyPage from '@/pages/PrivacyPage.vue'
+import TermsPage from '@/pages/TermsPage.vue'
+import HelpPage from '@/pages/HelpPage.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(to, from, savedPosition) {
+    // 如果有保存的位置（比如浏览器前进后退），使用保存的位置
+    if (savedPosition) {
+      return savedPosition
+    }
+    // 否则滚动到页面顶部
+    return { top: 0 }
+  },
   routes: [
     {
       path: '/',
@@ -72,10 +85,27 @@ const router = createRouter({
     {
       path: '/about',
       name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
+      component: AboutPage,
+    },
+    {
+      path: '/contact',
+      name: 'contact',
+      component: ContactPage,
+    },
+    {
+      path: '/privacy',
+      name: 'privacy',
+      component: PrivacyPage,
+    },
+    {
+      path: '/terms',
+      name: 'terms',
+      component: TermsPage,
+    },
+    {
+      path: '/help',
+      name: 'help',
+      component: HelpPage,
     },
     {
       path: '/admin/login',
