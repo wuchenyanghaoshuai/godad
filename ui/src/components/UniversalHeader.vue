@@ -56,9 +56,9 @@ onUnmounted(() => {
 <template>
   <!-- 导航栏 -->
   <nav class="bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b border-gray-100">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-16">
-        <!-- Logo -->
+    <div class="w-full px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center h-16">
+        <!-- Logo - 完全靠左 -->
         <div class="flex items-center">
           <router-link to="/" class="flex items-center space-x-2 group">
             <div class="w-8 h-8 bg-gradient-to-r from-pink-500 to-orange-500 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -68,60 +68,39 @@ onUnmounted(() => {
           </router-link>
         </div>
 
-        <!-- 导航链接 -->
-        <div class="hidden md:flex items-center space-x-8">
-          <router-link 
-            to="/" 
-            class="text-gray-700 hover:text-pink-600 transition-all duration-200 font-medium relative group"
-          >
-            首页
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-200 group-hover:w-full"></span>
-          </router-link>
-          <router-link 
-            to="/articles" 
-            class="text-gray-700 hover:text-pink-600 transition-all duration-200 font-medium relative group"
-          >
-            文章
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-200 group-hover:w-full"></span>
-          </router-link>
-          <router-link 
-            to="/hot" 
-            class="text-gray-700 hover:text-pink-600 transition-all duration-200 font-medium relative group"
-          >
-            热门
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-200 group-hover:w-full"></span>
-          </router-link>
-          <router-link 
-            to="/search" 
-            class="text-gray-700 hover:text-pink-600 transition-all duration-200 font-medium relative group"
-          >
-            搜索
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-200 group-hover:w-full"></span>
-          </router-link>
-          <router-link 
-            to="/about" 
-            class="text-gray-700 hover:text-pink-600 transition-all duration-200 font-medium relative group"
-          >
-            关于
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-200 group-hover:w-full"></span>
-          </router-link>
-        </div>
-
-        <!-- 用户操作区 -->
-        <div class="flex items-center space-x-4">
+        <!-- 右侧区域 - 完全靠右 -->
+        <div class="flex items-center space-x-4 ml-auto">
+          <!-- 导航链接 -->
+          <div class="hidden md:flex items-center space-x-8">
+            <router-link
+              to="/articles"
+              class="text-gray-700 hover:text-pink-600 transition-all duration-200 font-medium relative group"
+            >
+              文章
+              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-200 group-hover:w-full"></span>
+            </router-link>
+            <router-link
+              to="/community"
+              class="text-gray-700 hover:text-pink-600 transition-all duration-200 font-medium relative group"
+            >
+              社区
+              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-200 group-hover:w-full"></span>
+            </router-link>
+            <router-link
+              to="/resources"
+              class="text-gray-700 hover:text-pink-600 transition-all duration-200 font-medium relative group"
+            >
+              资源
+              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-200 group-hover:w-full"></span>
+            </router-link>
+          </div>
           <!-- 未登录状态 -->
           <div v-if="!authStore.isAuthenticated" class="hidden md:flex items-center space-x-3">
             <router-link
               to="/login"
-              class="text-gray-700 hover:text-pink-600 transition-all duration-200 font-medium"
-            >
-              登录
-            </router-link>
-            <router-link
-              to="/register"
               class="bg-gradient-to-r from-pink-600 to-orange-600 text-white px-6 py-2 rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
             >
-              注册
+              登录
             </router-link>
           </div>
 
@@ -179,6 +158,36 @@ onUnmounted(() => {
             <MenuIcon v-if="!showMobileMenu" class="h-6 w-6" />
             <XIcon v-else class="h-6 w-6" />
           </button>
+        </div>
+      </div>
+
+      <!-- 移动端导航菜单 -->
+      <div
+        v-if="showMobileMenu"
+        class="md:hidden border-t border-gray-100 py-2"
+      >
+        <div class="flex flex-col space-y-1">
+          <router-link
+            to="/articles"
+            class="px-4 py-2 text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors text-sm font-medium rounded-lg"
+            @click="showMobileMenu = false"
+          >
+            文章
+          </router-link>
+          <router-link
+            to="/community"
+            class="px-4 py-2 text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors text-sm font-medium rounded-lg"
+            @click="showMobileMenu = false"
+          >
+            社区
+          </router-link>
+          <router-link
+            to="/resources"
+            class="px-4 py-2 text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors text-sm font-medium rounded-lg"
+            @click="showMobileMenu = false"
+          >
+            资源
+          </router-link>
         </div>
       </div>
     </div>

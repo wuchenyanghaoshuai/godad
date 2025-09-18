@@ -17,15 +17,6 @@
           <!-- 桌面端导航链接 -->
           <div class="hidden md:flex items-center space-x-6 lg:space-x-8">
             <router-link 
-              to="/" 
-              class="text-gray-700 hover:text-pink-600 transition-all duration-300 text-sm font-medium relative group"
-              :class="{ 'text-pink-600': $route.path === '/' }"
-            >
-              首页
-              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-300 group-hover:w-full" 
-                    :class="{ 'w-full': $route.path === '/' }"></span>
-            </router-link>
-            <router-link 
               to="/articles" 
               class="text-gray-700 hover:text-pink-600 transition-all duration-300 text-sm font-medium relative group"
               :class="{ 'text-pink-600': $route.path.startsWith('/articles') }"
@@ -34,23 +25,14 @@
               <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-300 group-hover:w-full"
                     :class="{ 'w-full': $route.path.startsWith('/articles') }"></span>
             </router-link>
-            <router-link 
-              to="/categories" 
+            <router-link
+              to="/community"
               class="text-gray-700 hover:text-pink-600 transition-all duration-300 text-sm font-medium relative group"
-              :class="{ 'text-pink-600': $route.path === '/categories' }"
+              :class="{ 'text-pink-600': $route.path === '/community' }"
             >
-              分类
-              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-300 group-hover:w-full"
-                    :class="{ 'w-full': $route.path === '/categories' }"></span>
-            </router-link>
-            <router-link 
-              to="/about" 
-              class="text-gray-700 hover:text-pink-600 transition-all duration-300 text-sm font-medium relative group"
-              :class="{ 'text-pink-600': $route.path === '/about' }"
-            >
-              关于
-              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-300 group-hover:w-full"
-                    :class="{ 'w-full': $route.path === '/about' }"></span>
+              社区
+              <span class="absolute -bottom-1 left-0 w-0.5 bg-pink-600 transition-all duration-300 group-hover:w-full"
+                    :class="{ 'w-full': $route.path === '/community' }"></span>
             </router-link>
           </div>
         </div>
@@ -232,14 +214,6 @@
       >
         <div class="flex flex-col space-y-1">
           <router-link
-            to="/"
-            class="px-4 py-2 text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors text-sm font-medium rounded-lg"
-            :class="{ 'text-pink-600 bg-pink-50': $route.path === '/' }"
-            @click="showMobileMenu = false"
-          >
-            首页
-          </router-link>
-          <router-link
             to="/articles"
             class="px-4 py-2 text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors text-sm font-medium rounded-lg"
             :class="{ 'text-pink-600 bg-pink-50': $route.path.startsWith('/articles') }"
@@ -248,20 +222,12 @@
             文章
           </router-link>
           <router-link
-            to="/categories"
+            to="/community"
             class="px-4 py-2 text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors text-sm font-medium rounded-lg"
-            :class="{ 'text-pink-600 bg-pink-50': $route.path === '/categories' }"
+            :class="{ 'text-pink-600 bg-pink-50': $route.path === '/community' }"
             @click="showMobileMenu = false"
           >
-            分类
-          </router-link>
-          <router-link
-            to="/about"
-            class="px-4 py-2 text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors text-sm font-medium rounded-lg"
-            :class="{ 'text-pink-600 bg-pink-50': $route.path === '/about' }"
-            @click="showMobileMenu = false"
-          >
-            关于
+            社区
           </router-link>
         </div>
       </div>

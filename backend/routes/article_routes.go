@@ -81,6 +81,6 @@ func SetupArticleRoutes(router *gin.Engine) {
 		// 更新分类排序
 		categoryAdmin.PUT("/:id/sort", categoryController.UpdateCategorySort)
 		// 切换分类状态
-		categoryAdmin.PUT("/:id/toggle", categoryController.ToggleCategoryStatus)
+		categoryAdmin.PUT("/:id/status", categoryController.ToggleCategoryStatus)
 	}
 }

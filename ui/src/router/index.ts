@@ -22,6 +22,8 @@ import ContactPage from '@/pages/ContactPage.vue'
 import PrivacyPage from '@/pages/PrivacyPage.vue'
 import TermsPage from '@/pages/TermsPage.vue'
 import HelpPage from '@/pages/HelpPage.vue'
+import CommunityPage from '@/pages/CommunityPage.vue'
+import ResourcesPage from '@/pages/ResourcesPage.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -156,6 +158,16 @@ const router = createRouter({
       path: '/categories',
       name: 'Categories',
       component: ArticleListPage // 使用文章列表页面，通过查询参数区分
+    },
+    {
+      path: '/community',
+      name: 'Community',
+      component: CommunityPage
+    },
+    {
+      path: '/resources',
+      name: 'Resources',
+      component: ResourcesPage
     },
     {
       path: '/404',
