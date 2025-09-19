@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- 导航栏 -->
-    <Navbar />
+    <BaseHeader :showCreateButton="true" />
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- 页面标题 -->
       <div class="mb-8">
@@ -246,7 +246,7 @@ import { CategoryApi } from '@/api/category'
 import { UploadApi, UploadUtils } from '@/api/upload'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import ImageUpload from '@/components/ImageUpload.vue'
-import Navbar from '@/components/Navbar.vue'
+import BaseHeader from '@/components/BaseHeader.vue'
 import { useToast } from '@/composables/useToast'
 import type { Category, ArticleCreateRequest, ImageUploadResponse } from '@/api/types'
 

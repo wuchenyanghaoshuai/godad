@@ -1,100 +1,75 @@
 <template>
   <nav class="bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b border-gray-100">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center h-14 sm:h-16">
-        <!-- Logo 和导航链接 -->
-        <div class="flex items-center space-x-4 sm:space-x-8">
-          <!-- Logo -->
+    <div class="w-full px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center h-16">
+        <!-- Logo - 完全靠左 -->
+        <div class="flex items-center">
           <router-link to="/" class="flex items-center space-x-2 group">
-            <div class="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-400 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-              <span class="text-white font-bold text-sm">G</span>
+            <div class="w-8 h-8 bg-gradient-to-r from-pink-500 to-orange-500 rounded-lg flex items-center justify-center group-hover:scale-105 transition-transform">
+              <span class="text-white font-bold text-lg">G</span>
             </div>
-            <span class="hidden sm:block text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-500 bg-clip-text text-transparent">
-              GoDad
-            </span>
+            <span class="text-xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent">GoDad</span>
           </router-link>
-
-          <!-- 桌面端导航链接 -->
-          <div class="hidden md:flex items-center space-x-6 lg:space-x-8">
-            <router-link 
-              to="/articles" 
-              class="text-gray-700 hover:text-pink-600 transition-all duration-300 text-sm font-medium relative group"
-              :class="{ 'text-pink-600': $route.path.startsWith('/articles') }"
-            >
-              文章
-              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-300 group-hover:w-full"
-                    :class="{ 'w-full': $route.path.startsWith('/articles') }"></span>
-            </router-link>
-            <router-link
-              to="/community"
-              class="text-gray-700 hover:text-pink-600 transition-all duration-300 text-sm font-medium relative group"
-              :class="{ 'text-pink-600': $route.path === '/community' }"
-            >
-              社区
-              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-300 group-hover:w-full"
-                    :class="{ 'w-full': $route.path === '/community' }"></span>
-            </router-link>
-            <router-link
-              to="/resources"
-              class="text-gray-700 hover:text-pink-600 transition-all duration-300 text-sm font-medium relative group"
-              :class="{ 'text-pink-600': $route.path === '/resources' }"
-            >
-              资源
-              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-300 group-hover:w-full"
-                    :class="{ 'w-full': $route.path === '/resources' }"></span>
-            </router-link>
-          </div>
         </div>
 
-        <!-- 中间区域：搜索框 -->
-        <div class="hidden lg:flex flex-1 max-w-lg mx-8">
-          <div class="relative w-full">
-            <SearchIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              v-model="searchQuery"
-              @keyup.enter="performSearch"
-              @focus="showSearchSuggestions = true"
-              @blur="hideSearchSuggestions"
-              type="text"
-              placeholder="搜索文章、用户..."
-              class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all duration-200"
-            />
-            
-            <!-- 搜索建议下拉框 -->
-            <div 
-              v-if="showSearchSuggestions && searchSuggestions.length > 0"
-              class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
-            >
+        <!-- 右侧区域 - 完全靠右 -->
+        <div class="flex items-center space-x-4 ml-auto">
+          <!-- 中间搜索框（如果需要） -->
+          <div v-if="showSearch" class="hidden lg:flex flex-1 max-w-lg mx-8">
+            <div class="relative w-full">
+              <SearchIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                v-model="searchQuery"
+                @keyup.enter="performSearch"
+                @focus="showSearchSuggestions = true"
+                @blur="hideSearchSuggestions"
+                type="text"
+                placeholder="搜索文章、用户..."
+                class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all duration-200"
+              />
+
+              <!-- 搜索建议下拉框 -->
               <div
-                v-for="suggestion in searchSuggestions"
-                :key="suggestion"
-                @mousedown="searchWithSuggestion(suggestion)"
-                class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                v-if="showSearchSuggestions && searchSuggestions.length > 0"
+                class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
               >
-                <SearchIcon class="inline h-3 w-3 mr-2 text-gray-400" />
-                {{ suggestion }}
+                <div
+                  v-for="suggestion in searchSuggestions"
+                  :key="suggestion"
+                  @mousedown="searchWithSuggestion(suggestion)"
+                  class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                >
+                  <SearchIcon class="inline h-3 w-3 mr-2 text-gray-400" />
+                  {{ suggestion }}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- 移动端菜单按钮和用户区域 -->
-        <div class="flex items-center space-x-2 sm:space-x-4">
-          <!-- 搜索按钮（移动端和中等屏幕） -->
+          <!-- 导航链接 -->
+          <div class="hidden md:flex items-center space-x-8">
+            <router-link
+              v-for="navItem in navItems"
+              :key="navItem.path"
+              :to="navItem.path"
+              class="text-gray-700 hover:text-pink-600 transition-all duration-200 font-medium relative group"
+              :class="{ 'text-pink-600': isActiveRoute(navItem.path) }"
+            >
+              {{ navItem.label }}
+              <span
+                class="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 transition-all duration-200 group-hover:w-full"
+                :class="{ 'w-full': isActiveRoute(navItem.path) }"
+              ></span>
+            </router-link>
+          </div>
+
+          <!-- 搜索按钮（移动端） -->
           <button
+            v-if="showSearch"
             class="lg:hidden p-2 rounded-lg text-gray-600 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
             @click="$router.push('/search')"
           >
             <SearchIcon class="h-5 w-5" />
-          </button>
-          
-          <!-- 移动端菜单按钮 -->
-          <button
-            class="md:hidden p-2 rounded-lg text-gray-600 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
-            @click="showMobileMenu = !showMobileMenu"
-          >
-            <MenuIcon v-if="!showMobileMenu" class="h-5 w-5" />
-            <XIcon v-else class="h-5 w-5" />
           </button>
 
           <!-- 用户区域 -->
@@ -103,6 +78,7 @@
             <div v-if="authStore.isAuthenticated" class="flex items-center space-x-2 sm:space-x-3">
               <!-- 发布文章按钮 -->
               <router-link
+                v-if="showCreateButton"
                 to="/articles/create"
                 class="hidden sm:flex items-center px-3 py-1.5 bg-gradient-to-r from-pink-500 to-rose-400 text-white rounded-lg hover:from-pink-600 hover:to-rose-500 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
               >
@@ -110,8 +86,9 @@
                 发布文章
               </router-link>
 
-              <!-- 消息通知按钮（统一入口） -->
+              <!-- 消息通知按钮 -->
               <router-link
+                v-if="showNotifications"
                 to="/notifications"
                 @click="clearUnreadNotifications"
                 class="relative p-2 rounded-lg text-gray-600 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
@@ -158,7 +135,7 @@
                     <div class="text-sm font-medium text-gray-900 truncate">{{ authStore.user?.nickname || authStore.user?.username }}</div>
                     <div class="text-xs text-gray-500 truncate" :title="authStore.user?.email">{{ authStore.user?.email }}</div>
                     <!-- 用户积分显示 -->
-                    <div class="mt-2">
+                    <div v-if="showUserPoints" class="mt-2">
                       <UserPointsDisplay mode="simple" size="sm" />
                     </div>
                   </div>
@@ -201,18 +178,21 @@
             <div v-else class="flex items-center space-x-2">
               <router-link
                 to="/login"
-                class="px-3 py-1.5 text-gray-700 hover:text-pink-600 transition-colors text-sm font-medium"
+                class="bg-gradient-to-r from-pink-600 to-orange-600 text-white px-6 py-2 rounded-full hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
               >
                 登录
               </router-link>
-              <router-link
-                to="/register"
-                class="px-3 py-1.5 bg-gradient-to-r from-pink-500 to-rose-400 text-white rounded-lg hover:from-pink-600 hover:to-rose-500 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
-              >
-                注册
-              </router-link>
             </div>
           </div>
+
+          <!-- 移动端菜单按钮 -->
+          <button
+            class="md:hidden p-2 rounded-lg text-gray-600 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
+            @click="showMobileMenu = !showMobileMenu"
+          >
+            <MenuIcon v-if="!showMobileMenu" class="h-5 w-5" />
+            <XIcon v-else class="h-5 w-5" />
+          </button>
         </div>
       </div>
 
@@ -223,28 +203,14 @@
       >
         <div class="flex flex-col space-y-1">
           <router-link
-            to="/articles"
+            v-for="navItem in navItems"
+            :key="navItem.path"
+            :to="navItem.path"
             class="px-4 py-2 text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors text-sm font-medium rounded-lg"
-            :class="{ 'text-pink-600 bg-pink-50': $route.path.startsWith('/articles') }"
+            :class="{ 'text-pink-600 bg-pink-50': isActiveRoute(navItem.path) }"
             @click="showMobileMenu = false"
           >
-            文章
-          </router-link>
-          <router-link
-            to="/community"
-            class="px-4 py-2 text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors text-sm font-medium rounded-lg"
-            :class="{ 'text-pink-600 bg-pink-50': $route.path === '/community' }"
-            @click="showMobileMenu = false"
-          >
-            社区
-          </router-link>
-          <router-link
-            to="/resources"
-            class="px-4 py-2 text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-colors text-sm font-medium rounded-lg"
-            :class="{ 'text-pink-600 bg-pink-50': $route.path === '/resources' }"
-            @click="showMobileMenu = false"
-          >
-            资源
+            {{ navItem.label }}
           </router-link>
         </div>
       </div>
@@ -263,13 +229,36 @@ import {
   ChevronDownIcon,
   PlusIcon,
   SearchIcon,
-  CogIcon,
   BellIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { NotificationApi } from '@/api/notification'
 import { useNotificationSync } from '@/composables/useNotificationSync'
 import UserPointsDisplay from './UserPointsDisplay.vue'
+
+// Props - 允许每个页面自定义配置
+interface NavItem {
+  path: string
+  label: string
+}
+
+const props = withDefaults(defineProps<{
+  navItems?: NavItem[]
+  showSearch?: boolean
+  showCreateButton?: boolean
+  showNotifications?: boolean
+  showUserPoints?: boolean
+}>(), {
+  navItems: () => [
+    { path: '/articles', label: '文章' },
+    { path: '/community', label: '社区' },
+    { path: '/resources', label: '资源' }
+  ],
+  showSearch: false,
+  showCreateButton: false,
+  showNotifications: false,
+  showUserPoints: false
+})
 
 const router = useRouter()
 const route = useRoute()
@@ -283,48 +272,6 @@ const userMenuButton = ref<HTMLElement>()
 const unreadMessagesCount = ref(0)
 const unreadNotificationsCount = ref(0)
 
-// 获取所有未读计数（统一管理）
-const fetchUnreadCounts = async () => {
-  if (!authStore.isAuthenticated) {
-    unreadMessagesCount.value = 0
-    unreadNotificationsCount.value = 0
-    return
-  }
-
-  try {
-    const response = await NotificationApi.getNotificationStats()
-    // 统一使用 unread_count
-    const totalCount = response.data.unread_count || 0
-    unreadMessagesCount.value = totalCount
-    unreadNotificationsCount.value = totalCount
-  } catch (error) {
-    console.error('获取未读计数失败:', error)
-    unreadMessagesCount.value = 0
-    unreadNotificationsCount.value = 0
-  }
-}
-
-// 为了向后兼容，保留原方法名
-const fetchUnreadMessagesCount = fetchUnreadCounts
-
-// 统一清除未读计数
-const clearUnreadNotifications = async () => {
-  if (!authStore.isAuthenticated || totalUnreadCount.value === 0) {
-    return
-  }
-
-  try {
-    await NotificationApi.markAllAsRead()
-    unreadMessagesCount.value = 0
-    unreadNotificationsCount.value = 0
-  } catch (error) {
-    console.error('标记通知已读失败:', error)
-  }
-}
-
-// 为了向后兼容，保留原方法
-const clearUnreadMessages = clearUnreadNotifications
-
 // 搜索相关
 const searchQuery = ref('')
 const showSearchSuggestions = ref(false)
@@ -332,7 +279,14 @@ const searchSuggestions = ref([
   '育儿知识', '健康饮食', '早教方法', '亲子关系', '学习指导'
 ])
 
-// 搜索相关方法
+// 方法
+const isActiveRoute = (path: string): boolean => {
+  if (path === '/articles') {
+    return route.path.startsWith('/articles')
+  }
+  return route.path === path
+}
+
 const performSearch = () => {
   if (searchQuery.value.trim()) {
     router.push({
@@ -355,7 +309,6 @@ const hideSearchSuggestions = () => {
   }, 200)
 }
 
-// 退出登录
 const handleLogout = async () => {
   try {
     await authStore.logout()
@@ -363,6 +316,40 @@ const handleLogout = async () => {
     router.push('/login')
   } catch (error) {
     console.error('退出登录失败:', error)
+  }
+}
+
+// 获取未读计数
+const fetchUnreadCounts = async () => {
+  if (!authStore.isAuthenticated) {
+    unreadMessagesCount.value = 0
+    unreadNotificationsCount.value = 0
+    return
+  }
+
+  try {
+    const response = await NotificationApi.getNotificationStats()
+    const totalCount = response.data.unread_count || 0
+    unreadMessagesCount.value = totalCount
+    unreadNotificationsCount.value = totalCount
+  } catch (error) {
+    console.error('获取未读计数失败:', error)
+    unreadMessagesCount.value = 0
+    unreadNotificationsCount.value = 0
+  }
+}
+
+const clearUnreadNotifications = async () => {
+  if (!authStore.isAuthenticated || totalUnreadCount.value === 0) {
+    return
+  }
+
+  try {
+    await NotificationApi.markAllAsRead()
+    unreadMessagesCount.value = 0
+    unreadNotificationsCount.value = 0
+  } catch (error) {
+    console.error('标记通知已读失败:', error)
   }
 }
 
@@ -381,17 +368,17 @@ const totalUnreadCount = computed(() => {
   return Math.max(unreadMessagesCount.value, unreadNotificationsCount.value)
 })
 
-// 监听路由变化，当进入通知页面时清除计数
+// 监听路由变化
 watch(() => route.path, async (newPath) => {
   if (newPath === '/notifications') {
     await clearUnreadNotifications()
   }
 })
 
-// 监听认证状态变化，重新获取未读计数
+// 监听认证状态变化
 watch(() => authStore.isAuthenticated, async (isAuthenticated) => {
   if (isAuthenticated) {
-    await fetchUnreadMessagesCount()
+    await fetchUnreadCounts()
   } else {
     unreadMessagesCount.value = 0
     unreadNotificationsCount.value = 0
@@ -401,11 +388,10 @@ watch(() => authStore.isAuthenticated, async (isAuthenticated) => {
 // 组件挂载时
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  fetchUnreadMessagesCount()
+  fetchUnreadCounts()
 
-  // 监听通知刷新事件
   onNotificationEvent('refresh', () => {
-    fetchUnreadMessagesCount()
+    fetchUnreadCounts()
   })
 })
 

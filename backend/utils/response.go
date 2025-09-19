@@ -153,6 +153,20 @@ type PaginationResponse struct {
 	TotalPages int         `json:"total_pages"`
 }
 
+// PagedResponse 新的分页响应结构体
+type PagedResponse struct {
+	Items interface{} `json:"items"`
+	Total int64       `json:"total"`
+	Page  int         `json:"page"`
+	Size  int         `json:"size"`
+	Pages int64       `json:"pages"`
+}
+
+// 新增常量
+const (
+	CodeInternalServerError = CodeInternalError
+)
+
 // getHTTPStatus 根据业务状态码获取HTTP状态码
 func getHTTPStatus(code int) int {
 	switch {

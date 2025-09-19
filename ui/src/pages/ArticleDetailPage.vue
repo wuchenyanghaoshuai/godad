@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- 导航栏 -->
-    <Navbar />
+    <BaseHeader />
     <!-- 加载状态 -->
     <div v-if="isLoading" class="flex justify-center items-center min-h-screen">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
@@ -485,7 +485,7 @@ import { FollowApi } from '@/api/follow'
 import { FavoriteApi } from '@/api/favorite'
 import type { Article, Category } from '@/api/types'
 import CommentSection from '@/components/CommentSection.vue'
-import Navbar from '@/components/Navbar.vue'
+import BaseHeader from '@/components/BaseHeader.vue'
 import { useToast } from '@/composables/useToast'
 
 const route = useRoute()

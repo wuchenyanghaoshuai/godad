@@ -31,7 +31,6 @@ type Notification struct {
 	// 关联关系
 	Receiver User     `gorm:"foreignKey:ReceiverID" json:"receiver,omitempty"`
 	Actor    User     `gorm:"foreignKey:ActorID" json:"actor,omitempty"`
-	Article  *Article `gorm:"foreignKey:ResourceID" json:"article,omitempty"`
 }
 
 func (Notification) TableName() string {

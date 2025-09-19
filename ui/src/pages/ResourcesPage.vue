@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <UniversalHeader />
+    <BaseHeader />
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Page Header -->
@@ -65,7 +65,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { BookOpenIcon } from 'lucide-vue-next'
-import UniversalHeader from '@/components/UniversalHeader.vue'
+import BaseHeader from '@/components/BaseHeader.vue'
 import ResourceCard from '@/components/ResourceCard.vue'
 
 // 响应式数据

@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <UniversalHeader />
+    <BaseHeader />
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div class="flex gap-6">
@@ -14,6 +14,7 @@
               </div>
               <input
                 v-model="searchQuery"
+                @keyup.enter="handleSearch"
                 type="text"
                 placeholder="搜索帖子..."
                 class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-gray-50 focus:bg-white transition-colors"
@@ -57,16 +58,24 @@
 
           <!-- Forum Posts List -->
           <div class="divide-y divide-gray-200">
-            <div v-if="filteredPosts.length === 0" class="flex flex-col items-center justify-center py-16">
+            <!-- 加载状态 -->
+            <div v-if="isLoading && forumPosts.length === 0" class="flex flex-col items-center justify-center py-16">
+              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mb-4"></div>
+              <p class="text-gray-500">加载中...</p>
+            </div>
+
+            <!-- 无帖子状态 -->
+            <div v-else-if="!isLoading && filteredPosts.length === 0" class="flex flex-col items-center justify-center py-16">
               <div class="text-gray-400 mb-4">
                 <UsersIcon class="h-16 w-16 mx-auto" />
               </div>
               <h3 class="text-lg font-medium text-gray-900 mb-2">暂无相关帖子</h3>
               <p class="text-gray-500 text-center">
-                尝试搜索其他关键词或选择不同的话题分类
+                {{ forumPosts.length === 0 ? '还没有人发帖，来发第一个帖子吧！' : '尝试搜索其他关键词或选择不同的话题分类' }}
               </p>
             </div>
 
+            <!-- 帖子列表 -->
             <ForumPost
               v-for="post in filteredPosts"
               :key="post.id"
@@ -76,12 +85,14 @@
           </div>
 
           <!-- Load More -->
-          <div v-if="filteredPosts.length > 0" class="p-6 border-t border-gray-200">
+          <div v-if="filteredPosts.length > 0 && currentPage < totalPages" class="p-6 border-t border-gray-200">
             <div class="flex justify-center">
               <button
-                class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                @click="loadMore"
+                :disabled="isLoading"
+                class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                加载更多
+                {{ isLoading ? '加载中...' : '加载更多' }}
               </button>
             </div>
           </div>
@@ -92,22 +103,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { SearchIcon, UsersIcon } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
-import UniversalHeader from '@/components/UniversalHeader.vue'
+import { ForumApi } from '@/api/forum'
+import { useToast } from '@/composables/useToast'
+import BaseHeader from '@/components/BaseHeader.vue'
 import ForumPost from '@/components/ForumPost.vue'
+import type { ForumPost as ForumPostType, TopicConfig } from '@/api/types'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { showToast } = useToast()
 
 // 响应式数据
 const selectedTopic = ref('All')
 const searchQuery = ref('')
+const isLoading = ref(false)
+const forumPosts = ref<ForumPostType[]>([])
+const currentPage = ref(1)
+const totalPages = ref(1)
+const totalPosts = ref(0)
 
 // 话题分类
-const topics = [
+const topics = ref<TopicConfig[]>([
   { key: 'All', label: '全部' },
   { key: 'Baby Care', label: '婴儿护理' },
   { key: 'Feeding', label: '喂养' },
@@ -124,135 +144,14 @@ const topics = [
   { key: 'Finances', label: '财务' },
   { key: 'Legal', label: '法律' },
   { key: 'Other', label: '其他' }
-]
-
-// 论坛帖子数据
-const forumPosts = [
-  {
-    id: 1,
-    title: '4个月宝宝睡眠倒退怎么办？',
-    author: {
-      name: '新手妈妈123',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b5bc?auto=format&fit=crop&q=80&w=200'
-    },
-    replies: 12,
-    views: 234,
-    timeAgo: '2天前',
-    topic: 'Sleep'
-  },
-  {
-    id: 2,
-    title: '大房子用什么婴儿监视器比较好？',
-    author: {
-      name: '爸爸小王',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'
-    },
-    replies: 8,
-    views: 187,
-    timeAgo: '3天前',
-    topic: 'Gear'
-  },
-  {
-    id: 3,
-    title: '6个月宝宝添加辅食的技巧分享',
-    author: {
-      name: '营养师小李',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200'
-    },
-    replies: 15,
-    views: 312,
-    timeAgo: '4天前',
-    topic: 'Feeding'
-  },
-  {
-    id: 4,
-    title: '产后焦虑症如何应对？',
-    author: {
-      name: '心理咨询师',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200'
-    },
-    replies: 10,
-    views: 205,
-    timeAgo: '5天前',
-    topic: 'Mental Health'
-  },
-  {
-    id: 5,
-    title: '城市生活用什么婴儿车最好？',
-    author: {
-      name: '城市妈妈',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200'
-    },
-    replies: 7,
-    views: 156,
-    timeAgo: '6天前',
-    topic: 'Gear'
-  },
-  {
-    id: 6,
-    title: '3个月宝宝的刺激活动推荐',
-    author: {
-      name: '早教老师',
-      avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?auto=format&fit=crop&q=80&w=200'
-    },
-    replies: 11,
-    views: 220,
-    timeAgo: '7天前',
-    topic: 'Activities'
-  },
-  {
-    id: 7,
-    title: '新生儿来了如何处理兄弟姐妹争宠？',
-    author: {
-      name: '二胎妈妈',
-      avatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&q=80&w=200'
-    },
-    replies: 9,
-    views: 198,
-    timeAgo: '8天前',
-    topic: 'Family Life'
-  },
-  {
-    id: 8,
-    title: '徒步旅行用什么婴儿背带？',
-    author: {
-      name: '户外爸爸',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200'
-    },
-    replies: 13,
-    views: 250,
-    timeAgo: '9天前',
-    topic: 'Gear'
-  },
-  {
-    id: 9,
-    title: '带宝宝旅行的实用技巧',
-    author: {
-      name: '旅行达人',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200'
-    },
-    replies: 6,
-    views: 145,
-    timeAgo: '10天前',
-    topic: 'Family Life'
-  },
-  {
-    id: 10,
-    title: '母乳宝宝如何接受奶瓶？',
-    author: {
-      name: '哺乳顾问',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=200'
-    },
-    replies: 14,
-    views: 280,
-    timeAgo: '11天前',
-    topic: 'Feeding'
-  }
-]
+])
 
 // 计算属性：过滤后的帖子
 const filteredPosts = computed(() => {
-  return forumPosts.filter(post => {
+  if (!forumPosts.value || !Array.isArray(forumPosts.value)) {
+    return []
+  }
+  return forumPosts.value.filter(post => {
     const matchesTopic = selectedTopic.value === 'All' || post.topic === selectedTopic.value
     const matchesSearch = post.title.toLowerCase().includes(searchQuery.value.toLowerCase())
     return matchesTopic && matchesSearch
@@ -260,21 +159,74 @@ const filteredPosts = computed(() => {
 })
 
 // 方法
-const setSelectedTopic = (topic: string) => {
-  selectedTopic.value = topic
-}
-
 const handleNewPost = () => {
   if (authStore.isAuthenticated) {
-    console.log('创建新帖子')
-    // 这里可以跳转到创建帖子页面
+    router.push('/community/posts/create')
   } else {
     router.push('/login')
   }
 }
 
-const handlePostClick = (post: any) => {
+const handlePostClick = (post: ForumPostType) => {
   console.log('查看帖子:', post.title)
-  // 这里可以跳转到帖子详情页面
+  router.push(`/community/posts/${post.id}`)
 }
+
+// 加载帖子列表
+const loadPosts = async (page: number = 1) => {
+  if (isLoading.value) return
+
+  isLoading.value = true
+  try {
+    const params = {
+      page,
+      size: 10,
+      topic: selectedTopic.value === 'All' ? undefined : selectedTopic.value,
+      keyword: searchQuery.value.trim() || undefined,
+      sort: 'created_at desc'
+    }
+
+    const response = await ForumApi.getPostList(params)
+    const data = response.data
+
+    forumPosts.value = data.items || []
+    currentPage.value = data.page
+    totalPages.value = Math.ceil(data.total / data.size)
+    totalPosts.value = data.total
+  } catch (error: any) {
+    console.error('加载帖子列表失败:', error)
+    showToast('加载帖子列表失败', 'error')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 刷新帖子列表
+const refreshPosts = () => {
+  currentPage.value = 1
+  loadPosts(1)
+}
+
+// 加载更多帖子
+const loadMore = () => {
+  if (currentPage.value < totalPages.value) {
+    loadPosts(currentPage.value + 1)
+  }
+}
+
+// 监听话题和搜索变化
+const setSelectedTopic = (topic: string) => {
+  selectedTopic.value = topic
+  refreshPosts()
+}
+
+// 搜索处理
+const handleSearch = () => {
+  refreshPosts()
+}
+
+// 组件挂载时加载数据
+onMounted(() => {
+  loadPosts()
+})
 </script>

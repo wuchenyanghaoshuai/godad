@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <Navbar />
+    <BaseHeader :showSearch="true" />
     
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <!-- 搜索页面标题 -->
@@ -227,7 +227,7 @@ import {
 import { ArticleApi } from '@/api/article'
 import { CategoryApi } from '@/api/category'
 import type { Article, Category, PaginatedResponse } from '@/api/types'
-import Navbar from '@/components/Navbar.vue'
+import BaseHeader from '@/components/BaseHeader.vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -234,3 +234,120 @@ export interface ApiResponse<T = any> {
   message?: string
   code?: number
 }
+
+// ========== 论坛相关类型 ==========
+
+// 论坛帖子
+export interface ForumPost {
+  id: number
+  title: string
+  content: string
+  topic: string
+  author_id: number
+  view_count: number
+  reply_count: number
+  like_count: number
+  is_top: boolean
+  is_hot: boolean
+  status: number // 0-草稿 1-已发布 2-已删除
+  last_reply_at?: string
+  created_at: string
+  updated_at: string
+  author?: User
+  recent_reply?: ForumReply
+  time_ago?: string
+}
+
+// 论坛回复
+export interface ForumReply {
+  id: number
+  post_id: number
+  author_id: number
+  parent_id?: number
+  content: string
+  like_count: number
+  status: number // 0-草稿 1-已发布 2-已删除
+  created_at: string
+  updated_at: string
+  author?: User
+  parent?: ForumReply
+  children?: ForumReply[]
+  time_ago?: string
+}
+
+// 创建帖子请求
+export interface ForumPostCreateRequest {
+  title: string
+  content: string
+  topic: string
+}
+
+// 更新帖子请求
+export interface ForumPostUpdateRequest {
+  title?: string
+  content?: string
+  topic?: string
+  status?: number
+}
+
+// 帖子列表查询参数
+export interface ForumPostListParams {
+  page?: number
+  size?: number
+  topic?: string
+  author_id?: number
+  keyword?: string
+  sort?: string // 'created_at desc' | 'reply_count desc' | 'view_count desc' | 'last_reply_at desc'
+  is_top?: boolean
+  is_hot?: boolean
+}
+
+// 创建回复请求
+export interface ForumReplyCreateRequest {
+  post_id: number
+  parent_id?: number
+  content: string
+}
+
+// 回复列表查询参数
+export interface ForumReplyListParams {
+  page?: number
+  size?: number
+  post_id: number
+  parent_id?: number
+  sort?: string // 'created_at asc' | 'created_at desc' | 'like_count desc'
+}
+
+// 话题类型
+export type ForumTopic =
+  | 'Baby Care'
+  | 'Feeding'
+  | 'Sleep'
+  | 'Health'
+  | 'Development'
+  | 'Activities'
+  | 'Gear'
+  | 'Parenting'
+  | 'Family Life'
+  | 'Work & Life Balance'
+  | 'Relationships'
+  | 'Mental Health'
+  | 'Finances'
+  | 'Legal'
+  | 'Other'
+
+// 话题配置
+export interface TopicConfig {
+  key: ForumTopic
+  label: string
+  icon?: string
+  color?: string
+}
+
+// 论坛统计
+export interface ForumStats {
+  total_posts: number
+  total_replies: number
+  active_users: number
+  hot_topics: string[]
+}

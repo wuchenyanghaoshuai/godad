@@ -355,10 +355,10 @@
             </div>
           </div>
 
-          <!-- 分类管理 -->
+          <!-- 文章分类管理 -->
           <div v-if="activeTab === 'categories'">
             <div class="flex justify-between items-center mb-4">
-              <h2 class="text-lg font-semibold text-gray-900">分类管理</h2>
+              <h2 class="text-lg font-semibold text-gray-900">文章分类管理</h2>
               <button
                 @click="showCreateCategoryModal = true"
                 class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
@@ -485,7 +485,203 @@
               </div>
             </div>
           </div>
+
+          <!-- 话题管理 -->
+          <div v-if="activeTab === 'topics'">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-semibold text-gray-900">话题管理</h2>
+              <button
+                @click="showCreateTopicModal = true"
+                class="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700 text-sm"
+              >
+                新增话题
+              </button>
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">话题</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">显示名称</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">帖子数量</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">排序</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="topic in topics" :key="topic.id" class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <div class="flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center mr-3" :style="{ backgroundColor: topic.color }">
+                          <i :class="`fas fa-${topic.icon || 'tag'}`" class="text-white text-xs"></i>
+                        </div>
+                        <div>
+                          <div class="text-sm font-medium text-gray-900">{{ topic.name }}</div>
+                          <div class="text-sm text-gray-500" v-if="topic.description">{{ topic.description }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ topic.display_name }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ topic.post_count }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ topic.sort }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span :class="[
+                        'inline-flex px-2 py-1 text-xs font-semibold rounded-full',
+                        topic.is_active
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      ]">
+                        {{ topic.is_active ? '启用' : '禁用' }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        @click="editTopic(topic)"
+                        class="text-indigo-600 hover:text-indigo-900 mr-3"
+                      >
+                        编辑
+                      </button>
+                      <button
+                        @click="toggleTopicStatus(topic)"
+                        :class="topic.is_active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'"
+                      >
+                        {{ topic.is_active ? '禁用' : '启用' }}
+                      </button>
+                      <button
+                        @click="deleteTopic(topic.id)"
+                        class="text-red-600 hover:text-red-900 ml-3"
+                        :disabled="topic.post_count > 0"
+                        :class="{ 'opacity-50 cursor-not-allowed': topic.post_count > 0 }"
+                      >
+                        删除
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="flex justify-between items-center mt-4">
+              <span class="text-sm text-gray-700">
+                显示 {{ topicPagination.offset + 1 }} 到 {{ Math.min(topicPagination.offset + topicPagination.limit, topicPagination.total) }} 条，共 {{ topicPagination.total }} 条
+              </span>
+              <div class="flex space-x-2">
+                <button
+                  @click="loadTopics(topicPagination.page - 1)"
+                  :disabled="topicPagination.page <= 1"
+                  class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50"
+                >
+                  上一页
+                </button>
+                <button
+                  @click="loadTopics(topicPagination.page + 1)"
+                  :disabled="topicPagination.page >= Math.ceil(topicPagination.total / topicPagination.limit)"
+                  class="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 创建/编辑话题模态框 -->
+    <div v-if="showCreateTopicModal || showEditTopicModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          {{ showCreateTopicModal ? '新增话题' : '编辑话题' }}
+        </h3>
+        <form @submit.prevent="submitTopic">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">话题名称</label>
+            <input
+              v-model="topicForm.name"
+              type="text"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+              placeholder="例如: Baby Care"
+            >
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">显示名称</label>
+            <input
+              v-model="topicForm.display_name"
+              type="text"
+              required
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+              placeholder="例如: 婴儿护理"
+            >
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">描述</label>
+            <textarea
+              v-model="topicForm.description"
+              rows="3"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+              placeholder="话题描述..."
+            ></textarea>
+          </div>
+          <div class="mb-4 flex space-x-4">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-2">颜色</label>
+              <input
+                v-model="topicForm.color"
+                type="color"
+                class="w-full h-10 border border-gray-300 rounded-md"
+              >
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-2">图标</label>
+              <input
+                v-model="topicForm.icon"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+                placeholder="例如: baby, heart"
+              >
+            </div>
+          </div>
+          <div class="mb-4 flex space-x-4">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-2">排序</label>
+              <input
+                v-model.number="topicForm.sort"
+                type="number"
+                min="0"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-2">状态</label>
+              <select
+                v-model="topicForm.is_active"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+                <option :value="true">启用</option>
+                <option :value="false">禁用</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex justify-end space-x-2">
+            <button
+              type="button"
+              @click="closeTopicModal"
+              class="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-pink-600 text-white rounded-md hover:bg-pink-700"
+            >
+              {{ showCreateTopicModal ? '创建' : '保存' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -569,7 +765,7 @@ import {
 
 const router = useRouter()
 const authStore = useAuthStore()
-const { toast } = useToast()
+const { showToast } = useToast()
 
 // 响应式数据
 const activeTab = ref('articles')
@@ -583,7 +779,8 @@ const stats = reactive({
 const tabs = [
   { id: 'articles', name: '文章管理' },
   { id: 'users', name: '用户管理' },
-  { id: 'categories', name: '分类管理' }
+  { id: 'categories', name: '文章分类管理' },
+  { id: 'topics', name: '话题管理' }
 ]
 
 // 文章管理
@@ -611,7 +808,7 @@ const userPagination = reactive({
   offset: 0
 })
 
-// 分类管理
+// 文章分类管理
 const categories = ref([])
 const showCreateCategoryModal = ref(false)
 const showEditCategoryModal = ref(false)
@@ -624,6 +821,28 @@ const categoryForm = reactive({
   color: '#3B82F6'
 })
 const categoryPagination = reactive({
+  page: 1,
+  limit: 10,
+  total: 0,
+  offset: 0
+})
+
+// 话题管理
+const topics = ref([])
+const topicLoading = ref(false)
+const showCreateTopicModal = ref(false)
+const showEditTopicModal = ref(false)
+const topicForm = reactive({
+  id: null,
+  name: '',
+  display_name: '',
+  description: '',
+  color: '#EC4899',
+  icon: '',
+  sort: 0,
+  is_active: true
+})
+const topicPagination = reactive({
   page: 1,
   limit: 10,
   total: 0,
@@ -878,6 +1097,125 @@ const deleteCategory = async (categoryId) => {
   }
 }
 
+// 话题管理函数
+// 加载话题列表
+const loadTopics = async (page = topicPagination.page) => {
+  topicLoading.value = true
+  try {
+    const response = await http.get('/admin/topics', {
+      params: {
+        page: page,
+        size: topicPagination.limit,
+        all: true
+      }
+    })
+
+    if (response.data && response.data.items) {
+      topics.value = response.data.items
+      topicPagination.total = response.data.total || 0
+      topicPagination.page = page
+    } else {
+      topics.value = []
+      topicPagination.total = 0
+    }
+
+    topicPagination.offset = (topicPagination.page - 1) * topicPagination.limit
+  } catch (error) {
+    console.error('加载话题列表失败:', error)
+    topics.value = []
+    topicPagination.total = 0
+    showToast('加载话题列表失败', 'error')
+  } finally {
+    topicLoading.value = false
+  }
+}
+
+// 编辑话题
+const editTopic = (topic) => {
+  topicForm.id = topic.id
+  topicForm.name = topic.name
+  topicForm.display_name = topic.display_name
+  topicForm.description = topic.description || ''
+  topicForm.color = topic.color || '#EC4899'
+  topicForm.icon = topic.icon || ''
+  topicForm.sort = topic.sort || 0
+  topicForm.is_active = topic.is_active
+  showEditTopicModal.value = true
+}
+
+// 提交话题表单
+const submitTopic = async () => {
+  try {
+    if (showCreateTopicModal.value) {
+      await http.post('/admin/topics', topicForm)
+      showToast('话题创建成功', 'success')
+    } else {
+      await http.put(`/admin/topics/${topicForm.id}`, topicForm)
+      showToast('话题更新成功', 'success')
+    }
+    closeTopicModal()
+    loadTopics()
+  } catch (error) {
+    console.error('话题操作失败:', error)
+    showToast(showCreateTopicModal.value ? '创建失败，请重试' : '更新失败，请重试', 'error')
+  }
+}
+
+// 关闭话题模态框
+const closeTopicModal = () => {
+  showCreateTopicModal.value = false
+  showEditTopicModal.value = false
+  topicForm.id = null
+  topicForm.name = ''
+  topicForm.display_name = ''
+  topicForm.description = ''
+  topicForm.color = '#EC4899'
+  topicForm.icon = ''
+  topicForm.sort = 0
+  topicForm.is_active = true
+}
+
+// 切换话题状态
+const toggleTopicStatus = async (topic) => {
+  try {
+    await http.put(`/admin/topics/${topic.id}`, {
+      ...topic,
+      is_active: !topic.is_active
+    })
+    topic.is_active = !topic.is_active
+    showToast(`话题已${topic.is_active ? '启用' : '禁用'}`, 'success')
+  } catch (error) {
+    console.error('切换话题状态失败:', error)
+    showToast('操作失败，请重试', 'error')
+  }
+}
+
+// 删除话题
+const deleteTopic = async (topicId) => {
+  if (!confirm('确定要删除这个话题吗？')) return
+  try {
+    await http.delete(`/admin/topics/${topicId}`)
+
+    // 计算删除后的总数和当前页是否还有效
+    const newTotal = topicPagination.total - 1
+    const maxPage = Math.ceil(newTotal / topicPagination.limit)
+
+    // 如果当前页超出范围，自动跳转到最后一页
+    if (topicPagination.page > maxPage && maxPage > 0) {
+      topicPagination.page = maxPage
+    } else if (maxPage === 0) {
+      // 如果没有数据了，回到第一页
+      topicPagination.page = 1
+    }
+
+    loadTopics()
+    showToast('话题删除成功', 'success')
+  } catch (error) {
+    console.error('删除话题失败:', error)
+    showToast('删除失败，请重试', 'error')
+  }
+}
+
 // 分页控制
 const prevPage = (type) => {
   if (type === 'article' && articlePagination.page > 1) {
@@ -889,6 +1227,9 @@ const prevPage = (type) => {
   } else if (type === 'category' && categoryPagination.page > 1) {
     categoryPagination.page--
     loadCategories()
+  } else if (type === 'topic' && topicPagination.page > 1) {
+    topicPagination.page--
+    loadTopics()
   }
 }
 
@@ -910,6 +1251,12 @@ const nextPage = (type) => {
     if (categoryPagination.page < maxPage) {
       categoryPagination.page++
       loadCategories()
+    }
+  } else if (type === 'topic') {
+    const maxPage = Math.ceil(topicPagination.total / topicPagination.limit)
+    if (topicPagination.page < maxPage) {
+      topicPagination.page++
+      loadTopics()
     }
   }
 }
@@ -946,10 +1293,11 @@ onMounted(() => {
     router.push('/')
     return
   }
-  
+
   loadStats()
   loadArticles()
   loadUsers()
   loadCategories()
+  loadTopics()
 })
 </script>

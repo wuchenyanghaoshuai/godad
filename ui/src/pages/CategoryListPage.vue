@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- 通用头部导航 -->
-    <UniversalHeader />
+    <BaseHeader />
 
     <!-- 分类网格 -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -90,7 +90,7 @@
 import { ref, onMounted } from 'vue'
 import { CategoryApi } from '@/api/category'
 import type { Category } from '@/api/types'
-import UniversalHeader from '@/components/UniversalHeader.vue'
+import BaseHeader from '@/components/BaseHeader.vue'
 
 // 响应式数据
 const loading = ref(false)

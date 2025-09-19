@@ -27,6 +27,9 @@ func AutoMigrate(db *gorm.DB) error {
 		&ChatMessage{},
 		&ChatEmoji{},
 		&ChatDailyLimit{},
+		&ForumPost{},
+		&ForumReply{},
+		&Topic{},
 	)
 
 	if err != nil {
@@ -115,6 +118,30 @@ func createIndexes(db *gorm.DB) error {
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_notifications_receiver_read ON notifications(receiver_id, is_read)")
 
+	// 论坛帖子表索引
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_posts_author_id ON forum_posts(author_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_posts_topic ON forum_posts(topic)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_posts_status ON forum_posts(status)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_posts_is_top ON forum_posts(is_top)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_posts_is_hot ON forum_posts(is_hot)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_posts_created_at ON forum_posts(created_at)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_posts_last_reply_at ON forum_posts(last_reply_at)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_posts_view_count ON forum_posts(view_count)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_posts_reply_count ON forum_posts(reply_count)")
+
+	// 论坛回复表索引
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_replies_post_id ON forum_replies(post_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_replies_author_id ON forum_replies(author_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_replies_parent_id ON forum_replies(parent_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_replies_status ON forum_replies(status)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_forum_replies_created_at ON forum_replies(created_at)")
+
+	// 话题表索引
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_topics_is_active ON topics(is_active)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_topics_sort ON topics(sort)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_topics_created_at ON topics(created_at)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_topics_display_name ON topics(display_name)")
+
 	return nil
 }
 
@@ -145,20 +172,63 @@ func createForeignKeys(db *gorm.DB) error {
 	db.Exec("ALTER TABLE notifications ADD CONSTRAINT fk_notifications_receiver FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
 	db.Exec("ALTER TABLE notifications ADD CONSTRAINT fk_notifications_actor FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
 
+	// 论坛帖子表外键
+	db.Exec("ALTER TABLE forum_posts ADD CONSTRAINT fk_forum_posts_author FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
+
+	// 论坛回复表外键
+	db.Exec("ALTER TABLE forum_replies ADD CONSTRAINT fk_forum_replies_post FOREIGN KEY (post_id) REFERENCES forum_posts(id) ON DELETE CASCADE ON UPDATE CASCADE")
+	db.Exec("ALTER TABLE forum_replies ADD CONSTRAINT fk_forum_replies_author FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
+	db.Exec("ALTER TABLE forum_replies ADD CONSTRAINT fk_forum_replies_parent FOREIGN KEY (parent_id) REFERENCES forum_replies(id) ON DELETE CASCADE ON UPDATE CASCADE")
+
 	return nil
 }
 
 // initBaseData 初始化基础数据
 func initBaseData(db *gorm.DB) error {
-	// 检查是否已有数据
-	var count int64
-	db.Model(&Category{}).Count(&count)
-	if count > 0 {
-		log.Println("基础数据已存在，跳过初始化")
-		return nil
+	// 检查分类数据
+	var categoryCount int64
+	db.Model(&Category{}).Count(&categoryCount)
+	if categoryCount > 0 {
+		log.Println("分类数据已存在，跳过分类初始化")
+	} else {
+		// 初始化分类数据
+		if err := initCategories(db); err != nil {
+			return err
+		}
 	}
 
-	// 创建默认分类
+	// 检查话题数据
+	var topicCount int64
+	db.Model(&Topic{}).Count(&topicCount)
+	if topicCount > 0 {
+		log.Println("话题数据已存在，跳过话题初始化")
+	} else {
+		// 初始化话题数据
+		if err := initTopics(db); err != nil {
+			return err
+		}
+	}
+
+	// 初始化聊天表情
+	var emojiCount int64
+	db.Model(&ChatEmoji{}).Count(&emojiCount)
+	if emojiCount == 0 {
+		for _, emoji := range DefaultEmojis {
+			if err := db.Create(&emoji).Error; err != nil {
+				log.Printf("创建表情失败: %v", err)
+				return err
+			}
+		}
+		log.Println("聊天表情初始化完成")
+	}
+
+	log.Println("基础数据初始化完成")
+	return nil
+}
+
+// initCategories 初始化分类数据
+func initCategories(db *gorm.DB) error {
+
 	categories := []Category{
 		{
 			Name:        "育儿知识",
@@ -214,19 +284,103 @@ func initBaseData(db *gorm.DB) error {
 		}
 	}
 
-	// 初始化聊天表情
-	var emojiCount int64
-	db.Model(&ChatEmoji{}).Count(&emojiCount)
-	if emojiCount == 0 {
-		for _, emoji := range DefaultEmojis {
-			if err := db.Create(&emoji).Error; err != nil {
-				log.Printf("创建表情失败: %v", err)
-				return err
-			}
-		}
-		log.Println("聊天表情初始化完成")
+	log.Println("分类数据初始化完成")
+	return nil
+}
+
+// initTopics 初始化话题数据
+func initTopics(db *gorm.DB) error {
+	topics := []Topic{
+		{
+			Name:        "Baby Care",
+			DisplayName: "婴儿护理",
+			Description: "新生儿和婴儿护理相关话题",
+			Color:       "#FF6B6B",
+			Icon:        "baby",
+			Sort:        1,
+			IsActive:    true,
+		},
+		{
+			Name:        "Feeding",
+			DisplayName: "喂养",
+			Description: "母乳喂养、辅食添加等话题",
+			Color:       "#4ECDC4",
+			Icon:        "utensils",
+			Sort:        2,
+			IsActive:    true,
+		},
+		{
+			Name:        "Sleep",
+			DisplayName: "睡眠",
+			Description: "婴幼儿睡眠问题和建议",
+			Color:       "#45B7D1",
+			Icon:        "moon",
+			Sort:        3,
+			IsActive:    true,
+		},
+		{
+			Name:        "Health",
+			DisplayName: "健康",
+			Description: "儿童健康、疫苗、疾病防护",
+			Color:       "#96CEB4",
+			Icon:        "heart",
+			Sort:        4,
+			IsActive:    true,
+		},
+		{
+			Name:        "Development",
+			DisplayName: "发育",
+			Description: "儿童成长发育相关话题",
+			Color:       "#FFEAA7",
+			Icon:        "seedling",
+			Sort:        5,
+			IsActive:    true,
+		},
+		{
+			Name:        "Activities",
+			DisplayName: "活动",
+			Description: "亲子活动、游戏、娱乐",
+			Color:       "#DDA0DD",
+			Icon:        "gamepad",
+			Sort:        6,
+			IsActive:    true,
+		},
+		{
+			Name:        "Gear",
+			DisplayName: "用品",
+			Description: "婴幼儿用品推荐和评测",
+			Color:       "#98D8C8",
+			Icon:        "shopping-cart",
+			Sort:        7,
+			IsActive:    true,
+		},
+		{
+			Name:        "Parenting",
+			DisplayName: "育儿",
+			Description: "育儿经验和心得分享",
+			Color:       "#F7DC6F",
+			Icon:        "users",
+			Sort:        8,
+			IsActive:    true,
+		},
+		{
+			Name:        "Other",
+			DisplayName: "其他",
+			Description: "其他相关话题",
+			Color:       "#AED6F1",
+			Icon:        "comment-dots",
+			Sort:        99,
+			IsActive:    true,
+		},
 	}
 
-	log.Println("基础数据初始化完成")
+	for _, topic := range topics {
+		if err := db.Create(&topic).Error; err != nil {
+			log.Printf("创建话题失败: %v", err)
+			return err
+		}
+	}
+
+	log.Println("话题数据初始化完成")
 	return nil
 }

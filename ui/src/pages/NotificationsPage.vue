@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- 导航栏 -->
-    <Navbar />
+    <BaseHeader :showNotifications="true" />
 
     <div class="max-w-7xl mx-auto px-4 py-6">
       <!-- 页面标题 -->
@@ -323,7 +323,7 @@ import { useAuthStore } from '@/stores/auth'
 import { NotificationApi, type NotificationWithDetails } from '../api/notification'
 import { ChatAPI, type ConversationResponse } from '@/api'
 import { useToast } from '@/composables/useToast'
-import Navbar from '@/components/Navbar.vue'
+import BaseHeader from '@/components/BaseHeader.vue'
 import ChatMessageList from '@/components/ChatMessageList.vue'
 import ChatInputBox from '@/components/ChatInputBox.vue'
 

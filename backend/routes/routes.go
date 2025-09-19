@@ -47,6 +47,7 @@ func SetupRoutes() *gin.Engine {
 				"favorite":     "/api/favorites",
 				"chat":         "/api/chat",
 				"points":       "/api/points",
+				"forum":        "/api/forum",
 			},
 		})
 	})
@@ -84,6 +85,12 @@ func SetupRoutes() *gin.Engine {
 	pointsService := services.NewPointsService(config.GetDB())
 	pointsController := controllers.NewPointsController(pointsService)
 	SetupPointsRoutes(router, pointsController)
+
+	// 设置论坛路由
+	SetupForumRoutes(router)
+
+	// 设置话题路由
+	RegisterTopicRoutes(router, config.GetDB())
 
 	return router
 }

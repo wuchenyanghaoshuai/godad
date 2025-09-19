@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <!-- 导航栏 -->
-    <Navbar />
+    <BaseHeader />
 
     <!-- 热门文章 - 只在有数据时显示 -->
     <div v-if="hasHotArticles" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -276,7 +276,7 @@ import { ArticleApi } from '@/api/article'
 import { CategoryApi } from '@/api/category'
 import { FavoriteApi } from '@/api/favorite'
 import type { Article, Category } from '@/api/types'
-import Navbar from '@/components/Navbar.vue'
+import BaseHeader from '@/components/BaseHeader.vue'
 import HotArticles from '@/components/HotArticles.vue'
 
 const router = useRouter()

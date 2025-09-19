@@ -9,7 +9,7 @@ import (
 type Like struct {
 	ID         uint   `json:"id" gorm:"primaryKey;autoIncrement"`
 	UserID     uint   `json:"user_id" gorm:"not null;index"`
-	TargetType string `json:"target_type" gorm:"not null;size:20"` // article, comment
+	TargetType string `json:"target_type" gorm:"not null;size:20"` // article, comment, forum_post
 	TargetID   uint   `json:"target_id" gorm:"not null;index"`
 	CreatedAt  time.Time `json:"created_at"`
 
@@ -24,7 +24,7 @@ func (Like) TableName() string {
 
 // LikeRequest 点赞请求
 type LikeRequest struct {
-	TargetType string `json:"target_type" binding:"required,oneof=article comment"`
+	TargetType string `json:"target_type" binding:"required,oneof=article comment forum_post"`
 	TargetID   uint   `json:"target_id" binding:"required"`
 }
 

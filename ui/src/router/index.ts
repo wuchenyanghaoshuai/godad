@@ -7,6 +7,7 @@ import ResetPasswordPage from '@/pages/ResetPasswordPage.vue'
 import UserCenter from '@/pages/UserCenter.vue'
 import UserProfilePage from '@/pages/UserProfilePage.vue'
 import CategoryManagePage from '@/pages/CategoryManagePage.vue'
+import TopicManagePage from '@/pages/TopicManagePage.vue'
 import ArticleListPage from '@/pages/ArticleListPage.vue'
 import ArticleDetailPage from '@/pages/ArticleDetailPage.vue'
 import ArticleCreatePage from '@/pages/ArticleCreatePage.vue'
@@ -24,6 +25,8 @@ import TermsPage from '@/pages/TermsPage.vue'
 import HelpPage from '@/pages/HelpPage.vue'
 import CommunityPage from '@/pages/CommunityPage.vue'
 import ResourcesPage from '@/pages/ResourcesPage.vue'
+import ForumPostCreatePage from '@/pages/ForumPostCreatePage.vue'
+import ForumPostDetailPage from '@/pages/ForumPostDetailPage.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -128,6 +131,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {
+      path: '/management-dashboard/topics',
+      name: 'TopicManage',
+      component: TopicManagePage,
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
       path: '/articles',
       name: 'ArticleList',
       component: ArticleListPage
@@ -168,6 +177,17 @@ const router = createRouter({
       path: '/resources',
       name: 'Resources',
       component: ResourcesPage
+    },
+    {
+      path: '/community/posts/create',
+      name: 'ForumPostCreate',
+      component: ForumPostCreatePage,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/community/posts/:id',
+      name: 'ForumPostDetail',
+      component: ForumPostDetailPage
     },
     {
       path: '/404',
@@ -228,6 +248,15 @@ router.beforeEach(async (to, from, next) => {
     
     // 验证文章ID参数
     if (to.name === 'ArticleDetail' || to.name === 'ArticleEdit') {
+      const id = to.params.id
+      if (!id || isNaN(Number(id))) {
+        next('/404')
+        return
+      }
+    }
+
+    // 验证帖子ID参数
+    if (to.name === 'ForumPostDetail') {
       const id = to.params.id
       if (!id || isNaN(Number(id))) {
         next('/404')

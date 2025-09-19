@@ -216,6 +216,15 @@ func (s *LikeService) updateLikeCount(targetType string, targetID uint, delta in
 		}
 	case "comment":
 		err = s.db.Model(&models.Comment{}).Where("id = ?", targetID).UpdateColumn("like_count", gorm.Expr("like_count + ?", delta)).Error
+	case "forum_post":
+		err = s.db.Model(&models.ForumPost{}).Where("id = ?", targetID).UpdateColumn("like_count", gorm.Expr("like_count + ?", delta)).Error
+		if err == nil {
+			// 清除论坛帖子缓存
+			postCacheKey := fmt.Sprintf("forum_post:%d", targetID)
+			s.cacheService.Delete(postCacheKey)
+			// 清除论坛帖子列表缓存
+			s.cacheService.DeletePattern("forum:posts:*")
+		}
 	default:
 		return fmt.Errorf("不支持的目标类型: %s", targetType)
 	}
