@@ -22,13 +22,21 @@ module.exports = {
   rules: {
     'vue/multi-word-component-names': 'off',
     'vue/no-mutating-props': 'off',
-    '@typescript-eslint/no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'off',
-    '@typescript-eslint/ban-ts-comment': 'off',
+    '@typescript-eslint/ban-ts-comment': 'warn',
     'no-undef': 'off',
     'no-console': 'off',
     'no-dupe-keys': 'error'
   },
+  overrides: [
+    {
+      files: ['tests/**/*'],
+      rules: {
+        '@typescript-eslint/no-unused-vars': 'off',
+      }
+    }
+  ],
   globals: {
     NodeJS: true
   }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { MenuIcon, XIcon, UserIcon, LogOutIcon, ChevronDownIcon, PlusIcon, CogIcon } from 'lucide-vue-next'
+import { MenuIcon, XIcon, UserIcon, LogOutIcon, ChevronDownIcon, PlusIcon } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 
 // 路由

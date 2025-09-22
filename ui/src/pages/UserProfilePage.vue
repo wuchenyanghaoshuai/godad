@@ -236,16 +236,17 @@
 </template>
 
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUserDataSync } from '@/composables/useUserDataSync'
-import { UserApi } from '@/api/user'
+// import { UserApi } from '@/api/user'
 import { useToast } from '@/composables/useToast'
 import { FollowApi } from '@/api/follow'
 import BaseHeader from '@/components/BaseHeader.vue'
 import Empty from '@/components/Empty.vue'
-import type { User } from '@/api/types'
+// import type { User } from '@/api/types'
 // import ArticleCard from '@/components/ArticleCard.vue'
 // import ActivityItem from '@/components/ActivityItem.vue'
 

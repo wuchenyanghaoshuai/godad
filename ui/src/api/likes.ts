@@ -1,4 +1,5 @@
 import { http } from './http'
+import { API_CONFIG } from './config'
 
 export interface Like {
   id: number
@@ -51,7 +52,7 @@ export interface PaginatedLikeResponse {
 class LikeApiService {
   // 点赞文章
   async like(articleId: number) {
-    return http.post<LikeResponse>('/likes', {
+    return http.post<LikeResponse>(API_CONFIG.ENDPOINTS.LIKE.TOGGLE, {
       target_type: 'article',
       target_id: articleId
     })
@@ -59,12 +60,12 @@ class LikeApiService {
 
   // 取消点赞文章
   async unlike(articleId: number) {
-    return http.delete<LikeResponse>(`/likes/article/${articleId}`)
+    return http.delete<LikeResponse>(`${API_CONFIG.ENDPOINTS.LIKE.LIST}/article/${articleId}`)
   }
 
   // 点赞/取消点赞
   async toggleLike(targetType: 'article' | 'comment', targetId: number) {
-    return http.post<LikeResponse>('/likes/toggle', {
+    return http.post<LikeResponse>(API_CONFIG.ENDPOINTS.LIKE.TOGGLE, {
       target_type: targetType,
       target_id: targetId
     })
@@ -72,7 +73,7 @@ class LikeApiService {
 
   // 获取点赞状态
   async getLikeStatus(targetType: 'article' | 'comment', targetId: number) {
-    return http.get<LikeStatus>('/likes/status', {
+    return http.get<LikeStatus>(API_CONFIG.ENDPOINTS.LIKE.STATUS, {
       target_type: targetType,
       target_id: targetId
     })
@@ -83,7 +84,7 @@ class LikeApiService {
     page?: number
     size?: number
   }) {
-    return http.get<PaginatedLikeResponse>('/likes/list', {
+    return http.get<PaginatedLikeResponse>(API_CONFIG.ENDPOINTS.LIKE.LIST, {
       target_type: targetType,
       target_id: targetId,
       ...params
@@ -95,7 +96,7 @@ class LikeApiService {
     page?: number
     size?: number
   }) {
-    return http.get<PaginatedLikeResponse>('/likes/user', {
+    return http.get<PaginatedLikeResponse>(API_CONFIG.ENDPOINTS.LIKE.USER, {
       target_type: targetType,
       ...params
     })
@@ -106,7 +107,7 @@ class LikeApiService {
     limit?: number
     days?: number
   }) {
-    return http.get<PopularContent[]>('/likes/popular', {
+    return http.get<PopularContent[]>(API_CONFIG.ENDPOINTS.LIKE.POPULAR, {
       target_type: targetType,
       ...params
     })
@@ -117,7 +118,7 @@ class LikeApiService {
     target_type: 'article' | 'comment'
     target_id: number
   }>) {
-    return http.post<Record<string, LikeStatus>>('/likes/batch-status', { items })
+    return http.post<Record<string, LikeStatus>>(API_CONFIG.ENDPOINTS.LIKE.BATCH_STATUS, { items })
   }
 }
 

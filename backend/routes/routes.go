@@ -48,6 +48,7 @@ func SetupRoutes() *gin.Engine {
 				"chat":         "/api/chat",
 				"points":       "/api/points",
 				"forum":        "/api/forum",
+				"resource":     "/api/resources",
 			},
 		})
 	})
@@ -91,6 +92,9 @@ func SetupRoutes() *gin.Engine {
 
 	// 设置话题路由
 	RegisterTopicRoutes(router, config.GetDB())
+
+	// 设置资源路由
+	SetupResourceRoutes(router, config.GetDB())
 
 	return router
 }

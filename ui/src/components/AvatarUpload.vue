@@ -129,7 +129,7 @@
 <script lang="ts">
 import { defineComponent, ref, computed, nextTick } from 'vue'
 import { UploadApi } from '../api/upload'
-import type { ImageUploadResponse } from '../api/types'
+// type import removed (unused)
 
 export default defineComponent({
   name: 'AvatarUpload',

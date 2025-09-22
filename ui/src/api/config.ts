@@ -1,7 +1,8 @@
 // API配置文件
 export const API_CONFIG = {
   // 后端API基础URL
-  BASE_URL: 'http://127.0.0.1:8888',
+  // 开发环境默认走相对路径 + Vite 代理（避免跨域与凭据问题）
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || '',
   
   // API版本
   API_VERSION: '/api',
@@ -11,8 +12,6 @@ export const API_CONFIG = {
   
   // 认证相关
   AUTH: {
-    TOKEN_KEY: 'godad_token',
-    REFRESH_TOKEN_KEY: 'godad_refresh_token',
     USER_INFO_KEY: 'godad_user_info'
   },
   
@@ -60,7 +59,8 @@ export const API_CONFIG = {
       MY: '/likes/my',
       BATCH_STATUS: '/likes/batch-status',
       LIST: '/likes/list',
-      POPULAR: '/likes/popular'
+      POPULAR: '/likes/popular',
+      USER: '/likes/user'
     },
     
     // 评论相关
@@ -83,6 +83,7 @@ export const API_CONFIG = {
       WITH_COUNT: '/categories/with-count',
       DETAIL: '/categories',
       BY_SLUG: '/categories/slug',
+      ADMIN_BASE: '/admin/categories',
       CREATE: '/admin/categories',
       UPDATE: '/admin/categories',
       DELETE: '/admin/categories',
@@ -99,6 +100,57 @@ export const API_CONFIG = {
       DELETE: '/favorites',
       ARTICLE_FAVORITES: '/favorites/article',
       POPULAR: '/favorites/popular'
+    },
+
+    // 通知相关
+    NOTIFICATION: {
+      BASE: '/notifications',
+      STATS: '/notifications/stats',
+      MARK_READ: '/notifications/mark-read',
+      MARK_ALL_READ: '/notifications/mark-all-read',
+      BATCH_MARK_READ: '/notifications/batch-mark-read',
+      STREAM: '/notifications/stream'
+    },
+
+    // 关注相关
+    FOLLOW: {
+      BASE: '/follows',
+      STATUS: '/follows/status',
+      FOLLOWING: '/follows/following',
+      FOLLOWERS: '/follows/followers',
+      STATS: '/follows/stats',
+      MUTUAL: '/follows/mutual'
+    },
+
+    // 论坛相关
+    FORUM: {
+      POSTS: '/forum/posts',
+      MY_POSTS: '/forum/posts/my',
+      REPLIES: '/forum/replies',
+      HOT: '/forum/posts/hot',
+      TOPICS: '/forum/topics'
+    },
+
+    // 话题（Topic）管理
+    TOPIC: {
+      ACTIVE: '/topics/active',
+      ADMIN_BASE: '/admin/topics'
+    },
+
+    // 资源
+    RESOURCE: {
+      BASE: '/resources',
+      ADMIN_BASE: '/admin/resources',
+      DOWNLOAD: '/resources',
+      STATS: '/admin/resources/stats'
+    },
+
+    // 标签
+    TAG: {
+      BASE: '/tags',
+      POPULAR: '/tags/popular',
+      SEARCH: '/tags/search',
+      STATS: '/tags/stats'
     },
 
     // 上传相关

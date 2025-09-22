@@ -211,7 +211,7 @@ const submitComment = async () => {
 }
 
 // 处理回复添加
-const handleReplyAdded = (reply: Comment) => {
+const handleReplyAdded = (_reply: Comment) => {
   // 回复已经在CommentItem组件中处理，这里只需要触发事件
   emit('commentAdded')
 }

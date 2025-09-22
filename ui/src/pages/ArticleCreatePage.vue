@@ -234,16 +234,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ArrowLeftIcon,
-  ImageIcon,
-  XIcon,
-  LoaderIcon
-} from 'lucide-vue-next'
+import { ArrowLeftIcon, XIcon, LoaderIcon } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { ArticleApi } from '@/api/article'
 import { CategoryApi } from '@/api/category'
-import { UploadApi, UploadUtils } from '@/api/upload'
+// 使用 ImageUpload 组件完成上传，此处无需直接使用 API
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import ImageUpload from '@/components/ImageUpload.vue'
 import BaseHeader from '@/components/BaseHeader.vue'
@@ -325,7 +320,7 @@ const removeTag = (index: number) => {
 }
 
 // 处理封面图片上传成功
-const handleCoverUpload = (response: ImageUploadResponse | ImageUploadResponse[]) => {
+const handleCoverUpload = (_response: ImageUploadResponse | ImageUploadResponse[]) => {
   // v-model已经自动更新了form.cover_image，不需要显示成功消息
 }
 
@@ -335,7 +330,7 @@ const handleUploadError = (error: string) => {
 }
 
 // 处理内容变化
-const handleContentChange = (content: string) => {
+const handleContentChange = (_content: string) => {
   // Content change handling can be added here if needed
 }
 

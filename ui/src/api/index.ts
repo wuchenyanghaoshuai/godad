@@ -14,6 +14,7 @@ export { UploadApi, UploadUtils } from './upload'
 export { ChatAPI } from './chat'
 export { NotificationApi } from './notification'
 export { PointsAPI } from './points'
+export { ResourceApi } from './resource'
 
 // 重新导入API类以确保正确引用
 import { AuthApi, AuthUtils } from './auth'
@@ -25,6 +26,7 @@ import { UploadApi, UploadUtils } from './upload'
 import { ChatAPI } from './chat'
 import { NotificationApi } from './notification'
 import { PointsAPI } from './points'
+import { ResourceApi } from './resource'
 
 // 统一的API服务对象
 export const api = {
@@ -36,7 +38,8 @@ export const api = {
   upload: UploadApi,
   chat: ChatAPI,
   notification: NotificationApi,
-  points: PointsAPI
+  points: PointsAPI,
+  resource: ResourceApi
 }
 
 // 统一的工具对象

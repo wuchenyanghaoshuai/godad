@@ -1,8 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <BaseHeader />
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <AppLayout background="gray">
+    <PageContainer background="transparent" padding="lg" max-width="7xl">
       <!-- Page Header -->
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900 mb-4">资源库</h1>
@@ -51,25 +49,43 @@
       </div>
 
       <!-- Load More -->
-      <div v-if="filteredResources.length > 0" class="flex justify-center mt-12">
+      <div v-if="filteredResources.length > 0 && hasMore" class="flex justify-center mt-12">
         <button
-          class="px-8 py-3 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium shadow-sm"
+          @click="loadMore"
+          :disabled="loading"
+          :class="[
+            'px-8 py-3 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium shadow-sm',
+            loading ? 'opacity-50 cursor-not-allowed' : ''
+          ]"
         >
-          加载更多资源
+          {{ loading ? '加载中...' : '加载更多资源' }}
         </button>
       </div>
-    </div>
-  </div>
+
+      <!-- Loading State -->
+      <div v-if="loading && filteredResources.length === 0" class="text-center py-16">
+        <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-pink-500 mx-auto mb-4"></div>
+        <p class="text-gray-500">正在加载资源...</p>
+      </div>
+    </PageContainer>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { BookOpenIcon } from 'lucide-vue-next'
-import BaseHeader from '@/components/BaseHeader.vue'
+import { AppLayout, PageContainer } from '@/components/layout'
 import ResourceCard from '@/components/ResourceCard.vue'
+import { ResourceApi, type Resource } from '@/api'
 
 // 响应式数据
 const selectedCategory = ref('All')
+const resources = ref<Resource[]>([])
+const loading = ref(true)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const hasMore = ref(false)
 
 // 分类数据
 const categories = ['All', 'E-books', 'Videos', 'Tools']
@@ -82,100 +98,77 @@ const categoryLabels: Record<string, string> = {
   'Tools': '工具'
 }
 
-// 资源数据
-const resources = [
-  {
-    id: 1,
-    title: '新手爸爸第一年指南',
-    description: '这本综合性电子书涵盖了从新生儿护理到发育里程碑的所有内容，为新手父亲提供实用建议和支持。',
-    image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600',
-    type: 'e-book' as const,
-    buttonText: '立即下载',
-    category: 'E-books'
-  },
-  {
-    id: 2,
-    title: '宝宝第一步：视频系列',
-    description: '跟随这个视频系列，探索宝宝第一步的激动人心的旅程，包含专家技巧和演示。',
-    image: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?auto=format&fit=crop&q=80&w=600',
-    type: 'video' as const,
-    buttonText: '立即观看',
-    category: 'Videos'
-  },
-  {
-    id: 3,
-    title: '睡眠训练工具',
-    description: '我们的互动工具帮助您为宝宝制定个性化的睡眠训练计划，确保全家人都能安眠。',
-    image: 'https://images.unsplash.com/photo-1559182671-0e6c3cb2f6b1?auto=format&fit=crop&q=80&w=600',
-    type: 'tool' as const,
-    buttonText: '开始使用',
-    category: 'Tools'
-  },
-  {
-    id: 4,
-    title: '婴儿喂养指南',
-    description: '这本电子书提供了婴儿喂养的详细指南，涵盖母乳喂养、配方奶喂养和辅食添加。',
-    image: 'https://images.unsplash.com/photo-1476703993599-0035a21b17a9?auto=format&fit=crop&q=80&w=600',
-    type: 'e-book' as const,
-    buttonText: '立即下载',
-    category: 'E-books'
-  },
-  {
-    id: 5,
-    title: '发育里程碑跟踪器',
-    description: '使用我们易于使用的工具跟踪宝宝的发育里程碑，确保他们走在正确的道路上。',
-    image: 'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?auto=format&fit=crop&q=80&w=600',
-    type: 'tool' as const,
-    buttonText: '跟踪里程碑',
-    category: 'Tools'
-  },
-  {
-    id: 6,
-    title: '双胞胎育儿技巧',
-    description: '这个视频系列为双胞胎父母提供实用建议和支持，涵盖从喂养到睡眠时间表的所有内容。',
-    image: 'https://images.unsplash.com/photo-1588392382834-a891154bca4d?auto=format&fit=crop&q=80&w=600',
-    type: 'video' as const,
-    buttonText: '立即观看',
-    category: 'Videos'
-  },
-  {
-    id: 7,
-    title: '0-3岁营养搭配手册',
-    description: '专业营养师编写的权威指南，帮助您为不同年龄段的宝宝提供最佳营养搭配。',
-    image: 'https://images.unsplash.com/photo-1609220136736-443140cffec6?auto=format&fit=crop&q=80&w=600',
-    type: 'e-book' as const,
-    buttonText: '立即下载',
-    category: 'E-books'
-  },
-  {
-    id: 8,
-    title: '宝宝安全评估工具',
-    description: '全面的家庭安全检查工具，帮助您识别和解决家中的潜在安全隐患。',
-    image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?auto=format&fit=crop&q=80&w=600',
-    type: 'tool' as const,
-    buttonText: '开始评估',
-    category: 'Tools'
+// 加载资源数据
+const loadResources = async (page = 1, append = false) => {
+  try {
+    loading.value = true
+    const category = selectedCategory.value === 'All' ? undefined : selectedCategory.value
+
+    const response = await ResourceApi.getPublishedResources({
+      page,
+      size: pageSize.value,
+      category
+    })
+
+    if (response.code === 200) {
+      const data = response.data
+      if (append) {
+        resources.value.push(...data.items)
+      } else {
+        resources.value = data.items
+      }
+      total.value = data.total
+      currentPage.value = page
+      hasMore.value = page < data.total_pages
+    }
+  } catch (error) {
+    console.error('加载资源失败:', error)
+  } finally {
+    loading.value = false
   }
-]
-
-// 计算属性：过滤后的资源
-const filteredResources = computed(() => {
-  return resources.filter(resource => {
-    return selectedCategory.value === 'All' || resource.category === selectedCategory.value
-  })
-})
-
-// 方法
-const setSelectedCategory = (category: string) => {
-  selectedCategory.value = category
 }
 
+// 切换分类
+const setSelectedCategory = async (category: string) => {
+  selectedCategory.value = category
+  currentPage.value = 1
+  await loadResources(1, false)
+}
+
+// 加载更多
+const loadMore = async () => {
+  if (hasMore.value && !loading.value) {
+    await loadResources(currentPage.value + 1, true)
+  }
+}
+
+// 计算属性：过滤后的资源（现在直接使用API返回的数据）
+const filteredResources = computed(() => resources.value)
+
+// 方法
 const getCategoryLabel = (category: string): string => {
   return categoryLabels[category] || category
 }
 
-const handleResourceClick = (resource: any) => {
-  console.log('打开资源:', resource.title)
-  // 这里可以实现具体的资源打开逻辑
+const handleResourceClick = async (resource: Resource) => {
+  try {
+    // 调用下载接口（会增加下载次数）
+    const response = await ResourceApi.downloadResource(resource.id)
+    if (response.code === 200) {
+      // 在新窗口打开资源文件
+      window.open(response.data.file_url, '_blank')
+    }
+  } catch (error) {
+    console.error('下载资源失败:', error)
+    // 如果下载接口失败，直接使用原始URL
+    if (resource.file_url) {
+      window.open(resource.file_url, '_blank')
+    }
+  }
 }
+
+// 页面加载时获取资源数据
+onMounted(() => {
+  loadResources()
+})
 </script>

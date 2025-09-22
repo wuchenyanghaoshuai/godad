@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { AppLayout, PageContainer } from '@/components/layout'
 import { ShieldCheckIcon, UserCheckIcon, AlertTriangleIcon, ScaleIcon } from 'lucide-vue-next'
 
 // 服务条款内容
@@ -72,26 +73,19 @@ const lastUpdated = ref('2024年1月15日')
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-pink-50 to-orange-50">
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-pink-600 to-orange-600 text-white py-16">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <ScaleIcon class="h-20 w-20 mx-auto mb-6" />
-        <h1 class="text-4xl md:text-6xl font-bold mb-6">服务条款</h1>
-        <p class="text-xl md:text-2xl text-pink-100 max-w-3xl mx-auto">
-          使用GoDad平台前请仔细阅读以下条款
-        </p>
-        <p class="text-lg text-pink-200 mt-4">
-          最后更新：{{ lastUpdated }}
-        </p>
+  <AppLayout footer-theme="tint">
+    <PageContainer background="tint" padding="xl" max-width="4xl">
+      <div class="text-center">
+        <ScaleIcon class="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-4 text-pink-600" />
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">服务条款</h1>
+        <p class="text-gray-600">使用GoDad平台前请仔细阅读以下条款 · 最后更新：{{ lastUpdated }}</p>
       </div>
-    </div>
+    </PageContainer>
 
-    <!-- Main Content -->
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <PageContainer background="white" padding="xl" max-width="4xl">
 
       <!-- 引言 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="bg-white rounded-2xl shadow-lg p-8">
           <h2 class="text-2xl font-bold text-gray-900 mb-6">重要说明</h2>
           <div class="prose prose-lg text-gray-600">
@@ -115,7 +109,7 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 详细条款 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="space-y-8">
           <div
             v-for="section in termssections"
@@ -143,7 +137,7 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 免责声明 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="bg-white rounded-2xl shadow-lg p-8">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">免责声明与责任限制</h3>
           <div class="grid md:grid-cols-2 gap-6">
@@ -160,7 +154,7 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 账户终止 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="bg-white rounded-2xl shadow-lg p-8">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">账户终止</h3>
           <div class="prose text-gray-600">
@@ -184,7 +178,7 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 争议解决 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="bg-white rounded-2xl shadow-lg p-8">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">争议解决</h3>
           <div class="prose text-gray-600">
@@ -238,31 +232,29 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 联系信息 -->
-      <section class="text-center bg-gradient-to-r from-pink-600 to-orange-600 rounded-3xl p-12 text-white">
-        <ScaleIcon class="h-16 w-16 mx-auto mb-6" />
-        <h2 class="text-3xl md:text-4xl font-bold mb-6">法律问题咨询</h2>
-        <p class="text-xl text-pink-100 mb-8 max-w-2xl mx-auto">
+      <section class="text-center rounded-3xl p-10 bg-gradient-to-r from-pink-50 via-purple-50 to-orange-50">
+        <ScaleIcon class="h-12 w-12 mx-auto mb-4 text-pink-600" />
+        <h2 class="text-2xl md:text-3xl font-bold mb-4 text-gray-900">法律问题咨询</h2>
+        <p class="text-base text-gray-600 mb-6 max-w-2xl mx-auto">
           如果您对我们的服务条款有任何法律相关问题，请随时与我们联系
         </p>
-        <div class="space-y-4">
-          <div class="text-lg">
+        <div class="space-y-3 text-gray-800">
+          <div>
             <strong>法务部邮箱：</strong>
-            <a href="mailto:legal@godad.com" class="underline hover:no-underline">
-              legal@godad.com
-            </a>
+            <a href="mailto:legal@godad.com" class="text-pink-600 hover:text-pink-700">legal@godad.com</a>
           </div>
-          <div class="text-lg">
+          <div>
             <strong>客服电话：</strong>
-            <a href="tel:400-123-4567" class="underline hover:no-underline">
-              400-123-4567
-            </a>
+            <a href="tel:400-123-4567" class="text-pink-600 hover:text-pink-700">400-123-4567</a>
           </div>
-          <div class="text-lg">
+          <div>
             <strong>办公地址：</strong>
             北京市朝阳区科技园区创新大厦15楼
           </div>
         </div>
       </section>
-    </div>
-  </div>
+    </PageContainer>
+  </AppLayout>
 </template>
+
+ 

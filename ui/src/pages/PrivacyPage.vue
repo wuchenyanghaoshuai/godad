@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { AppLayout, PageContainer } from '@/components/layout'
 import { ShieldCheckIcon, LockIcon, EyeIcon, DatabaseIcon } from 'lucide-vue-next'
 
 // 隐私条款内容
@@ -76,29 +77,40 @@ const userRights = ref([
 
 // 最后更新时间
 const lastUpdated = ref('2024年1月15日')
+
+// slug 工具，用于锚点
+const toSlug = (title: string) => title.replace(/\s+/g, '-').replace(/[^\u4e00-\u9fa5\w-]/g, '').toLowerCase()
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-pink-50 to-orange-50">
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-pink-600 to-orange-600 text-white py-16">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <ShieldCheckIcon class="h-20 w-20 mx-auto mb-6" />
-        <h1 class="text-4xl md:text-6xl font-bold mb-6">隐私政策</h1>
-        <p class="text-xl md:text-2xl text-pink-100 max-w-3xl mx-auto">
-          保护您的隐私是我们的首要责任
-        </p>
-        <p class="text-lg text-pink-200 mt-4">
-          最后更新：{{ lastUpdated }}
-        </p>
+  <AppLayout footer-theme="tint">
+    <PageContainer background="tint" padding="xl" max-width="4xl">
+      <div class="text-center">
+        <ShieldCheckIcon class="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-4 text-pink-600" />
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">隐私政策</h1>
+        <p class="text-gray-600">保护您的隐私是我们的首要责任 · 最后更新：{{ lastUpdated }}</p>
       </div>
-    </div>
+    </PageContainer>
 
-    <!-- Main Content -->
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <PageContainer background="white" padding="xl" max-width="4xl">
+      <!-- 目录 -->
+      <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-3">阅读指引</h2>
+        <p class="text-gray-600 mb-3">您可以从以下任一章节开始了解我们的隐私实践：</p>
+        <div class="flex flex-wrap gap-2">
+          <a
+            v-for="s in sections"
+            :key="s.title"
+            :href="`#` + toSlug(s.title)"
+            class="inline-flex items-center px-3 py-1.5 rounded-full text-sm bg-pink-50 text-pink-700 border border-pink-100 hover:bg-pink-100 transition-colors"
+          >
+            {{ s.title }}
+          </a>
+        </div>
+      </div>
 
       <!-- 引言 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="bg-white rounded-2xl shadow-lg p-8">
           <h2 class="text-2xl font-bold text-gray-900 mb-6">引言</h2>
           <div class="prose prose-lg text-gray-600">
@@ -122,12 +134,13 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 详细条款 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="space-y-8">
           <div
             v-for="section in sections"
             :key="section.title"
             class="bg-white rounded-2xl shadow-lg p-8"
+            :id="toSlug(section.title)"
           >
             <div class="flex items-center mb-6">
               <div class="w-12 h-12 bg-gradient-to-r from-pink-500 to-orange-500 rounded-full flex items-center justify-center mr-4">
@@ -150,7 +163,7 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- Cookie政策 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="bg-white rounded-2xl shadow-lg p-8">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">Cookie和类似技术</h3>
           <div class="prose text-gray-600">
@@ -175,7 +188,7 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 您的权利 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="bg-white rounded-2xl shadow-lg p-8">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">您的权利</h3>
           <p class="text-gray-600 mb-6">
@@ -205,7 +218,7 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 儿童隐私 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="bg-white rounded-2xl shadow-lg p-8">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">儿童隐私保护</h3>
           <div class="prose text-gray-600">
@@ -228,7 +241,7 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 国际传输 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="bg-white rounded-2xl shadow-lg p-8">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">跨境数据传输</h3>
           <div class="prose text-gray-600">
@@ -250,7 +263,7 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 政策更新 -->
-      <section class="mb-16">
+      <section class="mb-12">
         <div class="bg-white rounded-2xl shadow-lg p-8">
           <h3 class="text-2xl font-bold text-gray-900 mb-6">政策更新</h3>
           <div class="prose text-gray-600">
@@ -271,31 +284,29 @@ const lastUpdated = ref('2024年1月15日')
       </section>
 
       <!-- 联系信息 -->
-      <section class="text-center bg-gradient-to-r from-pink-600 to-orange-600 rounded-3xl p-12 text-white">
-        <LockIcon class="h-16 w-16 mx-auto mb-6" />
-        <h2 class="text-3xl md:text-4xl font-bold mb-6">隐私问题咨询</h2>
-        <p class="text-xl text-pink-100 mb-8 max-w-2xl mx-auto">
+      <section class="text-center rounded-3xl p-10 bg-gradient-to-r from-pink-50 via-purple-50 to-orange-50">
+        <LockIcon class="h-12 w-12 mx-auto mb-4 text-pink-600" />
+        <h2 class="text-2xl md:text-3xl font-bold mb-4 text-gray-900">隐私问题咨询</h2>
+        <p class="text-base text-gray-600 mb-6 max-w-2xl mx-auto">
           如果您对我们的隐私政策有任何疑问或建议，请随时与我们联系
         </p>
-        <div class="space-y-4">
-          <div class="text-lg">
+        <div class="space-y-2 text-gray-800">
+          <div>
             <strong>隐私专员邮箱：</strong>
-            <a href="mailto:privacy@godad.com" class="underline hover:no-underline">
-              privacy@godad.com
-            </a>
+            <a href="mailto:privacy@godad.com" class="text-pink-600 hover:text-pink-700">privacy@godad.com</a>
           </div>
-          <div class="text-lg">
+          <div>
             <strong>客服电话：</strong>
-            <a href="tel:400-123-4567" class="underline hover:no-underline">
-              400-123-4567
-            </a>
+            <a href="tel:400-123-4567" class="text-pink-600 hover:text-pink-700">400-123-4567</a>
           </div>
-          <div class="text-lg">
+          <div>
             <strong>办公地址：</strong>
             北京市朝阳区科技园区创新大厦15楼
           </div>
         </div>
       </section>
-    </div>
-  </div>
+    </PageContainer>
+  </AppLayout>
 </template>
+
+ 

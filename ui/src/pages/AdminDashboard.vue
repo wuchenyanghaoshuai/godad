@@ -22,7 +22,7 @@
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- 统计卡片 -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div class="bg-white rounded-lg shadow p-6">
           <div class="flex items-center">
             <div class="p-3 rounded-full bg-blue-100 text-blue-600">
@@ -64,6 +64,17 @@
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-600">评论总数</p>
               <p class="text-2xl font-bold text-gray-900">{{ stats.commentCount }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center">
+            <div class="p-3 rounded-full bg-orange-100 text-orange-600">
+              <ResourceIcon class="w-6 h-6" />
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">资源总数</p>
+              <p class="text-2xl font-bold text-gray-900">{{ stats.resourceCount }}</p>
             </div>
           </div>
         </div>
@@ -586,7 +597,325 @@
               </div>
             </div>
           </div>
+
+          <!-- 资源管理 -->
+          <div v-if="activeTab === 'resources'">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-semibold text-gray-900">资源管理</h2>
+              <div class="flex space-x-2">
+                <select
+                  v-model="resourceFilter.status"
+                  @change="loadResources"
+                  class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">全部状态</option>
+                  <option value="0">待审核</option>
+                  <option value="1">已发布</option>
+                  <option value="2">已拒绝</option>
+                </select>
+                <select
+                  v-model="resourceFilter.category"
+                  @change="loadResources"
+                  class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">全部分类</option>
+                  <option value="E-books">电子书</option>
+                  <option value="Videos">视频</option>
+                  <option value="Tools">工具</option>
+                </select>
+                <input
+                  v-model="resourceFilter.keyword"
+                  @input="searchResources"
+                  type="text"
+                  placeholder="搜索资源..."
+                  class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                <button
+                  @click="showCreateResourceModal = true"
+                  class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 text-sm"
+                >
+                  新增资源
+                </button>
+              </div>
+            </div>
+
+            <!-- 加载状态 -->
+            <div v-if="resourceLoading" class="text-center py-8">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
+              <p class="mt-4 text-gray-500">加载中...</p>
+            </div>
+
+            <div v-else class="overflow-hidden">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      资源信息
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      类型
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      分类
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      上传者
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      状态
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      下载量
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      创建时间
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      操作
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="resource in resources" :key="resource.id">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <img
+                          class="h-10 w-10 rounded object-cover"
+                          :src="resource.image || '/default-resource.png'"
+                          :alt="resource.title"
+                        >
+                        <div class="ml-4 max-w-xs">
+                          <div class="text-sm font-medium text-gray-900 truncate" :title="resource.title">
+                            {{ resource.title }}
+                          </div>
+                          <div class="text-sm text-gray-500 truncate" :title="resource.description">
+                            {{ resource.description }}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span
+                        :class="[
+                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                          resource.type === 'e-book'
+                            ? 'bg-blue-100 text-blue-800'
+                            : resource.type === 'video'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-purple-100 text-purple-800'
+                        ]"
+                      >
+                        {{ getResourceTypeText(resource.type) }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {{ getCategoryText(resource.category) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {{ resource.uploader?.nickname || '系统' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span
+                        :class="[
+                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                          resource.status === 1
+                            ? 'bg-green-100 text-green-800'
+                            : resource.status === 0
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        ]"
+                      >
+                        {{ getResourceStatusText(resource.status) }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {{ resource.download_count || 0 }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {{ formatDate(resource.created_at) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        v-if="resource.status === 0"
+                        @click="approveResource(resource)"
+                        class="text-green-600 hover:text-green-900 mr-2"
+                      >
+                        通过
+                      </button>
+                      <button
+                        v-if="resource.status === 0"
+                        @click="rejectResource(resource)"
+                        class="text-red-600 hover:text-red-900 mr-2"
+                      >
+                        拒绝
+                      </button>
+                      <button
+                        @click="editResource(resource)"
+                        class="text-blue-600 hover:text-blue-900 mr-2"
+                      >
+                        编辑
+                      </button>
+                      <button
+                        @click="toggleResourceStatus(resource)"
+                        :class="[
+                          'mr-2',
+                          resource.status === 1
+                            ? 'text-yellow-600 hover:text-yellow-900'
+                            : 'text-green-600 hover:text-green-900'
+                        ]"
+                      >
+                        {{ resource.status === 1 ? '下架' : '发布' }}
+                      </button>
+                      <button
+                        @click="deleteResource(resource.id)"
+                        class="text-red-600 hover:text-red-900"
+                      >
+                        删除
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="flex justify-between items-center mt-4">
+              <span class="text-sm text-gray-700">
+                显示 {{ resourcePagination.offset + 1 }} 到 {{ Math.min(resourcePagination.offset + resourcePagination.limit, resourcePagination.total) }} 条，共 {{ resourcePagination.total }} 条
+              </span>
+              <div class="flex space-x-2">
+                <button
+                  @click="prevPage('resource')"
+                  :disabled="resourcePagination.page === 1"
+                  class="px-3 py-1 border rounded-md text-sm disabled:opacity-50"
+                >
+                  上一页
+                </button>
+                <button
+                  @click="nextPage('resource')"
+                  :disabled="resourcePagination.page >= Math.ceil(resourcePagination.total / resourcePagination.limit)"
+                  class="px-3 py-1 border rounded-md text-sm disabled:opacity-50"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 创建/编辑资源模态框 -->
+    <div v-if="showCreateResourceModal || showEditResourceModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          {{ showCreateResourceModal ? '新增资源' : '编辑资源' }}
+        </h3>
+        <form @submit.prevent="submitResource">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">资源标题</label>
+              <input
+                v-model="resourceForm.title"
+                type="text"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="请输入资源标题"
+              >
+            </div>
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">资源描述</label>
+              <textarea
+                v-model="resourceForm.description"
+                rows="3"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="请输入资源描述"
+              ></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">资源类型</label>
+              <select
+                v-model="resourceForm.type"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="">请选择类型</option>
+                <option value="e-book">电子书</option>
+                <option value="video">视频</option>
+                <option value="tool">工具</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">分类</label>
+              <select
+                v-model="resourceForm.category"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="">请选择分类</option>
+                <option value="E-books">电子书</option>
+                <option value="Videos">视频</option>
+                <option value="Tools">工具</option>
+              </select>
+            </div>
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">封面图片URL</label>
+              <input
+                v-model="resourceForm.image"
+                type="url"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="https://example.com/image.jpg"
+              >
+            </div>
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-gray-700 mb-2">资源文件URL</label>
+              <input
+                v-model="resourceForm.file_url"
+                type="url"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="https://example.com/resource.pdf"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">按钮文本</label>
+              <input
+                v-model="resourceForm.buttonText"
+                type="text"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="立即下载"
+              >
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">状态</label>
+              <select
+                v-model="resourceForm.status"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option :value="0">待审核</option>
+                <option :value="1">已发布</option>
+                <option :value="2">已拒绝</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex justify-end space-x-2 mt-6">
+            <button
+              type="button"
+              @click="closeResourceModal"
+              class="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
+            >
+              {{ showCreateResourceModal ? '创建' : '保存' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -749,18 +1078,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { http } from '../api/http'
+// import { http } from '../api/http' // unused
+import AdminApi from '@/api/admin'
+import { ResourceApi } from '@/api/resource'
+import { TopicApi } from '@/api/topic'
 import { useToast } from '../composables/useToast'
+import { CategoryApi } from '@/api/category'
 
 // Icons
 import {
   FileTextIcon as ArticleIcon,
   UserIcon,
   TagIcon as CategoryIcon,
-  MessageCircleIcon as CommentIcon
+  MessageCircleIcon as CommentIcon,
+  BookOpenIcon as ResourceIcon
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -773,14 +1107,16 @@ const stats = reactive({
   articleCount: 0,
   userCount: 0,
   categoryCount: 0,
-  commentCount: 0
+  commentCount: 0,
+  resourceCount: 0
 })
 
 const tabs = [
   { id: 'articles', name: '文章管理' },
   { id: 'users', name: '用户管理' },
   { id: 'categories', name: '文章分类管理' },
-  { id: 'topics', name: '话题管理' }
+  { id: 'topics', name: '话题管理' },
+  { id: 'resources', name: '资源管理' }
 ]
 
 // 文章管理
@@ -849,14 +1185,43 @@ const topicPagination = reactive({
   offset: 0
 })
 
+// 资源管理
+const resources = ref([])
+const resourceLoading = ref(false)
+const showCreateResourceModal = ref(false)
+const showEditResourceModal = ref(false)
+const resourceFilter = reactive({
+  keyword: '',
+  status: '',
+  category: ''
+})
+const resourceForm = reactive({
+  id: null,
+  title: '',
+  description: '',
+  type: '',
+  category: '',
+  image: '',
+  file_url: '',
+  buttonText: '',
+  status: 1
+})
+const resourcePagination = reactive({
+  page: 1,
+  limit: 10,
+  total: 0,
+  offset: 0
+})
+
 // 加载统计数据
 const loadStats = async () => {
   try {
-    const response = await http.get('/admin/stats')
+    const response = await AdminApi.getStats()
     stats.articleCount = response.data.articleCount
     stats.userCount = response.data.userCount
     stats.categoryCount = response.data.categoryCount
     stats.commentCount = response.data.commentCount
+    stats.resourceCount = response.data.resourceStats?.total || 0
   } catch (error) {
     console.error('加载统计数据失败:', error)
     // 如果API调用失败，使用默认值
@@ -864,6 +1229,7 @@ const loadStats = async () => {
     stats.userCount = 0
     stats.categoryCount = 0
     stats.commentCount = 0
+    stats.resourceCount = 0
   }
 }
 
@@ -876,8 +1242,8 @@ const loadArticles = async () => {
       status: articleFilter.status,
       keyword: articleFilter.keyword
     }
-    const response = await http.get('/admin/articles', params)
-    articles.value = response.data.articles || []
+    const response = await AdminApi.getArticlesPage(params)
+    articles.value = response.data.items || []
     articlePagination.total = response.data.total || 0
     articlePagination.offset = (articlePagination.page - 1) * articlePagination.limit
   } catch (error) {
@@ -899,7 +1265,7 @@ const searchArticles = () => {
 const toggleArticleStatus = async (article) => {
   try {
     const newStatus = article.status === 1 ? 2 : 1
-    await http.put(`/admin/articles/${article.id}/status`, { status: newStatus })
+    await AdminApi.updateArticleStatus(article.id, newStatus)
     article.status = newStatus
   } catch (error) {
     console.error('切换文章状态失败:', error)
@@ -911,7 +1277,7 @@ const toggleArticleStatus = async (article) => {
 const deleteArticle = async (articleId) => {
   if (!confirm('确定要删除这篇文章吗？')) return
   try {
-    await http.delete(`/admin/articles/${articleId}`)
+    await AdminApi.deleteArticle(articleId)
     loadArticles()
   } catch (error) {
     console.error('删除文章失败:', error)
@@ -927,8 +1293,8 @@ const loadUsers = async () => {
       size: userPagination.limit,
       keyword: userFilter.keyword
     }
-    const response = await http.get('/admin/users', params)
-    users.value = response.data.users || []
+    const response = await AdminApi.getUsersPage(params)
+    users.value = response.data.items || []
     userPagination.total = response.data.total || 0
     userPagination.offset = (userPagination.page - 1) * userPagination.limit
   } catch (error) {
@@ -950,7 +1316,7 @@ const searchUsers = () => {
 const toggleUserStatus = async (user) => {
   try {
     const newStatus = user.status === 1 ? 0 : 1
-    await http.put(`/admin/users/${user.id}/status`, { status: newStatus })
+    await AdminApi.updateUserStatus(user.id, newStatus)
     user.status = newStatus
   } catch (error) {
     console.error('切换用户状态失败:', error)
@@ -966,28 +1332,10 @@ const loadCategories = async () => {
       page: categoryPagination.page,
       size: categoryPagination.limit
     }
-    const response = await http.get('/admin/categories', params)
-
-    // 处理分页响应格式
-    // 检查是否是标准分页格式 {data: [], total: x, page: x, size: x}
-    if (response.data && Array.isArray(response.data) && response.total !== undefined) {
-      categories.value = response.data
-      categoryPagination.total = response.total || 0
-    }
-    // 检查是否是嵌套格式 {data: {data: [], total: x}}
-    else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-      categories.value = response.data.data
-      categoryPagination.total = response.data.total || 0
-    }
-    // 兜底：直接是数组
-    else if (response.data && Array.isArray(response.data)) {
-      categories.value = response.data
-      categoryPagination.total = response.data.length
-    }
-    else {
-      categories.value = []
-      categoryPagination.total = 0
-    }
+    const response = await CategoryApi.getAdminCategoryPage(params)
+    const page = response.data
+    categories.value = page.items
+    categoryPagination.total = page.total
 
     categoryPagination.offset = (categoryPagination.page - 1) * categoryPagination.limit
 
@@ -1032,11 +1380,11 @@ const submitCategory = async () => {
     }
     
     if (showCreateCategoryModal.value) {
-      await http.post('/admin/categories', categoryForm)
+      await CategoryApi.createCategory(categoryForm as any)
       // 创建分类后重置到第一页，因为新分类可能在任何位置
       categoryPagination.page = 1
     } else {
-      await http.put(`/admin/categories/${categoryForm.id}`, categoryForm)
+      await CategoryApi.updateCategory(categoryForm.id as any, categoryForm as any)
       // 编辑分类不需要重置页码
     }
     closeCategoryModal()
@@ -1064,7 +1412,7 @@ const closeCategoryModal = () => {
 const toggleCategoryStatus = async (category) => {
   try {
     const newStatus = category.status === 1 ? 0 : 1
-    await http.put(`/admin/categories/${category.id}/status`, { status: newStatus })
+    await CategoryApi.toggleStatus(category.id, newStatus)
     category.status = newStatus
   } catch (error) {
     console.error('切换分类状态失败:', error)
@@ -1076,7 +1424,7 @@ const toggleCategoryStatus = async (category) => {
 const deleteCategory = async (categoryId) => {
   if (!confirm('确定要删除这个分类吗？')) return
   try {
-    await http.delete(`/admin/categories/${categoryId}`)
+    await CategoryApi.deleteCategory(categoryId)
 
     // 计算删除后的总数和当前页是否还有效
     const newTotal = categoryPagination.total - 1
@@ -1102,23 +1450,11 @@ const deleteCategory = async (categoryId) => {
 const loadTopics = async (page = topicPagination.page) => {
   topicLoading.value = true
   try {
-    const response = await http.get('/admin/topics', {
-      params: {
-        page: page,
-        size: topicPagination.limit,
-        all: true
-      }
-    })
-
-    if (response.data && response.data.items) {
-      topics.value = response.data.items
-      topicPagination.total = response.data.total || 0
-      topicPagination.page = page
-    } else {
-      topics.value = []
-      topicPagination.total = 0
-    }
-
+    const res = await TopicApi.getAdminTopics({ page, size: topicPagination.limit, all: true })
+    const data = res.data
+    topics.value = data.items as any
+    topicPagination.total = data.total
+    topicPagination.page = data.page
     topicPagination.offset = (topicPagination.page - 1) * topicPagination.limit
   } catch (error) {
     console.error('加载话题列表失败:', error)
@@ -1147,10 +1483,10 @@ const editTopic = (topic) => {
 const submitTopic = async () => {
   try {
     if (showCreateTopicModal.value) {
-      await http.post('/admin/topics', topicForm)
+      await TopicApi.createTopic(topicForm as any)
       showToast('话题创建成功', 'success')
     } else {
-      await http.put(`/admin/topics/${topicForm.id}`, topicForm)
+      await TopicApi.updateTopic(topicForm.id as any, topicForm as any)
       showToast('话题更新成功', 'success')
     }
     closeTopicModal()
@@ -1178,11 +1514,9 @@ const closeTopicModal = () => {
 // 切换话题状态
 const toggleTopicStatus = async (topic) => {
   try {
-    await http.put(`/admin/topics/${topic.id}`, {
-      ...topic,
-      is_active: !topic.is_active
-    })
-    topic.is_active = !topic.is_active
+    const newStatus = !topic.is_active
+    await TopicApi.updateTopic(topic.id, { is_active: newStatus } as any)
+    topic.is_active = newStatus
     showToast(`话题已${topic.is_active ? '启用' : '禁用'}`, 'success')
   } catch (error) {
     console.error('切换话题状态失败:', error)
@@ -1194,7 +1528,7 @@ const toggleTopicStatus = async (topic) => {
 const deleteTopic = async (topicId) => {
   if (!confirm('确定要删除这个话题吗？')) return
   try {
-    await http.delete(`/admin/topics/${topicId}`)
+    await TopicApi.deleteTopic(topicId)
 
     // 计算删除后的总数和当前页是否还有效
     const newTotal = topicPagination.total - 1
@@ -1216,6 +1550,158 @@ const deleteTopic = async (topicId) => {
   }
 }
 
+// 资源管理函数
+// 加载资源列表
+const loadResources = async () => {
+  resourceLoading.value = true
+  try {
+    const params = {
+      page: resourcePagination.page,
+      size: resourcePagination.limit,
+      status: resourceFilter.status,
+      category: resourceFilter.category,
+      keyword: resourceFilter.keyword
+    }
+    const response = await ResourceApi.getAllResources(params)
+    if (response.data && response.data.items) {
+      resources.value = response.data.items
+      resourcePagination.total = response.data.total || 0
+    } else {
+      resources.value = []
+      resourcePagination.total = 0
+    }
+
+    resourcePagination.offset = (resourcePagination.page - 1) * resourcePagination.limit
+  } catch (error) {
+    console.error('加载资源列表失败:', error)
+    resources.value = []
+    resourcePagination.total = 0
+    showToast('加载资源列表失败', 'error')
+  } finally {
+    resourceLoading.value = false
+  }
+}
+
+// 搜索资源
+let resourceSearchTimeout = null
+const searchResources = () => {
+  clearTimeout(resourceSearchTimeout)
+  resourceSearchTimeout = setTimeout(() => {
+    resourcePagination.page = 1
+    loadResources()
+  }, 500)
+}
+
+// 编辑资源
+const editResource = (resource) => {
+  resourceForm.id = resource.id
+  resourceForm.title = resource.title
+  resourceForm.description = resource.description
+  resourceForm.type = resource.type
+  resourceForm.category = resource.category
+  resourceForm.image = resource.image
+  resourceForm.file_url = resource.file_url
+  resourceForm.buttonText = resource.buttonText
+  resourceForm.status = resource.status
+  showEditResourceModal.value = true
+}
+
+// 提交资源表单
+const submitResource = async () => {
+  try {
+    if (showCreateResourceModal.value) {
+      await ResourceApi.adminCreateResource(resourceForm as any)
+      showToast('资源创建成功', 'success')
+    } else {
+      await ResourceApi.updateResource(resourceForm.id as any, resourceForm as any)
+      showToast('资源更新成功', 'success')
+    }
+    closeResourceModal()
+    loadResources()
+  } catch (error) {
+    console.error('资源操作失败:', error)
+    showToast(showCreateResourceModal.value ? '创建失败，请重试' : '更新失败，请重试', 'error')
+  }
+}
+
+// 关闭资源模态框
+const closeResourceModal = () => {
+  showCreateResourceModal.value = false
+  showEditResourceModal.value = false
+  Object.assign(resourceForm, {
+    id: null,
+    title: '',
+    description: '',
+    type: '',
+    category: '',
+    image: '',
+    file_url: '',
+    buttonText: '',
+    status: 1
+  })
+}
+
+// 审核资源
+const approveResource = async (resource) => {
+  try {
+    await ResourceApi.updateResourceStatus(resource.id, 1)
+    resource.status = 1
+    showToast('资源审核通过', 'success')
+  } catch (error) {
+    console.error('审核资源失败:', error)
+    showToast('操作失败，请重试', 'error')
+  }
+}
+
+// 拒绝资源
+const rejectResource = async (resource) => {
+  if (!confirm('确定要拒绝这个资源吗？')) return
+  try {
+    await ResourceApi.updateResourceStatus(resource.id, 2)
+    resource.status = 2
+    showToast('资源已拒绝', 'success')
+  } catch (error) {
+    console.error('拒绝资源失败:', error)
+    showToast('操作失败，请重试', 'error')
+  }
+}
+
+// 切换资源状态
+const toggleResourceStatus = async (resource) => {
+  try {
+    const newStatus = resource.status === 1 ? 0 : 1
+    await ResourceApi.updateResourceStatus(resource.id, newStatus)
+    resource.status = newStatus
+    showToast(`资源已${newStatus === 1 ? '发布' : '下架'}`, 'success')
+  } catch (error) {
+    console.error('切换资源状态失败:', error)
+    showToast('操作失败，请重试', 'error')
+  }
+}
+
+// 删除资源
+const deleteResource = async (resourceId) => {
+  if (!confirm('确定要删除这个资源吗？')) return
+  try {
+    await ResourceApi.deleteResource(resourceId)
+
+    const newTotal = resourcePagination.total - 1
+    const maxPage = Math.ceil(newTotal / resourcePagination.limit)
+
+    if (resourcePagination.page > maxPage && maxPage > 0) {
+      resourcePagination.page = maxPage
+    } else if (maxPage === 0) {
+      resourcePagination.page = 1
+    }
+
+    loadResources()
+    showToast('资源删除成功', 'success')
+  } catch (error) {
+    console.error('删除资源失败:', error)
+    showToast('删除失败，请重试', 'error')
+  }
+}
+
 // 分页控制
 const prevPage = (type) => {
   if (type === 'article' && articlePagination.page > 1) {
@@ -1230,6 +1716,9 @@ const prevPage = (type) => {
   } else if (type === 'topic' && topicPagination.page > 1) {
     topicPagination.page--
     loadTopics()
+  } else if (type === 'resource' && resourcePagination.page > 1) {
+    resourcePagination.page--
+    loadResources()
   }
 }
 
@@ -1258,6 +1747,12 @@ const nextPage = (type) => {
       topicPagination.page++
       loadTopics()
     }
+  } else if (type === 'resource') {
+    const maxPage = Math.ceil(resourcePagination.total / resourcePagination.limit)
+    if (resourcePagination.page < maxPage) {
+      resourcePagination.page++
+      loadResources()
+    }
   }
 }
 
@@ -1273,6 +1768,33 @@ const getArticleStatusText = (status) => {
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('zh-CN')
+}
+
+const getResourceStatusText = (status) => {
+  switch (status) {
+    case 0: return '待审核'
+    case 1: return '已发布'
+    case 2: return '已拒绝'
+    default: return '未知'
+  }
+}
+
+const getResourceTypeText = (type) => {
+  switch (type) {
+    case 'e-book': return '电子书'
+    case 'video': return '视频'
+    case 'tool': return '工具'
+    default: return type
+  }
+}
+
+const getCategoryText = (category) => {
+  switch (category) {
+    case 'E-books': return '电子书'
+    case 'Videos': return '视频'
+    case 'Tools': return '工具'
+    default: return category
+  }
 }
 
 const logout = () => {
@@ -1299,5 +1821,6 @@ onMounted(() => {
   loadUsers()
   loadCategories()
   loadTopics()
+  loadResources()
 })
 </script>

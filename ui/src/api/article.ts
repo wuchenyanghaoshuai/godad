@@ -1,6 +1,7 @@
 // 文章相关API服务
 import { http } from './http'
 import { API_CONFIG } from './config'
+import { normalizePageResponse } from './pagination'
 import type {
   Article,
   ArticleCreateRequest,
@@ -15,6 +16,12 @@ export class ArticleApi {
   // 获取文章列表
   static async getArticleList(params?: ArticleListParams): Promise<ApiResponse<PaginatedResponse<Article>>> {
     return http.get<PaginatedResponse<Article>>(API_CONFIG.ENDPOINTS.ARTICLE.LIST, params)
+  }
+  // 获取文章列表（统一分页结构）
+  static async getArticlePage(params?: ArticleListParams): Promise<ApiResponse<PaginatedResponse<Article>>> {
+    const resp = await http.get<any>(API_CONFIG.ENDPOINTS.ARTICLE.LIST, params)
+    const page = normalizePageResponse<Article>(resp)
+    return { code: 200, message: 'success', data: page }
   }
 
   // 获取文章详情
@@ -50,6 +57,12 @@ export class ArticleApi {
   // 获取我的文章列表
   static async getMyArticles(params?: ArticleListParams): Promise<ApiResponse<PaginatedResponse<Article>>> {
     return http.get<PaginatedResponse<Article>>(API_CONFIG.ENDPOINTS.ARTICLE.MY, params)
+  }
+  // 获取我的文章列表（统一分页）
+  static async getMyArticlesPage(params?: ArticleListParams): Promise<ApiResponse<PaginatedResponse<Article>>> {
+    const resp = await http.get<any>(API_CONFIG.ENDPOINTS.ARTICLE.MY, params)
+    const page = normalizePageResponse<Article>(resp)
+    return { code: 200, message: 'success', data: page }
   }
 
   // 增加文章浏览量

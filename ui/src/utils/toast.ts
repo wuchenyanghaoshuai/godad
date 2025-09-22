@@ -39,11 +39,7 @@ class ToastManager {
     options: ToastOptions = {}, 
     action?: ToastAction
   ): HTMLElement {
-    const { 
-      duration = 4000, 
-      type = 'info', 
-      position = 'top-right' 
-    } = options
+    const { type = 'info', position: _position = 'top-right' } = options
 
     const toast = document.createElement('div')
     const toastId = ++this.toastId
@@ -157,10 +153,10 @@ class ToastManager {
     }, 10)
 
     // 自动移除
-    if (options.duration !== 0) {
+    if (duration !== 0) {
       setTimeout(() => {
         this.removeToast(toast)
-      }, options.duration || 4000)
+      }, duration || 4000)
     }
   }
 

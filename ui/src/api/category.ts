@@ -7,6 +7,7 @@ import type {
   ApiResponse,
   ListParams
 } from './types'
+import { normalizePageResponse } from './pagination'
 
 // 分类API服务类
 export class CategoryApi {
@@ -17,7 +18,14 @@ export class CategoryApi {
 
   // 获取分类列表（管理员）
   static async getAdminCategoryList(params?: ListParams): Promise<ApiResponse<Category[]>> {
-    return http.get<Category[]>('/admin/categories', params)
+    return http.get<Category[]>(API_CONFIG.ENDPOINTS.CATEGORY.ADMIN_BASE, params)
+  }
+
+  // 获取分类列表（管理员，统一分页结构）
+  static async getAdminCategoryPage(params?: ListParams): Promise<ApiResponse<{ items: Category[]; total: number; page: number; size: number; total_pages: number }>> {
+    const resp = await http.get<any>(API_CONFIG.ENDPOINTS.CATEGORY.ADMIN_BASE, params)
+    const page = normalizePageResponse<Category>(resp)
+    return { code: 200, message: 'success', data: page }
   }
 
   // 获取分类详情
@@ -38,6 +46,11 @@ export class CategoryApi {
   // 删除分类（管理员功能）
   static async deleteCategory(id: number): Promise<ApiResponse<null>> {
     return http.delete<null>(`${API_CONFIG.ENDPOINTS.CATEGORY.DELETE}/${id}`)
+  }
+
+  // 切换分类状态（管理员功能）
+  static async toggleStatus(id: number, status: number): Promise<ApiResponse<null>> {
+    return http.put<null>(`${API_CONFIG.ENDPOINTS.CATEGORY.ADMIN_BASE}/${id}/status`, { status })
   }
 
   // 获取热门分类

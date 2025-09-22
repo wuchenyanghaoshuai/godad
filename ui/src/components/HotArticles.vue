@@ -2,7 +2,10 @@
   <div class="hot-articles">
     <!-- 头部标题 -->
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold text-gray-900">🔥 热门文章</h2>
+      <div>
+        <h2 class="text-xl font-bold text-gray-900">🔥 热门文章</h2>
+        <p v-if="isFallback" class="text-xs text-gray-500 mt-1">暂无热门，已为你推荐最新文章</p>
+      </div>
       <div class="flex space-x-2">
         <select
           v-model="selectedPeriod"
@@ -143,6 +146,7 @@ const articles = ref<Article[]>([])
 const loading = ref(false)
 const error = ref<string>('')
 const selectedPeriod = ref(props.defaultPeriod)
+const isFallback = ref(false)
 
 // Router
 const router = useRouter()
@@ -152,16 +156,42 @@ const loadHotArticles = async () => {
   try {
     loading.value = true
     error.value = ''
+    isFallback.value = false
 
     const response = await ArticleApi.getHotArticles({
       period: selectedPeriod.value,
       limit: props.limit
     })
 
-    articles.value = response.data
+    const hot = Array.isArray(response.data) ? response.data : []
+    if (hot.length > 0) {
+      articles.value = hot
+    } else {
+      // Fallback: 无热门数据时，取最新已发布文章随机填充
+      const pageResp = await ArticleApi.getArticlePage({ page: 1, size: Math.max(12, props.limit), status: 1 })
+      const items = Array.isArray(pageResp.data?.items) ? pageResp.data.items : []
+      articles.value = pickRandom(items, Math.min(props.limit, items.length))
+      isFallback.value = articles.value.length > 0
+      if (!isFallback.value) {
+        error.value = '暂无热门文章'
+      }
+    }
   } catch (err: any) {
-    error.value = err.message || '加载热门文章失败'
-    console.error('加载热门文章失败:', err)
+    // 出错时也尝试 fallback
+    try {
+      const pageResp = await ArticleApi.getArticlePage({ page: 1, size: Math.max(12, props.limit), status: 1 })
+      const items = Array.isArray(pageResp.data?.items) ? pageResp.data.items : []
+      articles.value = pickRandom(items, Math.min(props.limit, items.length))
+      isFallback.value = articles.value.length > 0
+      if (!isFallback.value) {
+        error.value = err?.message || '加载热门文章失败'
+      } else {
+        error.value = ''
+      }
+    } catch (e: any) {
+      console.error('加载热门文章失败:', err)
+      error.value = e?.message || err?.message || '加载热门文章失败'
+    }
   } finally {
     loading.value = false
   }
@@ -217,6 +247,17 @@ defineExpose({
 onMounted(() => {
   loadHotArticles()
 })
+
+function pickRandom<T>(arr: T[], n: number): T[] {
+  if (!arr || arr.length === 0) return []
+  if (n >= arr.length) return arr.slice()
+  const a = arr.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a.slice(0, n)
+}
 </script>
 
 <style scoped>

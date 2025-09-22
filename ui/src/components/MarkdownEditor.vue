@@ -309,7 +309,8 @@ const dragCounter = ref(0)
 // 计算属性
 const wordCount = computed(() => {
   // Markdown模式：计算纯文本长度
-  const text = content.value.replace(/[#*`>\-_\[\]()!]/g, '').replace(/\s/g, '')
+  // 移除空白、标点与符号，统计纯文本字数
+  const text = content.value.replace(/[\s\p{P}\p{S}]/gu, '')
   return text.length
 })
 
@@ -404,7 +405,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 const handlePaste = (e: ClipboardEvent) => {
   // 让浏览器默认处理粘贴，保持Markdown格式
-  const text = e.clipboardData?.getData('text/plain') || ''
+  const _text = e.clipboardData?.getData('text/plain') || ''
   // 可以在这里添加粘贴内容的处理逻辑
 }
 
@@ -461,7 +462,7 @@ const insertMarkdown = (type: string) => {
       markdownText = `> ${selectedText || '引用内容'}`
       newCursorPos = selectedText ? end + 2 : start + 2
       break
-    case 'link':
+    case 'link': {
       const url = prompt('请输入链接地址:')
       if (url) {
         markdownText = `[${selectedText || '链接文字'}](${url})`
@@ -470,6 +471,7 @@ const insertMarkdown = (type: string) => {
         return
       }
       break
+    }
     default:
       return
   }

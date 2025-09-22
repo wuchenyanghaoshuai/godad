@@ -12,6 +12,8 @@ import ErrorBoundary from '@/components/ErrorBoundary.vue'
 import Toast from '@/components/Toast.vue'
 import { errorHandler } from '@/utils/errorHandler'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
+import { setGlobalToastMethods } from '@/utils/toastBridge'
 
 const router = useRouter()
 const errorBoundary = ref()
@@ -28,5 +30,14 @@ onMounted(async () => {
   } catch (error) {
     console.error('认证初始化失败:', error)
   }
+
+  // 注入全局 Toast 桥接，供非组件环境使用
+  const { toast } = useToast()
+  setGlobalToastMethods({
+    success: (message: string) => toast.success(message),
+    error: (message: string) => toast.error(message),
+    warning: (message: string) => toast.warning(message),
+    info: (message: string) => toast.info(message)
+  })
 })
 </script>

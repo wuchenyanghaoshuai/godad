@@ -1,5 +1,5 @@
 // 用户数据同步组合式函数
-import { ref, computed, reactive } from 'vue'
+import { computed, reactive } from 'vue'
 import { UserApi } from '@/api/user'
 import { FollowApi } from '@/api/follow'
 import { ArticleApi } from '@/api/article'
@@ -108,7 +108,7 @@ export function useUserDataSync(username?: string) {
   }
   
   // 加载用户统计信息
-  const loadUserStats = async (forceRefresh = false) => {
+const loadUserStats = async (_forceRefresh = false) => {
     if (!userKey.value) return
 
     try {
@@ -159,40 +159,16 @@ export function useUserDataSync(username?: string) {
       state.value.isLoading = true
       state.value.error = null
 
-      let response
+      let pageResp
 
       if (isCurrentUser.value) {
-        // 当前用户使用 /articles/my 端点
-        response = await ArticleApi.getMyArticles(params)
+        pageResp = await ArticleApi.getMyArticlesPage(params)
       } else {
-        // 其他用户使用用户名查询
-        response = await UserApi.getUserArticlesByUsername(userKey.value, params)
+        pageResp = await UserApi.getUserArticlesByUsernamePage(userKey.value, params)
       }
 
-      // 处理后端响应格式：
-      // 后端使用 utils.SuccessPage() 返回: {code, message, data: [...articles...], total, page, size}
-      // 而不是前端期望的 {code, message, data: {items: [...articles...], total, page, size}}
-      // 所以需要直接使用 response.data 作为文章数组
-      let articles = []
-
-      if (Array.isArray(response.data)) {
-        // 如果 response.data 直接是数组（当前后端返回格式）
-        articles = response.data
-      } else if (response.data && Array.isArray(response.data.items)) {
-        // 如果是标准的 PaginatedResponse 格式
-        articles = response.data.items
-      } else if (response && Array.isArray(response)) {
-        // 直接是数组的情况
-        articles = response
-      } else {
-        // 其他格式，尝试提取数组
-        articles = response.data || []
-      }
-
-      state.value.articles = articles
-
-      // 更新文章数量统计
-      state.value.stats.article_count = articles.length
+      state.value.articles = pageResp.data.items as any
+      state.value.stats.article_count = pageResp.data.total
     } catch (error) {
       state.value.error = error.message || '加载文章失败'
       console.error('加载用户文章失败:', error)

@@ -334,7 +334,7 @@ func (s *UserService) validatePassword(password string) error {
 // hashPassword 加密密码
 // HashPassword 加密密码（公开方法）- 使用bcrypt
 func (s *UserService) HashPassword(password string) string {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 8)
 	if err != nil {
 		// 如果加密失败，记录错误但返回一个无效的哈希
 		fmt.Printf("密码加密失败: %v\n", err)

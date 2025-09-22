@@ -7,35 +7,26 @@ import type { User, UserLoginRequest, UserRegisterRequest } from '@/api/types'
 export const useAuthStore = defineStore('auth', () => {
   // 状态
   const user = ref<User | null>(null)
-  const token = ref<string | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
   // 计算属性
-  const isAuthenticated = computed(() => !!token.value && !!user.value)
-  const isAdmin = computed(() => user.value?.role === 2)
-  const isContentManager = computed(() => user.value?.role === 1 || isAdmin.value)
+  const isAuthenticated = computed(() => !!user.value)
+  const isAdmin = computed(() => (user.value as any)?.role === 'admin' || (user.value as any)?.role === 2)
+  const isContentManager = computed(() => (user.value as any)?.role === 'content_manager' || isAdmin.value || (user.value as any)?.role === 1)
 
   // 初始化认证状态
   const initAuth = async () => {
     try {
-      // 从本地存储获取token
-      const storedToken = AuthUtils.getToken()
-      if (storedToken) {
-        token.value = storedToken
-        
-        // 首先从本地存储加载用户信息（快速显示）
-        const storedUser = AuthUtils.getStoredUser()
-        if (storedUser) {
-          user.value = storedUser
-        }
-        
-        // 然后从API获取最新用户信息
-        await getCurrentUser()
+      // 先从本地快速恢复用户信息
+      const storedUser = AuthUtils.getStoredUser()
+      if (storedUser) {
+        user.value = storedUser
       }
+      // Cookie 模式：直接探测会话，获取当前用户
+      await getCurrentUser().catch(() => {})
     } catch (err) {
       console.error('初始化认证状态失败:', err)
-      // 清除无效的认证信息
       await logout()
     }
   }
@@ -67,12 +58,12 @@ export const useAuthStore = defineStore('auth', () => {
       error.value = null
 
       const response = await AuthApi.login(credentials)
-      const { user: userData, token: userToken } = response.data
+      const { user: userData } = response.data
       
       // 保存认证信息
       user.value = userData
-      token.value = userToken
-      AuthUtils.saveAuthData(userData, userToken)
+      // Cookie 模式：仅保存用户信息以优化体验
+      AuthUtils.saveAuthData(userData)
       
       return userData
     } catch (err) {
@@ -105,10 +96,8 @@ export const useAuthStore = defineStore('auth', () => {
   // 用户登出
   const logout = async () => {
     try {
-      // 调用登出API
-      if (token.value) {
-        await AuthApi.logout()
-      }
+      // Cookie 模式：无论本地 token 是否存在都调用登出
+      await AuthApi.logout()
     } catch (err) {
       console.error('登出API调用失败:', err)
     } finally {
@@ -122,7 +111,6 @@ export const useAuthStore = defineStore('auth', () => {
       
       // 清除本地状态和存储
       user.value = null
-      token.value = null
       error.value = null
       AuthUtils.clearAuthData()
       
@@ -148,20 +136,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 刷新token
-  const refreshToken = async () => {
-    try {
-      const response = await AuthApi.refreshToken()
-      const { token: newToken } = response.data
-      token.value = newToken
-      AuthUtils.saveToken(newToken)
-      return newToken
-    } catch (err) {
-      // 刷新失败，清除认证状态
-      await logout()
-      throw err
-    }
-  }
+  // Cookie-only：无需在前端管理 refresh token
 
   // 更新用户信息
   const updateUserInfo = (updatedUser: User) => {
@@ -172,20 +147,11 @@ export const useAuthStore = defineStore('auth', () => {
   // 检查认证状态
   const checkAuth = async (): Promise<boolean> => {
     try {
-      // 如果已经有用户信息，直接返回true
-      if (user.value && token.value) {
-        return true
-      }
-      
-      // 尝试从本地存储恢复认证状态
-      const storedToken = AuthUtils.getToken()
-      if (storedToken) {
-        token.value = storedToken
-        await getCurrentUser()
-        return !!user.value
-      }
-      
-      return false
+      // 如果已有用户信息，直接返回
+      if (user.value) return true
+      // Cookie 模式：直接探测当前会话
+      await getCurrentUser()
+      return !!user.value
     } catch (err) {
       console.error('认证检查失败:', err)
       await logout()
@@ -201,7 +167,6 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     // 状态
     user,
-    token,
     isLoading,
     error,
     
@@ -216,7 +181,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     logout,
-    refreshToken,
     updateUserInfo,
     checkAuth,
     clearError

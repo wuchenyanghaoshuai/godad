@@ -216,7 +216,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { ChatAPI, type ChatMessage, type ConversationResponse } from '@/api'
 import { NotificationApi } from '@/api/notification'
 import { useAuthStore } from '@/stores/auth'
@@ -551,7 +551,7 @@ const stopPolling = () => {
 // 监听对话变化
 watch(
   () => props.conversation,
-  (newConversation, oldConversation) => {
+  (newConversation, _oldConversation) => {
     stopPolling() // 停止之前的轮询
 
     if (newConversation) {

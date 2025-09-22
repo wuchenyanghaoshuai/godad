@@ -1,8 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <BaseHeader />
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <AppLayout background="gray" :show-footer="false">
+    <PageContainer background="transparent" padding="md" max-width="7xl">
       <div class="flex gap-6">
         <!-- Left Sidebar - Topics -->
         <div class="w-80 bg-white rounded-lg shadow-sm border border-gray-200">
@@ -98,8 +96,8 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </PageContainer>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
@@ -109,7 +107,7 @@ import { SearchIcon, UsersIcon } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { ForumApi } from '@/api/forum'
 import { useToast } from '@/composables/useToast'
-import BaseHeader from '@/components/BaseHeader.vue'
+import { AppLayout, PageContainer } from '@/components/layout'
 import ForumPost from '@/components/ForumPost.vue'
 import type { ForumPost as ForumPostType, TopicConfig } from '@/api/types'
 
@@ -191,7 +189,7 @@ const loadPosts = async (page: number = 1) => {
 
     forumPosts.value = data.items || []
     currentPage.value = data.page
-    totalPages.value = Math.ceil(data.total / data.size)
+    totalPages.value = data.total_pages || Math.ceil((data.total || 0) / (data.size || 1))
     totalPosts.value = data.total
   } catch (error: any) {
     console.error('加载帖子列表失败:', error)

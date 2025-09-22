@@ -96,7 +96,7 @@
 import { defineComponent, ref, nextTick } from 'vue'
 import { XIcon, ImageIcon } from 'lucide-vue-next'
 import { UploadApi } from '../api/upload'
-import type { ImageUploadResponse } from '../api/types'
+// type import removed (unused)
 
 export default defineComponent({
   name: 'AvatarModal',

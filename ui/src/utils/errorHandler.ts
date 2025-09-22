@@ -1,5 +1,5 @@
 import type { Router } from 'vue-router'
-import { toast } from './toast'
+import { toastBridge as toast } from './toastBridge'
 
 // 错误类型定义
 export interface AppError {
@@ -109,6 +109,7 @@ export class ErrorHandler {
       details: error,
       timestamp: Date.now()
     }
+    ;(appError as any).isAppError = true
     
     this.logError(appError)
     return appError
@@ -122,6 +123,7 @@ export class ErrorHandler {
       details,
       timestamp: Date.now()
     }
+    ;(appError as any).isAppError = true
     
     this.logError(appError)
     return appError
@@ -220,7 +222,7 @@ export class ErrorHandler {
   }
   
   // 发送错误到监控服务（示例）
-  private sendToMonitoring(error: AppError) {
+  private sendToMonitoring(_error: AppError) {
     // 实现错误上报逻辑
     // 例如发送到Sentry、LogRocket等服务
   }

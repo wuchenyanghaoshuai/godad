@@ -253,16 +253,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  ArrowLeftIcon,
-  ImageIcon,
-  XIcon,
-  LoaderIcon
-} from 'lucide-vue-next'
+import { ArrowLeftIcon, XIcon } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { ArticleApi } from '@/api/article'
 import { CategoryApi } from '@/api/category'
-import { UploadApi, UploadUtils } from '@/api/upload'
+// 使用 ImageUpload 组件完成上传，此处无需直接使用 API
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import ImageUpload from '@/components/ImageUpload.vue'
 import { useToast } from '@/composables/useToast'

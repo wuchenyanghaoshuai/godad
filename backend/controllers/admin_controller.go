@@ -6,6 +6,7 @@ import (
 
 	"godad-backend/models"
 	"godad-backend/services"
+	"godad-backend/config"
 
 	"github.com/gin-gonic/gin"
 )
@@ -97,11 +98,23 @@ func (ac *AdminController) GetStats(c *gin.Context) {
 		return
 	}
 
+	// 获取资源统计
+	resourceService := services.NewResourceService(config.GetDB())
+	resourceStats, err := resourceService.GetResourceStats()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":  500,
+			"error": "获取资源统计失败",
+		})
+		return
+	}
+
 	stats := gin.H{
 		"articleCount":  articleCount,
 		"userCount":     userCount,
 		"categoryCount": categoryCount,
 		"commentCount":  commentCount,
+		"resourceStats": resourceStats,
 	}
 
 	c.JSON(http.StatusOK, gin.H{

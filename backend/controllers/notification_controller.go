@@ -1,12 +1,13 @@
 package controllers
 
 import (
-	"godad-backend/services"
-	"net/http"
-	"strconv"
-	"strings"
+    "godad-backend/services"
+    "net/http"
+    "strconv"
+    "strings"
+    "time"
 
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
 )
 
 type NotificationController struct {
@@ -82,6 +83,44 @@ func (c *NotificationController) GetNotificationStats(ctx *gin.Context) {
 		"message": "Notification stats retrieved successfully",
 		"data":    stats,
 	})
+}
+
+// Stream 通知SSE流（开发阶段：定时推送未读数）
+func (c *NotificationController) Stream(ctx *gin.Context) {
+    userID, exists := ctx.Get("user_id")
+    if !exists {
+        ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+        return
+    }
+
+    // 设置SSE头
+    ctx.Header("Content-Type", "text/event-stream")
+    ctx.Header("Cache-Control", "no-cache")
+    ctx.Header("Connection", "keep-alive")
+
+    ticker := time.NewTicker(10 * time.Second)
+    defer ticker.Stop()
+
+    // 首次推送
+    if stats, err := c.notificationService.GetNotificationStats(userID.(uint)); err == nil {
+        ctx.SSEvent("message", stats)
+        ctx.Writer.Flush()
+    }
+
+    // 循环推送，直到客户端断开
+    for {
+        select {
+        case <-ctx.Request.Context().Done():
+            return
+        case <-ticker.C:
+            stats, err := c.notificationService.GetNotificationStats(userID.(uint))
+            if err != nil {
+                continue
+            }
+            ctx.SSEvent("message", stats)
+            ctx.Writer.Flush()
+        }
+    }
 }
 
 // MarkAsRead 标记通知为已读

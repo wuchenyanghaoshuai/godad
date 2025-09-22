@@ -146,7 +146,7 @@ const emit = defineEmits<{
 }>()
 
 // 路由和工具
-const router = useRouter()
+useRouter()
 const { showToast } = useToast()
 
 // 表单数据

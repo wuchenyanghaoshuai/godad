@@ -175,13 +175,13 @@ const triggerFileInput = () => {
   }
 }
 
-const handleDragOver = (e: DragEvent) => {
+const handleDragOver = (_e: DragEvent) => {
   if (!props.disabled) {
     isDragOver.value = true
   }
 }
 
-const handleDragLeave = (e: DragEvent) => {
+const handleDragLeave = (_e: DragEvent) => {
   isDragOver.value = false
 }
 

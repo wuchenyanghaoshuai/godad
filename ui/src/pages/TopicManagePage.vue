@@ -345,6 +345,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { TopicApi } from '@/api/topic'
 import BaseHeader from '@/components/BaseHeader.vue'
 
 // 响应式数据
@@ -404,26 +405,12 @@ const formatDate = (dateString: string) => {
 const fetchTopics = async (page = 1) => {
   isLoading.value = true
   try {
-    const response = await fetch(`http://127.0.0.1:8888/api/admin/topics?page=${page}&size=${pageSize.value}&all=true`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    const result = await response.json()
-    if (result.code === 200) {
-      topics.value = result.data.items || []
-      totalTopics.value = result.data.total || 0
-      totalPages.value = result.data.total_page || 0
-      currentPage.value = page
-    } else {
-      throw new Error(result.message || '获取话题列表失败')
-    }
+    const response = await TopicApi.getAdminTopics({ page, size: pageSize.value, all: true })
+    const pageData = response.data
+    topics.value = pageData.items as any
+    totalTopics.value = pageData.total
+    totalPages.value = pageData.total_pages
+    currentPage.value = pageData.page
   } catch (error: any) {
     console.error('获取话题列表失败:', error)
     showToast('获取话题列表失败', 'error')
@@ -434,26 +421,13 @@ const fetchTopics = async (page = 1) => {
 
 const createTopic = async () => {
   try {
-    const response = await fetch('http://127.0.0.1:8888/api/admin/topics', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(formData.value)
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    const result = await response.json()
-    if (result.code === 201) {
+    const res = await TopicApi.createTopic(formData.value as any)
+    if (res.code === 200 || res.code === 201) {
       showToast('话题创建成功', 'success')
       closeModals()
       fetchTopics(currentPage.value)
     } else {
-      throw new Error(result.message || '创建话题失败')
+      throw new Error(res.message || '创建话题失败')
     }
   } catch (error: any) {
     console.error('创建话题失败:', error)
@@ -463,26 +437,15 @@ const createTopic = async () => {
 
 const updateTopic = async () => {
   try {
-    const response = await fetch(`http://127.0.0.1:8888/api/admin/topics/${editingTopic.value.id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(formData.value)
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    const result = await response.json()
-    if (result.code === 200) {
+    const id = editingTopic.value?.id
+    if (!id) return
+    const res = await TopicApi.updateTopic(id, formData.value as any)
+    if ((res as any).code === 200) {
       showToast('话题更新成功', 'success')
       closeModals()
       fetchTopics(currentPage.value)
     } else {
-      throw new Error(result.message || '更新话题失败')
+      throw new Error((res as any).message || '更新话题失败')
     }
   } catch (error: any) {
     console.error('更新话题失败:', error)
@@ -492,25 +455,13 @@ const updateTopic = async () => {
 
 const deleteTopicAPI = async (id: number) => {
   try {
-    const response = await fetch(`http://127.0.0.1:8888/api/admin/topics/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json'
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    const result = await response.json()
-    if (result.code === 200) {
+    const res = await TopicApi.deleteTopic(id)
+    if ((res as any).code === 200) {
       showToast('话题删除成功', 'success')
       showDeleteModal.value = false
       fetchTopics(currentPage.value)
     } else {
-      throw new Error(result.message || '删除话题失败')
+      throw new Error((res as any).message || '删除话题失败')
     }
   } catch (error: any) {
     console.error('删除话题失败:', error)

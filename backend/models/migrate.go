@@ -30,6 +30,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&ForumPost{},
 		&ForumReply{},
 		&Topic{},
+		&Resource{},
 	)
 
 	if err != nil {
@@ -142,6 +143,14 @@ func createIndexes(db *gorm.DB) error {
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_topics_created_at ON topics(created_at)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_topics_display_name ON topics(display_name)")
 
+	// 资源表索引
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_status ON resources(status)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_type ON resources(type)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_category ON resources(category)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_uploader_id ON resources(uploader_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_download_count ON resources(download_count)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_created_at ON resources(created_at)")
+
 	return nil
 }
 
@@ -179,6 +188,9 @@ func createForeignKeys(db *gorm.DB) error {
 	db.Exec("ALTER TABLE forum_replies ADD CONSTRAINT fk_forum_replies_post FOREIGN KEY (post_id) REFERENCES forum_posts(id) ON DELETE CASCADE ON UPDATE CASCADE")
 	db.Exec("ALTER TABLE forum_replies ADD CONSTRAINT fk_forum_replies_author FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE")
 	db.Exec("ALTER TABLE forum_replies ADD CONSTRAINT fk_forum_replies_parent FOREIGN KEY (parent_id) REFERENCES forum_replies(id) ON DELETE CASCADE ON UPDATE CASCADE")
+
+	// 资源表外键
+	db.Exec("ALTER TABLE resources ADD CONSTRAINT fk_resources_uploader FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE")
 
 	return nil
 }

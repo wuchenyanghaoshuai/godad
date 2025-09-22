@@ -26,12 +26,10 @@ export class AuthApi {
     return http.post<null>(API_CONFIG.ENDPOINTS.AUTH.LOGOUT)
   }
 
-  // 刷新token
-  static async refreshToken(): Promise<ApiResponse<{ token: string; refresh_token: string }>> {
-    const refreshToken = localStorage.getItem(API_CONFIG.AUTH.REFRESH_TOKEN_KEY)
-    return http.post<{ token: string; refresh_token: string }>(
-      API_CONFIG.ENDPOINTS.AUTH.REFRESH,
-      { refresh_token: refreshToken }
+  // 刷新token（Cookie 模式，无需传参）
+  static async refreshToken(): Promise<ApiResponse<{ token?: string; refresh_token?: string }>> {
+    return http.post<{ token?: string; refresh_token?: string }>(
+      API_CONFIG.ENDPOINTS.AUTH.REFRESH
     )
   }
 
@@ -56,18 +54,13 @@ export class AuthApi {
 
 // 认证工具函数
 export class AuthUtils {
-  // 保存登录信息
-  static saveAuthData(user: User, token: string): void {
-    localStorage.setItem(API_CONFIG.AUTH.TOKEN_KEY, token)
+  // 保存登录信息（Cookie 模式仅保存用户信息）
+  static saveAuthData(user: User): void {
     localStorage.setItem(API_CONFIG.AUTH.USER_INFO_KEY, JSON.stringify(user))
-    http.setToken(token)
   }
 
-  // 保存token
-  static saveToken(token: string): void {
-    localStorage.setItem(API_CONFIG.AUTH.TOKEN_KEY, token)
-    http.setToken(token)
-  }
+  // Cookie 模式下不再持久化 token（保留历史 API 兼容的空操作）
+  // static saveToken(_) { /* no-op */ }
 
   // 保存用户信息
   static saveUser(user: User): void {
@@ -76,8 +69,6 @@ export class AuthUtils {
 
   // 清除登录信息
   static clearAuthData(): void {
-    localStorage.removeItem(API_CONFIG.AUTH.TOKEN_KEY)
-    localStorage.removeItem(API_CONFIG.AUTH.REFRESH_TOKEN_KEY)
     localStorage.removeItem(API_CONFIG.AUTH.USER_INFO_KEY)
     http.clearToken()
   }
@@ -96,14 +87,5 @@ export class AuthUtils {
     return null
   }
 
-  // 检查是否已登录
-  static isLoggedIn(): boolean {
-    const token = localStorage.getItem(API_CONFIG.AUTH.TOKEN_KEY)
-    return !!token
-  }
-
-  // 获取token
-  static getToken(): string | null {
-    return localStorage.getItem(API_CONFIG.AUTH.TOKEN_KEY)
-  }
+  // isLoggedIn/getToken 在 Cookie 模式下不再使用
 }

@@ -1,14 +1,15 @@
 package controllers
 
 import (
-	"strconv"
+    "net/http"
+    "strconv"
 
-	"godad-backend/middleware"
-	"godad-backend/models"
-	"godad-backend/services"
-	"godad-backend/utils"
+    "godad-backend/middleware"
+    "godad-backend/models"
+    "godad-backend/services"
+    "godad-backend/utils"
 
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
 )
 
 // UserController 用户控制器
@@ -78,18 +79,32 @@ func (c *UserController) Login(ctx *gin.Context) {
 		return
 	}
 
-	// 生成JWT令牌
-	token, err := middleware.GenerateToken(user)
-	if err != nil {
-		utils.Error(ctx, utils.CodeInternalError, "生成令牌失败")
-		return
-	}
+    // 生成JWT令牌（access + refresh）
+    token, err := middleware.GenerateToken(user)
+    if err != nil {
+        utils.Error(ctx, utils.CodeInternalError, "生成令牌失败")
+        return
+    }
+    refresh, err := middleware.GenerateRefreshToken(user)
+    if err != nil {
+        utils.Error(ctx, utils.CodeInternalError, "生成刷新令牌失败")
+        return
+    }
+    // 设置 httpOnly Cookie（开发环境 secure=false）
+    // 并返回用户信息（为兼容前端旧逻辑，保留 token 字段）
+    // 写入 Cookie
+    // 通过中间件方法设置
+    // 需要导出一个函数或在此处复制逻辑，这里直接调用未导出的函数不行，改为在此处设置 cookie
+    // 由于 setAuthCookies 在 middleware 包内未导出，这里重复设置
+    ctx.SetSameSite(http.SameSiteLaxMode)
+    ctx.SetCookie("access_token", token, 0, "/", "", false, true)
+    ctx.SetCookie("refresh_token", refresh, 0, "/", "", false, true)
 
 	// 返回用户信息和令牌
-	utils.SuccessWithMessage(ctx, "登录成功", gin.H{
-		"user":  user.ToResponse(),
-		"token": token,
-	})
+    utils.SuccessWithMessage(ctx, "登录成功", gin.H{
+        "user":  user.ToResponse(),
+        "token": token,
+    })
 }
 
 // GetProfile 获取当前用户信息
@@ -381,9 +396,11 @@ func (c *UserController) GetUserList(ctx *gin.Context) {
 // @Success 200 {object} utils.Response "登出成功"
 // @Router /api/user/logout [post]
 func (c *UserController) Logout(ctx *gin.Context) {
-	// JWT是无状态的，登出只需要客户端删除token即可
-	// 这里可以记录登出日志或者将token加入黑名单（如果需要的话）
-	utils.SuccessWithMessage(ctx, "登出成功", nil)
+    // 清除 Cookie（access_token, refresh_token）
+    ctx.SetSameSite(http.SameSiteLaxMode)
+    ctx.SetCookie("access_token", "", -1, "/", "", false, true)
+    ctx.SetCookie("refresh_token", "", -1, "/", "", false, true)
+    utils.SuccessWithMessage(ctx, "登出成功", nil)
 }
 
 // GenerateRandomNickname 生成随机昵称

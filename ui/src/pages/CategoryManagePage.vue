@@ -328,26 +328,16 @@ const loadCategories = async (reset = false) => {
   error.value = ''
   
   try {
-    const response = await CategoryApi.getAdminCategoryList({
+    const response = await CategoryApi.getAdminCategoryPage({
       page: currentPage.value,
       size: pageSize.value,
       keyword: searchKeyword.value || undefined
     })
-    
-    
-    // 处理分页响应格式
-    if (response.data && Array.isArray(response.data)) {
-      categories.value = response.data
-      // 如果response有total属性则使用，否则使用data长度
-      totalCategories.value = response.total || response.data.length
-    } else if (response && response.data && Array.isArray(response.data.data)) {
-      // 处理嵌套的分页响应格式
-      categories.value = response.data.data
-      totalCategories.value = response.data.total || response.data.data.length
-    } else {
-      categories.value = []
-      totalCategories.value = 0
-    }
+    const page = response.data
+    categories.value = page.items
+    totalCategories.value = page.total
+    currentPage.value = page.page
+    pageSize.value = page.size
   } catch (err: any) {
     error.value = err.message || '获取分类列表失败'
     console.error('获取分类列表失败:', err)

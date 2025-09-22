@@ -1,4 +1,5 @@
 import { http } from './http'
+import { API_CONFIG } from './config'
 import type { Comment, CommentCreateRequest, CommentUpdateRequest, PaginatedResponse, ApiResponse } from './types'
 
 /**
@@ -16,7 +17,7 @@ export const CommentApi = {
     sort?: 'newest' | 'oldest' | 'most_liked'
     parent_id?: number
   }): Promise<ApiResponse<PaginatedResponse<Comment>>> => {
-    return http.get(`/article-comments/${articleId}`, { params })
+    return http.get(`${API_CONFIG.ENDPOINTS.COMMENT.ARTICLE_COMMENTS}/${articleId}`, params)
   },
 
   /**
@@ -24,7 +25,7 @@ export const CommentApi = {
    * @param commentId 评论ID
    */
   getComment: (commentId: number): Promise<ApiResponse<Comment>> => {
-    return http.get(`/comments/${commentId}`)
+    return http.get(`${API_CONFIG.ENDPOINTS.COMMENT.LIST}/${commentId}`)
   },
 
   /**
@@ -32,7 +33,7 @@ export const CommentApi = {
    * @param data 评论数据（包含article_id）
    */
   createComment: (data: CommentCreateRequest): Promise<ApiResponse<Comment>> => {
-    return http.post(`/comments`, data)
+    return http.post(`${API_CONFIG.ENDPOINTS.COMMENT.CREATE}`, data)
   },
 
   /**
@@ -41,7 +42,7 @@ export const CommentApi = {
    * @param data 更新数据
    */
   updateComment: (commentId: number, data: CommentUpdateRequest): Promise<ApiResponse<Comment>> => {
-    return http.put(`/comments/${commentId}`, data)
+    return http.put(`${API_CONFIG.ENDPOINTS.COMMENT.UPDATE}/${commentId}`, data)
   },
 
   /**
@@ -49,7 +50,7 @@ export const CommentApi = {
    * @param commentId 评论ID
    */
   deleteComment: (commentId: number): Promise<ApiResponse<void>> => {
-    return http.delete(`/comments/${commentId}`)
+    return http.delete(`${API_CONFIG.ENDPOINTS.COMMENT.DELETE}/${commentId}`)
   },
 
   /**
@@ -57,7 +58,7 @@ export const CommentApi = {
    * @param commentId 评论ID
    */
   likeComment: (commentId: number): Promise<ApiResponse<void>> => {
-    return http.post(`/comments/${commentId}/like`)
+    return http.post(`${API_CONFIG.ENDPOINTS.COMMENT.LIKE}/${commentId}/like`)
   },
 
   /**
@@ -65,7 +66,7 @@ export const CommentApi = {
    * @param commentId 评论ID
    */
   unlikeComment: (commentId: number): Promise<ApiResponse<void>> => {
-    return http.post(`/comments/${commentId}/unlike`)
+    return http.post(`${API_CONFIG.ENDPOINTS.COMMENT.UNLIKE}/${commentId}/unlike`)
   },
 
   /**
@@ -77,7 +78,7 @@ export const CommentApi = {
     page?: number
     limit?: number
   }): Promise<ApiResponse<PaginatedResponse<Comment>>> => {
-    return http.get(`/comments/replies/${parentId}`, { params })
+    return http.get(`${API_CONFIG.ENDPOINTS.COMMENT.REPLIES}/${parentId}`, params)
   },
 
   /**
@@ -87,6 +88,6 @@ export const CommentApi = {
     page?: number
     limit?: number
   }): Promise<ApiResponse<PaginatedResponse<Comment>>> => {
-    return http.get('/comments/my', { params })
+    return http.get(API_CONFIG.ENDPOINTS.COMMENT.MY, params)
   }
 }

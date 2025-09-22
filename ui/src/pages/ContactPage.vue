@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { AppLayout, PageContainer } from '@/components/layout'
 import { MailIcon, PhoneIcon, MapPinIcon, ClockIcon, MessageCircleIcon, HeadphonesIcon } from 'lucide-vue-next'
 
 // 响应式数据
@@ -89,19 +90,17 @@ const submitForm = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-pink-50 to-orange-50">
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-pink-600 to-orange-600 text-white py-16">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h1 class="text-4xl md:text-6xl font-bold mb-6">联系我们</h1>
-        <p class="text-xl md:text-2xl text-pink-100 max-w-3xl mx-auto">
-          我们随时为您提供帮助和支持
-        </p>
+  <AppLayout footer-theme="tint">
+    <!-- Hero -->
+    <PageContainer background="tint" padding="xl">
+      <div class="text-center max-w-3xl mx-auto">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">联系我们</h1>
+        <p class="text-gray-600">我们随时为您提供帮助和支持</p>
       </div>
-    </div>
+    </PageContainer>
 
     <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <PageContainer background="white" padding="xl" max-width="7xl">
 
       <!-- 联系方式 -->
       <section class="mb-20">
@@ -273,27 +272,27 @@ const submitForm = () => {
       </section>
 
       <!-- Call to Action -->
-      <section class="text-center bg-gradient-to-r from-pink-600 to-orange-600 rounded-3xl p-12 text-white">
-        <HeadphonesIcon class="h-16 w-16 mx-auto mb-6" />
-        <h2 class="text-3xl md:text-4xl font-bold mb-6">还有其他问题？</h2>
-        <p class="text-xl text-pink-100 mb-8 max-w-2xl mx-auto">
+      <section class="text-center rounded-3xl p-10 bg-gradient-to-r from-pink-50 via-purple-50 to-orange-50">
+        <HeadphonesIcon class="h-12 w-12 mx-auto mb-4 text-pink-600" />
+        <h2 class="text-2xl md:text-3xl font-bold mb-4 text-gray-900">还有其他问题？</h2>
+        <p class="text-base text-gray-600 mb-6 max-w-2xl mx-auto">
           我们的客服团队随时准备为您提供帮助，无论是技术问题还是使用建议
         </p>
-        <div class="space-x-4">
+        <div class="space-x-3">
           <a
             href="mailto:support@godad.com"
-            class="inline-flex items-center bg-white text-pink-600 px-8 py-4 rounded-full font-semibold hover:bg-pink-50 transition-colors duration-300"
+            class="inline-flex items-center bg-white text-pink-600 px-6 py-3 rounded-full font-semibold border border-gray-200 hover:bg-pink-50 transition-colors duration-300"
           >
             立即邮件咨询
           </a>
           <a
             href="tel:400-123-4567"
-            class="inline-flex items-center border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-pink-600 transition-colors duration-300"
+            class="inline-flex items-center border-2 border-pink-600 text-pink-600 px-6 py-3 rounded-full font-semibold hover:bg-pink-600 hover:text-white transition-colors duration-300"
           >
             电话咨询
           </a>
         </div>
       </section>
-    </div>
-  </div>
+    </PageContainer>
+  </AppLayout>
 </template>

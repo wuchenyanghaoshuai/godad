@@ -1,4 +1,6 @@
 import { http } from './http'
+import { API_CONFIG } from './config'
+import { normalizePageResponse } from './pagination'
 
 // 通知类型
 export type NotificationType = 'like' | 'comment' | 'bookmark' | 'follow' | 'message'
@@ -51,46 +53,53 @@ export class NotificationApi {
     const queryParams = new URLSearchParams()
     if (params?.page) queryParams.append('page', params.page.toString())
     if (params?.limit) queryParams.append('limit', params.limit.toString())
-    
-    const url = `/notifications${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    const base = API_CONFIG.ENDPOINTS.NOTIFICATION.BASE
+    const url = `${base}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
     return http.get(url)
+  }
+
+  // 获取通知列表（统一分页结构）
+  static async getNotificationsPage(params?: { page?: number; limit?: number }) {
+    const resp = await this.getNotifications(params)
+    const normalized = normalizePageResponse<Notification>({ code: resp.code, data: resp.data })
+    return { code: 200, message: 'success', data: normalized }
   }
 
   // 获取通知统计
   static async getNotificationStats(): Promise<{ code: number; message: string; data: NotificationStats }> {
-    return http.get('/notifications/stats')
+    return http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.STATS)
   }
 
   // 标记通知为已读
   static async markAsRead(notificationIds: number[]): Promise<{ code: number; message: string }> {
-    return http.put('/notifications/mark-read', { 
+    return http.put(API_CONFIG.ENDPOINTS.NOTIFICATION.MARK_READ, { 
       notification_ids: notificationIds 
     })
   }
 
   // 标记单个通知为已读
   static async markSingleAsRead(notificationId: number): Promise<{ code: number; message: string }> {
-    return http.put(`/notifications/${notificationId}/mark-read`)
+    return http.put(`${API_CONFIG.ENDPOINTS.NOTIFICATION.BASE}/${notificationId}/mark-read`)
   }
 
   // 标记所有通知为已读
   static async markAllAsRead(): Promise<{ code: number; message: string }> {
-    return http.put('/notifications/mark-all-read')
+    return http.put(API_CONFIG.ENDPOINTS.NOTIFICATION.MARK_ALL_READ)
   }
 
   // 批量标记通知为已读（通过URL参数）
   static async batchMarkAsRead(notificationIds: number[]): Promise<{ code: number; message: string }> {
-    return http.put(`/notifications/batch-mark-read?ids=${notificationIds.join(',')}`)
+    return http.put(`${API_CONFIG.ENDPOINTS.NOTIFICATION.BATCH_MARK_READ}?ids=${notificationIds.join(',')}`)
   }
 
   // 删除通知
   static async deleteNotification(notificationId: number): Promise<{ code: number; message: string }> {
-    return http.delete(`/notifications/${notificationId}`)
+    return http.delete(`${API_CONFIG.ENDPOINTS.NOTIFICATION.BASE}/${notificationId}`)
   }
 
   // 删除所有通知
   static async deleteAllNotifications(): Promise<{ code: number; message: string }> {
-    return http.delete('/notifications/all')
+    return http.delete(`${API_CONFIG.ENDPOINTS.NOTIFICATION.BASE}/all`)
   }
 }
 

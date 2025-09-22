@@ -177,7 +177,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { NotificationApi, type Notification, type NotificationStats, formatNotificationTime, notificationTypeMap, notificationIconMap } from '@/api/notification'
 
@@ -231,7 +231,7 @@ const groupMessageNotifications = (notifications: Notification[]): Notification[
 
   // 处理分组后的消息通知
   const groupedMessages: Notification[] = []
-  for (const [groupKey, groupNotifications] of messageGroups) {
+  for (const [_groupKey, groupNotifications] of messageGroups) {
     if (groupNotifications.length > 0) {
       // 取最新的通知作为代表
       const latestNotification = groupNotifications.reduce((latest, current) => {
@@ -275,13 +275,14 @@ const loadNotifications = async (reset = false) => {
       notifications.value = []
     }
 
-    const response = await NotificationApi.getNotifications({
+    const response = await NotificationApi.getNotificationsPage({
       page: currentPage.value,
       limit: pageSize.value
     })
 
     if (response.code === 200) {
-      const { notifications: newNotifications, pagination } = response.data
+      const page = response.data
+      const newNotifications = page.items as Notification[]
 
       if (reset) {
         notifications.value = newNotifications
@@ -292,7 +293,7 @@ const loadNotifications = async (reset = false) => {
       // 对所有已加载的通知进行重新分组
       notifications.value = groupMessageNotifications(notifications.value || [])
 
-      hasMore.value = currentPage.value < pagination.total_pages
+      hasMore.value = currentPage.value < page.total_pages
     }
   } catch (error) {
     console.error('加载通知列表失败:', error)

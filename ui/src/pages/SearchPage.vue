@@ -311,7 +311,7 @@ const performSearch = async (page = 1) => {
       status: 1 // 只搜索已发布的文章
     }
     
-    const response = await ArticleApi.getArticleList(params)
+    const response = await ArticleApi.getArticlePage(params)
     searchResults.value = response.data
     
     const endTime = performance.now()

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-white">
     <!-- 导航栏 -->
     <BaseHeader />
     <!-- 加载状态 -->
@@ -467,17 +467,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  ArrowLeftIcon,
-  UserIcon,
-  EyeIcon,
-  MessageCircleIcon,
-  HeartIcon,
-  StarIcon,
-  ShareIcon,
-  EditIcon,
-  TrashIcon
-} from 'lucide-vue-next'
+import { ArrowLeftIcon, EyeIcon, MessageCircleIcon, HeartIcon, StarIcon, ShareIcon, EditIcon, TrashIcon } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { ArticleApi } from '@/api/article'
 import { CategoryApi } from '@/api/category'
@@ -732,11 +722,12 @@ const focusToComments = async () => {
       } else {
         // console.warn('commentSectionRef不存在或focusCommentInput方法不可用')
         if (commentSectionRef.value) {
+          /* no-op */
         }
       }
     }, 300)
-  } catch (error) {
-    console.error('Focus to comments failed:', error)
+  } catch (_error) {
+    console.error('Focus to comments failed:', _error)
   }
 }
 
@@ -1035,7 +1026,7 @@ watch(
         .then(response => {
           isLiked.value = response.data?.is_liked || false
         })
-        .catch(error => {
+        .catch(_error => {
           isLiked.value = false
         })
       
@@ -1046,7 +1037,7 @@ watch(
             // 后端直接返回 {"is_following": true}，不包装在data中
             isFollowing.value = response.is_following || false
           })
-          .catch(error => {
+          .catch(_error => {
             isFollowing.value = false
           })
       } else {
@@ -1059,7 +1050,7 @@ watch(
           .then(response => {
             isFavorited.value = response.data?.is_favorited || false
           })
-          .catch(error => {
+          .catch(_error => {
             isFavorited.value = false
           })
       } else {
@@ -1097,6 +1088,7 @@ const handleFocusParameter = async () => {
       route.query.comment_content as string
     )
   } else {
+    /* no-op */
   }
 }
 

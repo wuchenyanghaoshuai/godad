@@ -1,6 +1,6 @@
 import { http } from './http'
 import { API_CONFIG } from './config'
-import type { ApiResponse, PaginatedResponse } from './types'
+import type { ApiResponse } from './types'
 
 // 收藏相关类型定义
 export interface Favorite {

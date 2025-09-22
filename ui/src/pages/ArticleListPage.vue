@@ -1,17 +1,15 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- 导航栏 -->
-    <BaseHeader />
+  <AppLayout background-class="bg-gray-50">
 
     <!-- 热门文章 - 只在有数据时显示 -->
-    <div v-if="hasHotArticles" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+    <PageContainer v-if="hasHotArticles" background="gray" padding="sm">
       <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 mb-6">
         <HotArticles :limit="5" :default-period="'week'" ref="hotArticlesRef" />
       </div>
-    </div>
+    </PageContainer>
 
     <!-- 搜索和筛选 -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+    <PageContainer background="gray" padding="sm">
       <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <!-- 搜索框 -->
@@ -67,10 +65,10 @@
           </div>
         </div>
       </div>
-    </div>
+    </PageContainer>
 
     <!-- 文章列表 -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+    <PageContainer background="gray" padding="md">
       <!-- 加载状态 -->
       <div v-if="isLoading" class="flex justify-center py-12">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
@@ -250,33 +248,28 @@
           </button>
         </nav>
       </div>
-    </div>
-  </div>
+    </PageContainer>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import {
+import { 
   SearchIcon,
-  FilterIcon,
   HeartIcon,
-  UserIcon,
   PlusIcon,
-  StarIcon,
   MessageCircleIcon,
   BookmarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ChevronDownIcon,
-  ShareIcon
+  ChevronDownIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { ArticleApi } from '@/api/article'
 import { CategoryApi } from '@/api/category'
-import { FavoriteApi } from '@/api/favorite'
 import type { Article, Category } from '@/api/types'
-import BaseHeader from '@/components/BaseHeader.vue'
+import { AppLayout, PageContainer } from '@/components/layout'
 import HotArticles from '@/components/HotArticles.vue'
 
 const router = useRouter()
@@ -287,7 +280,7 @@ const articles = ref<Article[]>([])
 const categories = ref<Category[]>([])
 const isLoading = ref(false)
 const error = ref('')
-const bookmarkStatus = ref<Record<number, boolean>>({})
+// 书签状态在当前页面未使用，移除以减少不必要的请求与警告
 
 // 热门文章相关
 const hotArticlesRef = ref()
@@ -358,16 +351,6 @@ const getCategoryName = (categoryId: number) => {
   return category?.name || '未分类'
 }
 
-// 格式化日期
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
-
 // 跳转到文章详情
 const goToArticle = (articleId: number) => {
   router.push(`/articles/${articleId}`)
@@ -393,22 +376,6 @@ const goToPage = (page: number) => {
   }
 }
 
-// 加载收藏状态
-const loadBookmarkStatus = async (articleIds: number[]) => {
-  if (!authStore.isAuthenticated || articleIds.length === 0) {
-    return
-  }
-  
-  try {
-    const response = await FavoriteApi.batchGetFavoriteStatus({ article_ids: articleIds })
-    if (response.success && response.data) {
-      bookmarkStatus.value = { ...bookmarkStatus.value, ...response.data }
-    }
-  } catch (error) {
-    console.error('加载收藏状态失败:', error)
-  }
-}
-
 // 加载文章列表
 const loadArticles = async () => {
   try {
@@ -425,19 +392,9 @@ const loadArticles = async () => {
       status: 1 // 只显示已发布的文章（1=已发布）
     }
     
-    const response = await ArticleApi.getArticleList(params)
-    // Handle nested data structure from API
-    if (response.data && response.data.list) {
-      articles.value = response.data.list || []
-      totalCount.value = response.data.total || 0
-    } else {
-      articles.value = (response.data && Array.isArray(response.data)) ? response.data : []
-      totalCount.value = response.total || 0
-    }
-    
-    // 加载收藏状态
-    const articleIds = articles.value.map(article => article.id)
-    await loadBookmarkStatus(articleIds)
+    const response = await ArticleApi.getArticlePage(params)
+    articles.value = response.data.items
+    totalCount.value = response.data.total
     
   } catch (err: any) {
     error.value = err.message || '加载文章失败'
@@ -481,50 +438,7 @@ const quickLike = async (article: Article) => {
   }
 }
 
-// 快速收藏
-const quickBookmark = async (article: Article) => {
-  if (!authStore.isAuthenticated) {
-    router.push('/login')
-    return
-  }
-  
-  try {
-    const response = await FavoriteApi.toggleFavorite({ article_id: article.id })
-    
-    if (response.success) {
-      // 更新本地状态
-      bookmarkStatus.value[article.id] = response.data.is_favorited
-      
-      // 更新文章收藏数
-      const currentCount = article.favorite_count || 0
-      if (response.data.is_favorited) {
-        article.favorite_count = currentCount + 1
-      } else {
-        article.favorite_count = Math.max(0, currentCount - 1)
-      }
-    }
-  } catch (error) {
-    console.error('收藏操作失败:', error)
-  }
-}
-
-// 快速分享
-const quickShare = (article: Article) => {
-  const shareUrl = `${window.location.origin}/articles/${article.id}`
-  
-  if (navigator.share) {
-    navigator.share({
-      title: article.title,
-      text: article.summary || article.content?.substring(0, 100),
-      url: shareUrl
-    })
-  } else {
-    // 复制链接到剪贴板
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      // 这里可以显示一个提示消息
-    })
-  }
-}
+// （已移除未使用的快速收藏与分享函数）
 
 // 组件挂载时加载数据
 onMounted(() => {

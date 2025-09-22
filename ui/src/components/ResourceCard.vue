@@ -14,7 +14,7 @@
           @click="$emit('click', resource)"
           class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-6 bg-gradient-to-r from-pink-500 to-rose-400 text-white text-sm font-medium leading-normal w-fit hover:from-pink-600 hover:to-rose-500 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
         >
-          <span class="truncate">{{ resource.buttonText }}</span>
+          <span class="truncate">{{ resource.button_text }}</span>
         </button>
       </div>
       <div class="flex-1 min-w-0">
@@ -28,16 +28,7 @@
 </template>
 
 <script setup lang="ts">
-// Props
-interface Resource {
-  id: number
-  title: string
-  description: string
-  image: string
-  type: 'e-book' | 'video' | 'tool'
-  buttonText: string
-  category: string
-}
+import type { Resource } from '@/api'
 
 defineProps<{
   resource: Resource

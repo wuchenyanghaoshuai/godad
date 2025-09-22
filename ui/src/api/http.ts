@@ -1,5 +1,5 @@
 // HTTP客户端封装
-import { API_CONFIG, buildApiUrl } from './config'
+import { API_CONFIG } from './config'
 import { errorHandler } from '@/utils/errorHandler'
 
 // 定义响应数据结构
@@ -29,21 +29,19 @@ export class HttpClient {
     this.timeout = API_CONFIG.TIMEOUT
   }
 
-  // 获取存储的token
-  private getToken(): string | null {
-    return localStorage.getItem(API_CONFIG.AUTH.TOKEN_KEY)
-  }
-
-  // 设置token
-  public setToken(token: string): void {
-    localStorage.setItem(API_CONFIG.AUTH.TOKEN_KEY, token)
-  }
-
-  // 清除token
+  // Cookie 鉴权下不再依赖本地注入 Authorization 头
+  // 保留空实现以兼容旧调用
+  private getToken(): string | null { return null }
+  public setToken(_token: string): void { /* no-op in cookie mode */ }
   public clearToken(): void {
-    localStorage.removeItem(API_CONFIG.AUTH.TOKEN_KEY)
-    localStorage.removeItem(API_CONFIG.AUTH.REFRESH_TOKEN_KEY)
-    localStorage.removeItem(API_CONFIG.AUTH.USER_INFO_KEY)
+    // Cookie-only：仅清理本地缓存的用户信息（若有）
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.removeItem(API_CONFIG.AUTH.USER_INFO_KEY)
+      } catch (e) {
+        // ignore storage errors
+      }
+    }
   }
 
   // 构建请求头
@@ -53,10 +51,7 @@ export class HttpClient {
       ...customHeaders
     }
 
-    const token = this.getToken()
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
+    // Cookie 模式不再附加 Authorization 头
 
     return headers
   }
@@ -85,7 +80,8 @@ export class HttpClient {
     const requestInit: RequestInit = {
       method,
       headers: requestHeaders,
-      signal: AbortSignal.timeout(timeout)
+      signal: AbortSignal.timeout(timeout),
+      credentials: 'include'
     }
 
     if (data && (method === 'POST' || method === 'PUT')) {
@@ -99,8 +95,19 @@ export class HttpClient {
     }
 
     try {
-      const response = await fetch(requestUrl, requestInit)
-      
+      const doFetch = async (): Promise<Response> => fetch(requestUrl, requestInit)
+      let response = await doFetch()
+
+      if (response.status === 401) {
+        // 尝试静默刷新并重试一次
+        try {
+          await this.refreshSession()
+          response = await doFetch()
+        } catch (e) {
+          // 刷新失败，按未授权处理
+        }
+      }
+
       if (!response.ok) {
         // 创建包含响应信息的错误对象
         const errorData = {
@@ -126,6 +133,15 @@ export class HttpClient {
       }
 
       const result = await response.json()
+      // 统一判定成功：后端约定 code=200 或 0 视为成功
+      if (typeof result === 'object' && result) {
+        const code = (result.code ?? 200)
+        if (code !== 200 && code !== 0) {
+          const appError = errorHandler.handleBusinessError(String(code), result.message || '接口返回错误', result)
+          ;(appError as any).isAppError = true
+          throw appError
+        }
+      }
       return result as ApiResponse<T>
     } catch (error) {
       // 如果不是我们的AppError，则通过错误处理器处理
@@ -134,6 +150,21 @@ export class HttpClient {
         throw appError
       }
       throw error
+    }
+  }
+
+  // 刷新登录状态（基于 httpOnly refresh cookie）
+  private async refreshSession(): Promise<void> {
+    try {
+      const url = `${this.baseURL}${API_CONFIG.ENDPOINTS.AUTH.REFRESH}`
+      const resp = await fetch(url, { method: 'POST', credentials: 'include' })
+      if (!resp.ok) throw new Error('refresh failed')
+      const data = await resp.json()
+      const code = (data?.code ?? 200)
+      if (code !== 200 && code !== 0) throw new Error(data?.message || 'refresh error')
+    } catch (e) {
+      this.clearToken()
+      throw e
     }
   }
 

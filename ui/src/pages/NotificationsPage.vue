@@ -317,7 +317,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { NotificationApi, type NotificationWithDetails } from '../api/notification'
@@ -386,14 +386,15 @@ const fetchNotifications = async (page = 1) => {
   notificationsError.value = ''
 
   try {
-    const response = await NotificationApi.getNotifications({
+    const response = await NotificationApi.getNotificationsPage({
       page,
       limit: limit.value
     })
 
-    notifications.value = response.data.notifications
-    notificationsPage.value = response.data.pagination.current_page
-    notificationsTotalPages.value = response.data.pagination.total_pages
+    const pageData = response.data
+    notifications.value = pageData.items as any
+    notificationsPage.value = pageData.page
+    notificationsTotalPages.value = pageData.total_pages
 
     // 统计未读通知数量
     unreadNotificationsCount.value = notifications.value ? notifications.value.filter(n => !n.is_read).length : 0
@@ -610,6 +611,7 @@ const handleMessageSent = async (message: any) => {
   if (chatMessageListRef.value && chatMessageListRef.value.addMessage) {
     chatMessageListRef.value.addMessage(message)
   } else {
+    /* no-op */
   }
 
   // 强制刷新消息列表确保同步
@@ -751,7 +753,7 @@ const restoreChatState = async () => {
     if (chatState.selectedNotification && chatState.currentConversation) {
       // 验证对话是否仍然存在
       try {
-        const response = await ChatAPI.getMessages(chatState.currentConversation.id, {
+        const _response = await ChatAPI.getMessages(chatState.currentConversation.id, {
           page: 1,
           limit: 1
         })

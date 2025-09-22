@@ -178,14 +178,17 @@ const closeDropdown = () => {
 }
 
 // 加载通知统计
-const loadStats = async () => {
+const loadStats = async (): Promise<boolean> => {
   try {
     const response = await NotificationApi.getNotificationStats()
     if (response.code === 200) {
       stats.value = response.data
+      return true
     }
+    return false
   } catch (error) {
     console.error('加载通知统计失败:', error)
+    return false
   }
 }
 
@@ -193,13 +196,13 @@ const loadStats = async () => {
 const loadNotifications = async () => {
   loading.value = true
   try {
-    const response = await NotificationApi.getNotifications({
+    const response = await NotificationApi.getNotificationsPage({
       page: 1,
       limit: 10 // 下拉菜单只显示最近10条
     })
 
     if (response.code === 200) {
-      notifications.value = response.data.notifications
+      notifications.value = response.data.items
     }
   } catch (error) {
     console.error('加载通知列表失败:', error)
@@ -275,8 +278,13 @@ const handleNotificationClick = async (notification: Notification) => {
       await router.push(`/articles/${notification.resource_id}`)
       
     } else if (notification.type === 'follow') {
-      // 关注通知跳转到用户页面
-      await router.push(`/user/${notification.actor_id}`)
+      // 关注通知跳转到用户页面（按路由定义使用 username）
+      if (notification.actor_username) {
+        await router.push(`/users/${notification.actor_username}`)
+      } else {
+        // 后备：缺失用户名时仍保证可跳转
+        await router.push('/user-center')
+      }
     }
   } catch (error) {
     console.error('NotificationBell: 处理通知点击失败:', error)
@@ -285,6 +293,10 @@ const handleNotificationClick = async (notification: Notification) => {
 
 // 自动刷新定时器
 let refreshTimer: number | null = null
+let eventSource: EventSource | null = null
+const baseInterval = 3000
+let pollInterval = baseInterval
+const maxInterval = 30000
 
 // 点击外部关闭下拉菜单
 const handleClickOutside = (event: Event) => {
@@ -293,15 +305,26 @@ const handleClickOutside = (event: Event) => {
   }
 }
 
+function scheduleNextPoll() {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+  }
+  refreshTimer = window.setTimeout(async () => {
+    const ok = await loadStats()
+    pollInterval = ok ? baseInterval : Math.min(pollInterval * 2, maxInterval)
+    scheduleNextPoll()
+  }, pollInterval)
+}
+
 const startAutoRefresh = () => {
-  refreshTimer = window.setInterval(() => {
-    loadStats()
-  }, 3000) // 每3秒刷新一次统计
+  stopAutoRefresh()
+  pollInterval = baseInterval
+  scheduleNextPoll()
 }
 
 const stopAutoRefresh = () => {
   if (refreshTimer) {
-    clearInterval(refreshTimer)
+    clearTimeout(refreshTimer)
     refreshTimer = null
   }
 }
@@ -309,14 +332,17 @@ const stopAutoRefresh = () => {
 // 组件挂载
 onMounted(() => {
   loadStats()
-  startAutoRefresh()
+  startSSE()
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 // 组件卸载
 onUnmounted(() => {
   stopAutoRefresh()
+  stopSSE()
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 // 暴露方法给父组件
@@ -324,6 +350,53 @@ defineExpose({
   loadStats,
   unreadCount: computed(() => unreadCount.value)
 })
+
+function stopSSE() {
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
+}
+
+function startSSE() {
+  // 页面不可见时不启动 SSE
+  if (document.visibilityState === 'hidden') {
+    startAutoRefresh()
+    return
+  }
+  try {
+    stopSSE()
+    stopAutoRefresh()
+    eventSource = new EventSource('/api/notifications/stream')
+    eventSource.onmessage = (evt) => {
+      try {
+        const data = JSON.parse(evt.data || '{}')
+        if (typeof data.unread_count === 'number') {
+          stats.value = { ...(stats.value || { total_count: 0, unread_count: 0 }), unread_count: data.unread_count }
+        }
+      } catch (e) {
+        // ignore invalid SSE payload
+      }
+    }
+    eventSource.onerror = () => {
+      // 降级轮询 + 退避
+      stopSSE()
+      startAutoRefresh()
+    }
+  } catch {
+    startAutoRefresh()
+  }
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    stopSSE()
+    stopAutoRefresh()
+  } else {
+    // 尝试恢复 SSE，失败则轮询
+    startSSE()
+  }
+}
 </script>
 
 <style scoped>

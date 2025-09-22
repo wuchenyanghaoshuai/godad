@@ -105,7 +105,7 @@ import {
 } from 'lucide-vue-next'
 import { AuthApi } from '@/api/auth'
 
-const router = useRouter()
+useRouter()
 
 // 响应式数据
 const form = ref({

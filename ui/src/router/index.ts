@@ -1,32 +1,31 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomePage from '@/pages/HomePage.vue'
-import LoginPage from '@/pages/LoginPage.vue'
-import RegisterPage from '@/pages/RegisterPage.vue'
-import ForgotPasswordPage from '@/pages/ForgotPasswordPage.vue'
-import ResetPasswordPage from '@/pages/ResetPasswordPage.vue'
-import UserCenter from '@/pages/UserCenter.vue'
-import UserProfilePage from '@/pages/UserProfilePage.vue'
-import CategoryManagePage from '@/pages/CategoryManagePage.vue'
-import TopicManagePage from '@/pages/TopicManagePage.vue'
-import ArticleListPage from '@/pages/ArticleListPage.vue'
-import ArticleDetailPage from '@/pages/ArticleDetailPage.vue'
-import ArticleCreatePage from '@/pages/ArticleCreatePage.vue'
-import ArticleEditPage from '@/pages/ArticleEditPage.vue'
-import SearchPage from '@/pages/SearchPage.vue'
-import NotFoundPage from '@/pages/NotFoundPage.vue'
-import AboutView from '@/views/AboutView.vue'
-import AdminDashboard from '@/pages/AdminDashboard.vue'
-import AdminLoginPage from '@/pages/AdminLoginPage.vue'
-import NotificationsPage from '@/pages/NotificationsPage.vue'
-import AboutPage from '@/pages/AboutPage.vue'
-import ContactPage from '@/pages/ContactPage.vue'
-import PrivacyPage from '@/pages/PrivacyPage.vue'
-import TermsPage from '@/pages/TermsPage.vue'
-import HelpPage from '@/pages/HelpPage.vue'
-import CommunityPage from '@/pages/CommunityPage.vue'
-import ResourcesPage from '@/pages/ResourcesPage.vue'
-import ForumPostCreatePage from '@/pages/ForumPostCreatePage.vue'
-import ForumPostDetailPage from '@/pages/ForumPostDetailPage.vue'
+const HomePage = () => import('@/pages/HomePage.vue')
+const LoginPage = () => import('@/pages/LoginPage.vue')
+const RegisterPage = () => import('@/pages/RegisterPage.vue')
+const ForgotPasswordPage = () => import('@/pages/ForgotPasswordPage.vue')
+const ResetPasswordPage = () => import('@/pages/ResetPasswordPage.vue')
+const UserCenter = () => import('@/pages/UserCenter.vue')
+const UserProfilePage = () => import('@/pages/UserProfilePage.vue')
+const CategoryManagePage = () => import('@/pages/CategoryManagePage.vue')
+const TopicManagePage = () => import('@/pages/TopicManagePage.vue')
+const ArticleListPage = () => import('@/pages/ArticleListPage.vue')
+const ArticleDetailPage = () => import('@/pages/ArticleDetailPage.vue')
+const ArticleCreatePage = () => import('@/pages/ArticleCreatePage.vue')
+const ArticleEditPage = () => import('@/pages/ArticleEditPage.vue')
+const SearchPage = () => import('@/pages/SearchPage.vue')
+const NotFoundPage = () => import('@/pages/NotFoundPage.vue')
+const AdminDashboard = () => import('@/pages/AdminDashboard.vue')
+const AdminLoginPage = () => import('@/pages/AdminLoginPage.vue')
+const NotificationsPage = () => import('@/pages/NotificationsPage.vue')
+const AboutPage = () => import('@/pages/AboutPage.vue')
+const ContactPage = () => import('@/pages/ContactPage.vue')
+const PrivacyPage = () => import('@/pages/PrivacyPage.vue')
+const TermsPage = () => import('@/pages/TermsPage.vue')
+const HelpPage = () => import('@/pages/HelpPage.vue')
+const CommunityPage = () => import('@/pages/CommunityPage.vue')
+const ResourcesPage = () => import('@/pages/ResourcesPage.vue')
+const ForumPostCreatePage = () => import('@/pages/ForumPostCreatePage.vue')
+const ForumPostDetailPage = () => import('@/pages/ForumPostDetailPage.vue')
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -206,16 +205,11 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   
   try {
-    // 如果还没有初始化认证状态，先初始化
-    if (!authStore.token && !authStore.user) {
+    // 确保初始化过会话（Cookie-only 情况下可幂等调用）
+    if (!authStore.isAuthenticated) {
       await authStore.initAuth()
     }
-    
-    // 检查用户认证状态
-    if (authStore.token && !authStore.isAuthenticated) {
-      await authStore.checkAuth()
-    }
-    
+
     // 需要认证的路由
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
       // 管理员路由跳转到管理员登录页面

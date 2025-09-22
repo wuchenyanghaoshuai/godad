@@ -9,6 +9,7 @@ import type {
   PaginatedResponse,
   ListParams
 } from './types'
+import { normalizePageResponse } from './pagination'
 
 // 用户API服务类
 export class UserApi {
@@ -48,6 +49,11 @@ export class UserApi {
   static async getUserArticles(userId: number, params?: ListParams): Promise<ApiResponse<PaginatedResponse<any>>> {
     return http.get<PaginatedResponse<any>>(`${API_CONFIG.ENDPOINTS.USER.PUBLIC_INFO}/${userId}/articles`, params)
   }
+  static async getUserArticlesPage(userId: number, params?: ListParams): Promise<ApiResponse<PaginatedResponse<any>>> {
+    const resp = await http.get<any>(`${API_CONFIG.ENDPOINTS.USER.PUBLIC_INFO}/${userId}/articles`, params)
+    const page = normalizePageResponse<any>(resp)
+    return { code: 200, message: 'success', data: page }
+  }
 
   // 获取用户的关注状态
   static async getFollowStatus(userId: number): Promise<ApiResponse<{ is_following: boolean }>> {
@@ -72,5 +78,10 @@ export class UserApi {
   // 根据用户名获取用户文章列表（新的安全API）
   static async getUserArticlesByUsername(username: string, params?: ListParams): Promise<ApiResponse<PaginatedResponse<any>>> {
     return http.get<PaginatedResponse<any>>(`${API_CONFIG.ENDPOINTS.USER.ARTICLES_BY_USERNAME}/${username}/articles`, params)
+  }
+  static async getUserArticlesByUsernamePage(username: string, params?: ListParams): Promise<ApiResponse<PaginatedResponse<any>>> {
+    const resp = await http.get<any>(`${API_CONFIG.ENDPOINTS.USER.ARTICLES_BY_USERNAME}/${username}/articles`, params)
+    const page = normalizePageResponse<any>(resp)
+    return { code: 200, message: 'success', data: page }
   }
 }

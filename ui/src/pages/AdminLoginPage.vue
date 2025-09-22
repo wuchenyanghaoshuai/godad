@@ -175,7 +175,7 @@ const handleLogin = async () => {
     success.value = ''
 
     // 调用登录API
-    const result = await authStore.login({
+    const _result = await authStore.login({
       username: form.username,
       password: form.password,
       rememberMe: form.rememberMe
@@ -189,11 +189,9 @@ const handleLogin = async () => {
     }
 
     success.value = '登录成功，正在跳转...'
-    
-    // 延迟跳转以显示成功消息
-    setTimeout(() => {
-      router.push('/management-dashboard')
-    }, 1000)
+
+    // 立即跳转到管理后台
+    router.push('/management-dashboard')
 
   } catch (err: any) {
     console.error('登录失败:', err)
