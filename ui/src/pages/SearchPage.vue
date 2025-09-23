@@ -103,10 +103,10 @@
                   </span>
                   <span class="text-xs text-gray-500">{{ formatDate(article.created_at) }}</span>
                 </div>
-                <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-2 hover:text-blue-600 transition-colors">
+                <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-2 hover:text-blue-600 transition-colors single-line-ellipsis" :title="article.title">
                   <span v-html="highlightKeyword(article.title)"></span>
                 </h2>
-                <p class="text-gray-600 text-sm leading-relaxed mb-3">
+                <p class="text-gray-600 text-sm leading-relaxed mb-3 line-clamp-2">
                   <span v-html="highlightKeyword(getArticleSummary(article))"></span>
                 </p>
               </div>
@@ -267,17 +267,14 @@ const formatDate = (dateString: string) => {
   })
 }
 
-// 获取文章摘要
+// 获取文章摘要（PC两行策略，约90字）
 const getArticleSummary = (article: Article) => {
-  if (article.summary) {
-    return article.summary.substring(0, 150) + (article.summary.length > 150 ? '...' : '')
-  }
-  if (article.content) {
-    // 移除HTML标签
-    const plainText = article.content.replace(/<[^>]*>/g, '')
-    return plainText.substring(0, 150) + (plainText.length > 150 ? '...' : '')
-  }
-  return '暂无摘要'
+  const limit = 90
+  const s = (article.summary || '').trim()
+  if (s) return s.length > limit ? s.slice(0, limit) + '...' : s
+  const raw = (article.content || '') as string
+  const plainText = raw.replace(/<[^>]*>/g, '')
+  return plainText.length > limit ? plainText.slice(0, limit) + '...' : plainText
 }
 
 // 高亮关键词
@@ -402,6 +399,17 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.single-line-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 mark {
   background-color: #fef3c7;
   color: inherit;

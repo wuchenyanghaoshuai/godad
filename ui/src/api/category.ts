@@ -13,7 +13,8 @@ import { normalizePageResponse } from './pagination'
 export class CategoryApi {
   // 获取分类列表（普通用户）
   static async getCategoryList(params?: ListParams): Promise<ApiResponse<Category[]>> {
-    return http.get<Category[]>(API_CONFIG.ENDPOINTS.CATEGORY.LIST, params)
+    // 为前台使用返回“所有启用的分类（不分页）”，避免只拿到前10条
+    return http.get<Category[]>(API_CONFIG.ENDPOINTS.CATEGORY.ALL)
   }
 
   // 获取分类列表（管理员）
@@ -56,5 +57,15 @@ export class CategoryApi {
   // 获取热门分类
   static async getPopularCategories(limit?: number): Promise<ApiResponse<Category[]>> {
     return http.get<Category[]>('/category/popular', { limit })
+  }
+
+  // 获取所有启用的分类（不分页，显式方法名，供其他调用方使用）
+  static async getAllCategories(): Promise<ApiResponse<Category[]>> {
+    return http.get<Category[]>(API_CONFIG.ENDPOINTS.CATEGORY.ALL)
+  }
+
+  // 获取包含文章数量的分类列表（不分页）
+  static async getCategoriesWithCount(): Promise<ApiResponse<(Category & { article_count?: number })[]>> {
+    return http.get<(Category & { article_count?: number })[]>(API_CONFIG.ENDPOINTS.CATEGORY.WITH_COUNT)
   }
 }

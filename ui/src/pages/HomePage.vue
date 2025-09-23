@@ -192,11 +192,11 @@
               <span v-if="a.category?.name" class="bg-pink-100 text-pink-800 text-xs font-medium px-2 sm:px-2.5 py-0.5 rounded-full">{{ a.category.name }}</span>
               <span class="text-gray-500 text-xs sm:text-sm ml-auto">{{ formatDate(a.created_at) }}</span>
             </div>
-            <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3 line-clamp-2 group-hover:text-pink-600 transition-colors duration-300">
+            <h3 class="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3 single-line-ellipsis group-hover:text-pink-600 transition-colors duration-300" :title="a.title">
               {{ a.title }}
             </h3>
-            <p v-if="a.summary" class="text-gray-600 mb-3 sm:mb-4 line-clamp-3 text-xs sm:text-sm md:text-base">
-              {{ a.summary }}
+            <p class="text-gray-600 mb-3 sm:mb-4 line-clamp-2 text-xs sm:text-sm md:text-base">
+              {{ getHomePreviewSummary(a) }}
             </p>
             <div class="flex items-center justify-between">
               <div class="flex items-center">
@@ -286,6 +286,16 @@ onMounted(async () => {
   }
 })
 
+// 统一PC摘要：两行显示，无摘要时从正文提取前90字
+const getHomePreviewSummary = (article: Article) => {
+  const limit = 90
+  const s = (article.summary || '').trim()
+  if (s) return s.length > limit ? s.slice(0, limit) + '...' : s
+  const raw = (article as any).content || ''
+  const plain = raw.replace(/<[^>]*>/g, '')
+  return plain.length > limit ? plain.slice(0, limit) + '...' : plain
+}
+
 function pickRandom<T>(arr: T[], n: number): T[] {
   if (n >= arr.length) return arr.slice()
   // Fisher-Yates shuffle partial
@@ -299,16 +309,14 @@ function pickRandom<T>(arr: T[], n: number): T[] {
 </script>
 
 <style scoped>
+.single-line-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

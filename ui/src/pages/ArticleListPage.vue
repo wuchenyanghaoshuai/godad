@@ -16,26 +16,51 @@
           <div class="sm:col-span-2 lg:col-span-2">
             <ArticleSearchBar
               v-model="searchQuery"
-              :suggestions="hotKeywords"
               placeholder="输入关键词搜索文章..."
               @submit="searchNow"
               @clear="clearKeyword"
             />
           </div>
           
-          <!-- 分类筛选 -->
-          <div class="relative">
-            <select
-              v-model="selectedCategory"
-              @change="handleCategoryChange"
-              class="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-sm sm:text-base bg-white appearance-none cursor-pointer"
+          <!-- 分类筛选（自定义下拉，限制高度，内部滚动） -->
+          <div class="relative" ref="categoryDropdownRef">
+            <button
+              class="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg bg-white text-left text-sm sm:text-base flex items-center justify-between hover:bg-gray-50"
+              @click="openCategoryDropdown = !openCategoryDropdown"
+              aria-haspopup="listbox"
+              :aria-expanded="openCategoryDropdown ? 'true' : 'false'"
             >
-              <option value="">全部分类</option>
-              <option v-for="category in categories" :key="category.id" :value="category.id">
-                {{ category.name }}
-              </option>
-            </select>
-            <ChevronDownIcon class="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+              <span class="truncate">{{ selectedCategoryName || '全部分类' }}</span>
+              <ChevronDownIcon class="h-5 w-5 text-gray-400" />
+            </button>
+            <div
+              v-if="openCategoryDropdown"
+              class="absolute z-20 mt-2 w-full sm:w-72 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden"
+            >
+              <div class="flex items-center gap-2 px-3 pt-3 pb-2 border-b border-gray-100">
+                <input
+                  v-model="categoryFilterText"
+                  placeholder="搜索分类..."
+                  class="w-full bg-white text-sm outline-none placeholder:text-gray-400"
+                />
+              </div>
+              <ul class="max-h-80 overflow-y-auto py-1" role="listbox">
+                <li>
+                  <button
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                    :class="selectedCategory === '' ? 'text-pink-600 font-medium' : 'text-gray-700'"
+                    @click="selectCategory('')"
+                  >全部分类</button>
+                </li>
+                <li v-for="c in filteredCategories" :key="c.id">
+                  <button
+                    class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                    :class="selectedCategory === String(c.id) ? 'text-pink-600 font-medium' : 'text-gray-700'"
+                    @click="selectCategory(String(c.id))"
+                  >{{ c.name }}</button>
+                </li>
+              </ul>
+            </div>
           </div>
           
           <!-- 排序 -->
@@ -52,6 +77,8 @@
             <ChevronDownIcon class="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
           </div>
         </div>
+
+        <!-- 横向 Chips 已移除，改为自定义下拉 -->
 
         <!-- 已选条件 + 结果统计 -->
         <div class="mt-3 flex items-center justify-between flex-wrap gap-2">
@@ -147,11 +174,11 @@
           
           <!-- 文章内容 -->
           <div class="p-4 sm:p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors duration-300">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2 single-line-ellipsis hover:text-blue-600 transition-colors duration-300" :title="article.title">
               {{ article.title }}
             </h3>
             <p class="text-gray-600 text-sm mb-3 line-clamp-2 leading-relaxed">
-              {{ article.summary || article.content?.substring(0, 100) + '...' }}
+              {{ getPreviewSummary(article) }}
             </p>
             
             <!-- 标签 -->
@@ -284,7 +311,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
   HeartIcon,
@@ -352,6 +379,8 @@ const visiblePages = computed(() => {
 
 // 无图占位使用统一品牌渐变（见 tailwind.config.js 扩展）
 
+// 已移除顶部搜索建议标签展示
+
 // 防抖搜索
 let searchTimeout: number
 const handleSearch = () => {
@@ -403,6 +432,16 @@ const getArticleTags = (tags: string) => {
   return tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
 }
 
+// 生成摘要（PC：固定两行，内容控制在约90字）
+const getPreviewSummary = (article: Article) => {
+  const limit = 90
+  const s = (article.summary || '').trim()
+  if (s) return s.length > limit ? s.slice(0, limit) + '...' : s
+  const raw = (article as any).content || ''
+  const plain = raw.replace(/<[^>]*>/g, '')
+  return plain.length > limit ? plain.slice(0, limit) + '...' : plain
+}
+
 // 点击标签进行搜索
 const searchByTag = (tag: string) => {
   if (!tagsList.value.includes(tag)) tagsList.value.push(tag)
@@ -419,6 +458,38 @@ const goToPage = (page: number) => {
   }
 }
 
+// 自定义下拉（分类）
+const categoryDropdownRef = ref<HTMLElement | null>(null)
+const openCategoryDropdown = ref(false)
+const categoryFilterText = ref('')
+const filteredCategories = computed(() => {
+  const t = categoryFilterText.value.trim().toLowerCase()
+  if (!t) return categories.value
+  return categories.value.filter(c => c.name.toLowerCase().includes(t))
+})
+const selectedCategoryName = computed(() => {
+  if (!selectedCategory.value) return ''
+  const c = categories.value.find(c => String(c.id) === String(selectedCategory.value))
+  return c?.name || ''
+})
+const selectCategory = (val: string) => {
+  selectedCategory.value = val
+  openCategoryDropdown.value = false
+  categoryFilterText.value = ''
+  handleCategoryChange()
+}
+const handleClickOutside = (e: MouseEvent) => {
+  if (!openCategoryDropdown.value) return
+  const el = categoryDropdownRef.value
+  if (el && !el.contains(e.target as Node)) openCategoryDropdown.value = false
+}
+onMounted(() => {
+  window.addEventListener('mousedown', handleClickOutside)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('mousedown', handleClickOutside)
+})
+
 // 加载文章列表
 const loadArticles = async () => {
   try {
@@ -431,7 +502,7 @@ const loadArticles = async () => {
       size: pageSize.value,
       keyword: searchQuery.value || undefined,
       tags: (tagsList.value.length ? tagsList.value.join(',') : undefined),
-      category_id: selectedCategory.value ? Number(selectedCategory.value) : undefined,
+      category_id: selectedCategory.value && selectedCategory.value !== '' ? Number(selectedCategory.value) : undefined,
       sort: sortBy.value,
       status: 1 // 只显示已发布的文章（1=已发布）
     }
@@ -488,20 +559,39 @@ const quickLike = async (article: Article) => {
 
 // （已移除未使用的快速收藏与分享函数）
 
-// 组件挂载时加载数据
-onMounted(() => {
-  loadCategories()
+// 支持热门分类 slug 到分类ID 的映射
+const CATEGORY_SLUG_MAP: Record<string, string> = {
+  newborn: '新生儿护理',
+  nutrition: '营养健康',
+  education: '早期教育',
+  psychology: '心理发展',
+  safety: '安全防护'
+}
+
+const resolveCategoryParam = (catParam: string): string => {
+  if (!catParam) return ''
+  // 已是数字ID
+  if (!isNaN(Number(catParam))) return String(Number(catParam))
+  // 将 slug 转换为中文名称，若无映射则视为名称本身
+  const targetName = CATEGORY_SLUG_MAP[catParam] || catParam
+  const matched = categories.value.find(c => c.name === targetName)
+  return matched ? String(matched.id) : ''
+}
+
+// 组件挂载时加载数据（先加载分类，再解析路由参数，最后加载文章）
+onMounted(async () => {
+  await loadCategories()
   // 从路由初始化
   const q = (route.query.q as string) || ''
   const tags = (route.query.tags as string) || ''
-  const cat = (route.query.category as string) || ''
+  const catParam = (route.query.category as string) || ''
   const sort = (route.query.sort as string) || 'created_at'
   const page = Number(route.query.p || 1)
   if (q) searchQuery.value = q
   if (tags) {
     tagsList.value = tags.split(',').map(s => s.trim()).filter(Boolean)
   }
-  if (cat) selectedCategory.value = cat
+  selectedCategory.value = resolveCategoryParam(catParam)
   if (sort) sortBy.value = sort
   if (!isNaN(page) && page > 0) currentPage.value = page
   loadArticles()
@@ -527,12 +617,12 @@ watch(() => route.query, (newQ) => {
   // 外部导航（后退/前进）时同步状态
   const q = (newQ.q as string) || ''
   const tags = (newQ.tags as string) || ''
-  const cat = (newQ.category as string) || ''
+  const catParam = (newQ.category as string) || ''
   const sort = (newQ.sort as string) || 'created_at'
   const page = Number(newQ.p || 1)
   searchQuery.value = q
   tagsList.value = tags ? tags.split(',').map(s => s.trim()).filter(Boolean) : []
-  selectedCategory.value = cat
+  selectedCategory.value = resolveCategoryParam(catParam)
   sortBy.value = sort
   currentPage.value = (!isNaN(page) && page > 0) ? page : 1
   loadArticles()
@@ -578,6 +668,11 @@ const resetFilters = () => {
 </script>
 
 <style scoped>
+.single-line-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -592,4 +687,3 @@ const resetFilters = () => {
   overflow: hidden;
 }
 </style>
-const hotKeywords = ref(['育儿', '早教', '亲子', '饮食', '睡眠', '心理'])
