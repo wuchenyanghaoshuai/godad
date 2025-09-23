@@ -224,22 +224,13 @@
                     v-if="article.author.username"
                     :to="`/users/${article.author.username}`"
                     @click.stop
-                    class="w-5 h-5 rounded-full overflow-hidden flex-shrink-0 hover:ring-2 hover:ring-pink-300 transition-all"
+                    class="flex-shrink-0"
                   >
-                    <img
-                      v-if="article.author.avatar"
-                      :src="article.author.avatar"
-                      :alt="article.author.nickname || article.author.username"
-                      class="w-full h-full object-cover"
+                    <UserAvatar
+                      :avatar="article.author.avatar || ''"
+                      :name="article.author.nickname || article.author.username || 'U'"
+                      :size="20"
                     />
-                    <div
-                      v-else
-                      class="w-full h-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center"
-                    >
-                      <span class="text-white font-bold text-xs">
-                        {{ (article.author.nickname || article.author.username || 'U').charAt(0).toUpperCase() }}
-                      </span>
-                    </div>
                   </router-link>
                   <router-link
                     v-if="article.author.username"
@@ -329,6 +320,7 @@ import type { Article, Category } from '@/api/types'
 import { AppLayout, PageContainer } from '@/components/layout'
 import HotArticles from '@/components/HotArticles.vue'
 import ArticleSearchBar from '@/components/ArticleSearchBar.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 const router = useRouter()
 const route = useRoute()

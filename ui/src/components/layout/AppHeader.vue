@@ -121,18 +121,12 @@
                   @click="showUserMenuDropdown = !showUserMenuDropdown"
                   class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-50 transition-all duration-200"
                 >
-                  <img
-                    v-if="authStore.user?.avatar"
-                    :src="authStore.user.avatar"
-                    :alt="authStore.user.nickname || authStore.user.username"
-                    class="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-pink-200 hover:border-pink-300 transition-colors"
+                  <UserAvatar
+                    :avatar="authStore.user?.avatar || ''"
+                    :name="authStore.user?.nickname || authStore.user?.username || 'U'"
+                    :size="32"
+                    wrapper-class="border-2 border-pink-200 hover:border-pink-300 transition-colors"
                   />
-                  <div
-                    v-else
-                    class="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full flex items-center justify-center text-white font-semibold text-sm"
-                  >
-                    {{ (authStore.user?.nickname || authStore.user?.username || 'U').charAt(0).toUpperCase() }}
-                  </div>
                   <ChevronDownIcon class="hidden sm:block h-4 w-4 text-gray-400" />
                 </button>
 
@@ -243,6 +237,7 @@ import { useAuthStore } from '@/stores/auth'
 import { NotificationApi } from '@/api/notification'
 import { useNotificationSync } from '@/composables/useNotificationSync'
 import UserPointsDisplay from '../UserPointsDisplay.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 // Props - 允许每个页面自定义配置
 interface NavItem {

@@ -3,12 +3,11 @@
     <!-- 消息头部 -->
     <div v-if="currentConversation && currentConversation.other_user" class="flex items-center justify-between p-4 border-b bg-white sticky top-0 z-10">
       <div class="flex items-center space-x-3">
-        <img
-          :src="currentConversation?.other_user?.avatar || '/default-avatar.png'"
-          :alt="currentConversation?.other_user?.nickname || currentConversation?.other_user?.username"
-          class="w-10 h-10 rounded-full object-cover"
-          @error="handleAvatarError"
-        >
+        <UserAvatar
+          :avatar="currentConversation?.other_user?.avatar || ''"
+          :name="currentConversation?.other_user?.nickname || currentConversation?.other_user?.username || 'U'"
+          :size="40"
+        />
         <div>
           <router-link
             :to="`/users/${currentConversation?.other_user?.username || ''}`"
@@ -96,12 +95,7 @@
         <div class="flex" :class="message.sender_id === currentUserId ? 'justify-end' : 'justify-start'">
           <!-- 对方头像（左侧） -->
           <div v-if="message.sender_id !== currentUserId" class="flex-shrink-0 mr-2">
-            <img 
-              :src="message.sender.avatar || '/default-avatar.png'" 
-              :alt="message.sender.nickname || message.sender.username"
-              class="w-8 h-8 rounded-full object-cover"
-              @error="handleAvatarError"
-            >
+            <UserAvatar :avatar="message.sender.avatar || ''" :name="message.sender.nickname || message.sender.username || 'U'" :size="32" />
           </div>
 
           <!-- 消息内容 -->
@@ -212,6 +206,7 @@ import { NotificationApi } from '@/api/notification'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { useNotificationSync } from '@/composables/useNotificationSync'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 // Props
 interface Props {

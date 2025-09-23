@@ -19,20 +19,11 @@
             <!-- 用户头像和基本信息 -->
             <div class="text-center mb-6">
               <div class="w-24 h-24 mx-auto mb-4 relative group cursor-pointer" @click="showAvatarModal = true">
-                <img
-                  v-if="user?.avatar"
-                  :src="user.avatar"
-                  :alt="user.username"
-                  class="w-24 h-24 rounded-full object-cover transition-opacity group-hover:opacity-75"
+                <UserAvatar
+                  :avatar="user?.avatar || ''"
+                  :name="user?.nickname || user?.username || 'U'"
+                  :size="96"
                 />
-                <div
-                  v-else
-                  class="w-24 h-24 bg-gradient-to-r from-pink-500 to-orange-500 rounded-full flex items-center justify-center transition-opacity group-hover:opacity-75"
-                >
-                  <span class="text-2xl font-bold text-white">
-                    {{ user?.username?.charAt(0).toUpperCase() }}
-                  </span>
-                </div>
                 <!-- 悬停提示 -->
                 <div class="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <CameraIcon class="h-6 w-6 text-white" />
@@ -325,6 +316,7 @@ import UserPointsDisplay from '../components/UserPointsDisplay.vue'
 import { useToast } from '../composables/useToast'
 import { useUserDataSync } from '../composables/useUserDataSync'
 import type { ImageUploadResponse } from '../api/types'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 // 路由
 const router = useRouter()

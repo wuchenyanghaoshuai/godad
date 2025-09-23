@@ -8,15 +8,7 @@
       <!-- 用户信息头部 -->
       <div class="profile-header">
         <div class="profile-cover">
-          <img 
-            v-if="profile?.avatar" 
-            :src="profile.avatar" 
-            alt="用户头像"
-            class="profile-avatar"
-          />
-          <div v-else class="profile-avatar default-avatar">
-            {{ profile?.username?.charAt(0)?.toUpperCase() || 'U' }}
-          </div>
+          <UserAvatar :avatar="profile?.avatar || ''" :name="profile?.nickname || profile?.username || 'U'" :size="96" />
           
           <div class="profile-info">
             <h1 class="profile-name">
@@ -245,6 +237,7 @@ import { useUserDataSync } from '@/composables/useUserDataSync'
 import { useToast } from '@/composables/useToast'
 import { FollowApi } from '@/api/follow'
 import BaseHeader from '@/components/BaseHeader.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import Empty from '@/components/Empty.vue'
 // import type { User } from '@/api/types'
 // import ArticleCard from '@/components/ArticleCard.vue'

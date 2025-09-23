@@ -50,11 +50,7 @@
               <h1 class="text-2xl font-bold text-gray-900 mb-3">{{ post.title }}</h1>
               <div class="flex items-center space-x-4 text-sm text-gray-500">
                 <div class="flex items-center space-x-2">
-                  <img
-                    :src="post.author?.avatar || '/default-avatar.png'"
-                    :alt="post.author?.nickname || post.author?.username"
-                    class="w-8 h-8 rounded-full"
-                  />
+                  <UserAvatar :avatar="post.author?.avatar || ''" :name="post.author?.nickname || post.author?.username || 'U'" :size="32" />
                   <span class="font-medium">{{ post.author?.nickname || post.author?.username }}</span>
                 </div>
                 <span>发布于 {{ formatDate(post.created_at) }}</span>
@@ -207,6 +203,7 @@ import { ForumApi } from '@/api/forum'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import BaseHeader from '@/components/BaseHeader.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
 import type { ForumPost, ForumReply } from '@/api/types'
 
 const route = useRoute()

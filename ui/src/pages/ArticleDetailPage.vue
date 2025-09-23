@@ -81,39 +81,18 @@
                 :to="`/users/${article.author.username}`"
                 class="w-12 h-12 rounded-full flex items-center justify-center shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               >
-                <img
-                  v-if="article.author?.avatar"
-                  :src="article.author.avatar"
-                  :alt="article.author.nickname || article.author.username"
-                  class="w-12 h-12 rounded-full object-cover"
+                <UserAvatar
+                  :avatar="article.author?.avatar || ''"
+                  :name="article.author?.nickname || article.author?.username || 'U'"
+                  :size="48"
                 />
-                <div
-                  v-else
-                  class="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center"
-                >
-                  <span class="text-white font-semibold text-sm">
-                    {{ (article.author?.nickname || article.author?.username || 'U').charAt(0).toUpperCase() }}
-                  </span>
-                </div>
               </router-link>
-              <div
-                v-else
-                class="w-12 h-12 rounded-full flex items-center justify-center shadow-sm overflow-hidden"
-              >
-                <img
-                  v-if="article.author?.avatar"
-                  :src="article.author.avatar"
-                  :alt="article.author.nickname || article.author.username"
-                  class="w-12 h-12 rounded-full object-cover"
+              <div v-else class="w-12 h-12 rounded-full flex items-center justify-center shadow-sm overflow-hidden">
+                <UserAvatar
+                  :avatar="article.author?.avatar || ''"
+                  :name="article.author?.nickname || article.author?.username || 'U'"
+                  :size="48"
                 />
-                <div
-                  v-else
-                  class="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center"
-                >
-                  <span class="text-white font-semibold text-sm">
-                    {{ (article.author?.nickname || article.author?.username || 'U').charAt(0).toUpperCase() }}
-                  </span>
-                </div>
               </div>
               <div>
                 <router-link 
@@ -477,6 +456,7 @@ import type { Article, Category } from '@/api/types'
 import CommentSection from '@/components/CommentSection.vue'
 import BaseHeader from '@/components/BaseHeader.vue'
 import { useToast } from '@/composables/useToast'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 const route = useRoute()
 const router = useRouter()

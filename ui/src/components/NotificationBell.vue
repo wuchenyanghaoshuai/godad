@@ -75,18 +75,7 @@
             <div class="flex items-start space-x-3">
               <!-- 用户头像 -->
               <div class="flex-shrink-0">
-                <img 
-                  v-if="notification.actor_avatar"
-                  :src="notification.actor_avatar" 
-                  :alt="notification.actor_nickname || notification.actor_username"
-                  class="w-8 h-8 rounded-full object-cover"
-                >
-                <div 
-                  v-else
-                  class="w-8 h-8 bg-gradient-to-br from-pink-400 to-rose-400 rounded-full flex items-center justify-center text-white font-semibold text-xs"
-                >
-                  {{ (notification.actor_nickname || notification.actor_username || 'U').charAt(0).toUpperCase() }}
-                </div>
+                <UserAvatar :avatar="notification.actor_avatar || ''" :name="notification.actor_nickname || notification.actor_username || 'U'" :size="32" />
               </div>
 
               <!-- 通知内容 -->
@@ -137,6 +126,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { NotificationApi, type Notification, type NotificationStats, formatNotificationTime } from '@/api/notification'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 // 数据状态
 const notifications = ref<Notification[]>([])

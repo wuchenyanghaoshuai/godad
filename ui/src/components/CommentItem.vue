@@ -3,10 +3,10 @@
     <!-- 主评论 -->
     <div class="flex items-start space-x-2 sm:space-x-3">
       <!-- 用户头像 -->
-      <img
-        :src="comment.user?.avatar || '/default-avatar.png'"
-        :alt="comment.user?.username"
-        class="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover flex-shrink-0 border-2 border-gray-100"
+      <UserAvatar
+        :avatar="comment.user?.avatar || ''"
+        :name="comment.user?.nickname || comment.user?.username || 'U'"
+        :size="40"
       />
       
       <!-- 评论内容 -->
@@ -91,10 +91,10 @@
         <!-- 回复输入框 -->
         <div v-if="showReplyInput" class="mb-4 bg-gray-50 p-3 rounded-lg">
           <div class="flex items-start space-x-2 sm:space-x-3">
-            <img
-              :src="authStore.user?.avatar || '/default-avatar.png'"
-              :alt="authStore.user?.username"
-              class="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover flex-shrink-0 border border-gray-200"
+            <UserAvatar
+              :avatar="authStore.user?.avatar || ''"
+              :name="authStore.user?.nickname || authStore.user?.username || 'U'"
+              :size="32"
             />
             <div class="flex-1">
               <textarea
@@ -201,6 +201,7 @@ import { useAuthStore } from '@/stores/auth'
 import { CommentApi } from '@/api/comment'
 import type { Comment, CommentCreateRequest } from '@/api/types'
 import { useToast } from '@/composables/useToast'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 // 组件属性
 interface Props {

@@ -1,17 +1,21 @@
 package services
 
 import (
-	"errors"
-	"fmt"
-	"math/rand"
-	"regexp"
-	"time"
+    "errors"
+    "fmt"
+    "hash/crc32"
+    "math/rand"
+    "os"
+    "path/filepath"
+    "regexp"
+    "strings"
+    "time"
 
-	"godad-backend/config"
-	"godad-backend/models"
+    "godad-backend/config"
+    "godad-backend/models"
 
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
+    "golang.org/x/crypto/bcrypt"
+    "gorm.io/gorm"
 )
 
 // UserService 用户服务
@@ -50,14 +54,24 @@ func (s *UserService) Register(req *models.UserRegisterRequest) (*models.User, e
 	hashedPassword := s.hashPassword(req.Password)
 
 	// 创建用户
-	user := &models.User{
-		Username: req.Username,
-		Email:    req.Email,
-		Password: hashedPassword,
-		Nickname: req.Nickname,
-		Status:   1,
-		Role:     1,
-	}
+    user := &models.User{
+        Username: req.Username,
+        Email:    req.Email,
+        Password: hashedPassword,
+        Nickname: req.Nickname,
+        Status:   1,
+        Role:     1,
+    }
+
+    // 如果未提供头像，为其分配一个确定性的默认头像（绑定到用户，直到用户自行更换）
+    if user.Nickname == "" {
+        user.Nickname = req.Username
+    }
+    if user.Avatar == "" {
+        if url := s.computeDefaultAvatarURL(user.Username, user.Nickname); url != "" {
+            user.Avatar = url
+        }
+    }
 
 	// 保存到数据库
 	if err := s.db.Create(user).Error; err != nil {
@@ -99,6 +113,87 @@ func (s *UserService) Login(req *models.UserLoginRequest) (*models.User, error) 
 	user.UpdatedAt = time.Now()
 
 	return &user, nil
+}
+
+// computeDefaultAvatarURL 生成默认头像URL
+// - 不再依赖 OSS。默认指向前端 public 目录下的 /default-avatars/
+// - 优先使用环境变量 DEFAULT_AVATAR_KEYS（逗号分隔的文件名列表，例如：
+//     "父与女共读.jpg,父子搭积木.jpg,母女读书.jpg"）。
+// - 可自定义基础路径：DEFAULT_AVATAR_BASE_URL（可以是绝对URL或以 / 开头的路径）。
+//   未设置时，使用 cfg.Server.FrontendURL + "/default-avatars"。
+func (s *UserService) computeDefaultAvatarURL(username, nickname string) string {
+    cfg := config.GetConfig()
+
+    // 1) 基础URL
+    base := strings.TrimSpace(os.Getenv("DEFAULT_AVATAR_BASE_URL"))
+    if base == "" {
+        // 使用前端URL + 固定目录
+        fe := strings.TrimRight(cfg.Server.FrontendURL, "/")
+        if fe == "" {
+            // 后备：相对路径（不含域名）。前端渲染时仍可访问
+            base = "/default-avatars"
+        } else {
+            base = fe + "/default-avatars"
+        }
+    } else {
+        // 允许传入相对路径（/开头）；若是相对路径，则拼FrontEndURL
+        if strings.HasPrefix(base, "/") {
+            fe := strings.TrimRight(cfg.Server.FrontendURL, "/")
+            if fe != "" {
+                base = fe + base
+            }
+        }
+    }
+    base = strings.TrimRight(base, "/")
+
+    // 2) 候选文件名列表
+    var names []string
+    if raw := os.Getenv("DEFAULT_AVATAR_KEYS"); strings.TrimSpace(raw) != "" {
+        parts := strings.Split(raw, ",")
+        for _, p := range parts {
+            n := strings.TrimSpace(p)
+            if n == "" { continue }
+            // 若包含路径，则只取文件名部分，确保与 base 目录拼接
+            n = filepath.Base(n)
+            names = append(names, n)
+        }
+    }
+    if len(names) == 0 {
+        // 默认使用前端提供的10张图片名（位于 ui/public/default-avatars/）
+        names = []string{
+            "父与女共读.jpg",
+            "父子搭积木.jpg",
+            "父子乐.jpg",
+            "父子跑步.jpg",
+            "父子踢足球.jpg",
+            "妈妈给女儿梳头.jpg",
+            "母女读书.jpg",
+            "母女同乐.jpg",
+            "母女做饼干.jpg",
+            "喂宝宝吃饭.jpg",
+        }
+    }
+    if len(names) == 0 {
+        return ""
+    }
+
+    // 3) 稳定选择（基于用户名/昵称哈希）
+    basis := strings.ToLower(strings.TrimSpace(username))
+    if basis == "" {
+        basis = strings.ToLower(strings.TrimSpace(nickname))
+    }
+    if basis == "" {
+        basis = fmt.Sprintf("%d", time.Now().UnixNano())
+    }
+    idx := int(crc32.ChecksumIEEE([]byte(basis))) % len(names)
+    name := names[idx]
+
+    return fmt.Sprintf("%s/%s", base, name)
+}
+
+// ComputeDefaultAvatarURL 导出方法：供外部脚本调用
+func (s *UserService) ComputeDefaultAvatarURL(username, nickname string) string {
+    return s.computeDefaultAvatarURL(username, nickname)
 }
 
 // GetUserByID 根据ID获取用户

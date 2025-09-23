@@ -279,11 +279,7 @@
                   <tr v-for="user in users" :key="user.id">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
-                        <img
-                          class="h-10 w-10 rounded-full"
-                          :src="user.avatar || '/default-avatar.png'"
-                          :alt="user.nickname"
-                        >
+                        <UserAvatar :avatar="user.avatar || ''" :name="user.nickname || user.username || 'U'" :size="40" />
                         <div class="ml-4">
                           <div class="text-sm font-medium text-gray-900">
                             {{ user.nickname }}
@@ -1087,6 +1083,7 @@ import { ResourceApi } from '@/api/resource'
 import { TopicApi } from '@/api/topic'
 import { useToast } from '../composables/useToast'
 import { CategoryApi } from '@/api/category'
+import UserAvatar from '@/components/UserAvatar.vue'
 
 // Icons
 import {
