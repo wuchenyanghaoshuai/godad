@@ -118,28 +118,31 @@
         <article
           v-for="article in articles"
           :key="article.id"
-          class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-100 hover:border-gray-200 transform hover:scale-105"
+          class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-100 hover:border-gray-200 transform hover:-translate-y-0.5"
           @click="goToArticle(article.id)"
         >
           <!-- 文章封面 -->
-          <div class="aspect-video bg-gray-200 relative overflow-hidden">
+          <div v-if="article.cover_image && !article._imageError" class="relative overflow-hidden bg-gray-200 aspect-[4/3] md:aspect-video">
             <img
-              v-if="article.cover_image"
               :src="article.cover_image"
               :alt="article.title"
               class="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
               @error="(e) => handleImageError(e, article)"
             />
-            <div v-if="!article.cover_image || article._imageError" class="w-full h-full bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 flex items-center justify-center">
-              <span class="text-white text-xl font-bold drop-shadow-lg">{{ article.title.charAt(0) }}</span>
-            </div>
-            <!-- 分类标签 -->
+            <!-- 分类标签（有图时） -->
             <div class="absolute top-3 left-3">
               <span class="bg-white/95 backdrop-blur-sm text-gray-700 px-3 py-1 rounded-full text-xs font-medium shadow-sm">
                 {{ getCategoryName(article.category_id) }}
               </span>
             </div>
-
+          </div>
+          <div v-else class="relative overflow-hidden bg-gradient-warm h-24 sm:h-28">
+            <!-- 分类标签（无图时） -->
+            <div class="absolute top-2 left-2 sm:top-3 sm:left-3">
+              <span class="bg-white/95 backdrop-blur-sm text-gray-700 px-3 py-1 rounded-full text-xs font-medium shadow-sm">
+                {{ getCategoryName(article.category_id) }}
+              </span>
+            </div>
           </div>
           
           <!-- 文章内容 -->
@@ -147,7 +150,7 @@
             <h3 class="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 transition-colors duration-300">
               {{ article.title }}
             </h3>
-            <p class="text-gray-600 text-sm mb-3 line-clamp-3 leading-relaxed">
+            <p class="text-gray-600 text-sm mb-3 line-clamp-2 leading-relaxed">
               {{ article.summary || article.content?.substring(0, 100) + '...' }}
             </p>
             
@@ -347,6 +350,8 @@ const visiblePages = computed(() => {
   return pages
 })
 
+// 无图占位使用统一品牌渐变（见 tailwind.config.js 扩展）
+
 // 防抖搜索
 let searchTimeout: number
 const handleSearch = () => {
@@ -461,6 +466,8 @@ const handleImageError = (event: Event, article: any) => {
   // 标记这个文章的图片加载失败
   article._imageError = true
 }
+
+
 
 // 快速点赞
 const quickLike = async (article: Article) => {
