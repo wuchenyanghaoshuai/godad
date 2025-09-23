@@ -406,11 +406,15 @@ const handleNotificationClick = async (notification: Notification) => {
       await router.push(`/articles/${notification.resource_id}`)
       
     } else if (notification.type === 'follow') {
-      // 关注通知跳转到用户页面
+      // 关注通知跳转到用户页面（优先使用 username，缺失时兜底）
       if (!notification.is_read) {
         await markAsRead([notification.id])
       }
-      await router.push(`/users/${notification.actor_id}`)
+      if ((notification as any).actor_username) {
+        await router.push(`/users/${(notification as any).actor_username}`)
+      } else {
+        await router.push('/user-center')
+      }
 
     } else if (notification.type === 'message') {
       // 私信通知跳转到消息页面

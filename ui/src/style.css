@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 :root {
+  /* 全局头部高度变量，通知页用于计算可视高度 */
+  --header-h: 120px;
+}
+
+:root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -99,4 +104,3 @@ input, textarea {
 [class*="content"] a[target="_blank"]:hover::before {
   opacity: 1 !important;
 }
-

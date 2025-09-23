@@ -11,11 +11,11 @@
       </div>
 
       <!-- 水平布局容器 -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex h-[600px] horizontal-layout">
+      <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex h-[calc(100vh-var(--header-h))] horizontal-layout">
         <!-- 左侧面板：通知列表 -->
-        <div class="w-2/5 border-r border-gray-200 flex flex-col left-panel">
+        <div class="w-2/5 min-w-[320px] border-r border-gray-200 flex flex-col left-panel">
           <!-- 消息头部 -->
-          <div class="p-4 border-b border-gray-200">
+            <div class="p-4 border-b border-gray-200 sticky top-0 z-10 bg-white">
             <div class="flex items-center justify-between">
               <h2 class="font-semibold text-gray-900 flex items-center space-x-2">
                 <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,62 +29,61 @@
               <div v-if="allNotifications && allNotifications.length > 0" class="flex items-center space-x-3">
                 <button
                   @click="markAllMessagesAsRead"
-                  class="text-sm text-pink-600 hover:text-pink-700"
+                  class="text-sm text-pink-600 hover:text-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="isMarkingAll"
                 >
-                  全部标记为已读
+                  {{ isMarkingAll ? '标记中…' : '全部标记为已读' }}
                 </button>
                 <button
                   @click="clearAllNotifications"
-                  class="text-sm text-red-600 hover:text-red-700"
+                  class="text-sm text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="isClearingAll"
                 >
-                  清空所有消息
+                  {{ isClearingAll ? '清空中…' : '清空所有消息' }}
                 </button>
               </div>
+            </div>
+            <!-- 错误提示条 -->
+            <div v-if="notificationsError" class="px-4 py-2 bg-red-50 text-red-600 text-sm flex items-center justify-between">
+              <span class="truncate">{{ notificationsError }}</span>
+              <button
+                class="p-1 rounded hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                @click="fetchNotifications(1)"
+                :disabled="notificationsLoading"
+                title="重试"
+                aria-label="重试"
+              >
+                <svg v-if="!notificationsLoading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path class="opacity-25" stroke-width="4" d="M12 4v0" />
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle>
+                </svg>
+              </button>
+            </div>
+            <!-- 筛选页签 -->
+            <div class="mt-3 flex items-center gap-2 text-sm">
+              <button
+                v-for="tab in tabs"
+                :key="tab.key"
+                @click="activeTab = tab.key"
+                class="px-3 py-1 rounded-full border transition-colors"
+                :class="activeTab === tab.key
+                  ? 'bg-pink-50 border-pink-200 text-pink-700'
+                  : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'"
+              >
+                {{ tab.label }}
+                <span v-if="tab.count > 0" class="ml-1 text-xs text-gray-400">{{ tab.count }}</span>
+              </button>
             </div>
           </div>
 
           <!-- 所有消息列表 -->
           <div class="flex-1 overflow-y-auto">
-            <!-- 当前私信对话项（如果有活跃对话） -->
+            <!-- 通知/私信列表 -->
             <div
-              v-if="currentConversation && selectedNotification?.type === 'message'"
-              :class="[
-                'p-4 border-b border-gray-100 cursor-pointer notification-item relative group bg-pink-50 border-l-4 border-pink-500'
-              ]"
-            >
-              <div class="flex items-start space-x-3">
-                <div class="flex-shrink-0">
-                  <span class="text-lg">💌</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between">
-                    <p class="text-sm font-medium text-gray-900">
-                      与 {{ currentConversation.other_user?.nickname || currentConversation.other_user?.username }} 的对话
-                    </p>
-                    <div class="flex items-center space-x-2">
-                      <!-- 删除对话按钮 -->
-                      <button
-                        @click.stop="deleteCurrentConversation"
-                        class="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded-full transition-colors"
-                        title="删除对话"
-                      >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
-                      </button>
-                      <span class="text-xs text-gray-500">
-                        私信聊天
-                      </span>
-                    </div>
-                  </div>
-                  <p class="text-sm text-gray-600 mt-1">点击右侧进行对话</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- 其他通知列表 -->
-            <div
-              v-for="notification in allNotifications"
+              v-for="notification in displayNotifications"
               :key="notification.id"
               :class="[
                 'p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer notification-item relative group',
@@ -93,35 +92,50 @@
               ]"
               @click="handleNotificationClick(notification)"
             >
-              <div class="flex items-start space-x-3">
+                  <div class="flex items-start space-x-3">
+                <!-- 头像 -->
                 <div class="flex-shrink-0">
-                  <span class="text-lg">
-                    {{ getNotificationIcon(notification.type) }}
-                  </span>
+                  <img
+                    v-if="notification.actor_avatar"
+                    :src="notification.actor_avatar"
+                    :alt="notification.actor_nickname || notification.actor_username"
+                    class="w-9 h-9 rounded-full object-cover border"
+                  />
+                  <div v-else class="w-9 h-9 rounded-full bg-gradient-to-br from-pink-400 to-rose-400 text-white flex items-center justify-center text-sm font-semibold">
+                    {{ (notification.actor_nickname || notification.actor_username || 'U').charAt(0).toUpperCase() }}
+                  </div>
                 </div>
+                <!-- 内容 -->
                 <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between">
-                    <p class="text-sm font-medium text-gray-900">
-                      {{ getNotificationTitle(notification.type) }}
-                    </p>
-                    <div class="flex items-center space-x-2">
-                      <!-- 删除按钮（对所有通知显示） -->
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1 pr-2">
+                      <p class="text-sm text-gray-800">
+                        <span class="font-medium text-pink-600 mr-1">{{ notification.actor_nickname || notification.actor_username }}</span>
+                        <span class="text-gray-600">{{ notification.message }}</span>
+                      </p>
+                      <div class="flex items-center gap-3 mt-1">
+                        <span class="text-xs text-gray-500">{{ formatNotificationTime(notification.created_at) }}</span>
+                        <span class="text-xs text-gray-400">{{ notificationTypeMap[notification.type] || '通知' }}</span>
+                        <!-- 私信分组计数徽标 -->
+                        <span v-if="notification.type === 'message' && messageGroupMeta[notification.id]" class="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                          {{ messageGroupMeta[notification.id].count }} 条<span v-if="messageGroupMeta[notification.id].unread > 0">，未读 {{ messageGroupMeta[notification.id].unread }}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         @click.stop="deleteNotification(notification)"
-                        class="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                        class="p-1 text-gray-400 hover:text-red-600"
                         :title="notification.type === 'message' ? '删除私信' : '删除通知'"
+                        :disabled="deletingIds.has(notification.id)"
                       >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
                       </button>
                       <span v-if="!notification.is_read" class="w-2 h-2 bg-blue-500 rounded-full"></span>
-                      <span class="text-xs text-gray-500">
-                        {{ formatTime(notification.created_at) }}
-                      </span>
                     </div>
                   </div>
-                  <p class="text-sm text-gray-600 mt-1 line-clamp-2">{{ notification.message }}</p>
                 </div>
               </div>
             </div>
@@ -131,6 +145,15 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4 19h5v-5l-5 5zm0-13h5V1L4 6zm11-5v5h5l-5-5z"/>
               </svg>
               <p>暂无互动消息</p>
+            </div>
+            <!-- 加载更多 -->
+            <div v-if="hasMore && !notificationsLoading" class="p-4 text-center border-t border-gray-100">
+              <button
+                @click="loadMoreNotifications"
+                class="px-4 py-2 text-sm text-pink-600 border border-pink-200 rounded-lg hover:bg-pink-50 transition-colors"
+              >
+                加载更多
+              </button>
             </div>
           </div>
         </div>
@@ -148,7 +171,7 @@
             </div>
           </div>
 
-          <!-- 私信聊天界面 -->
+          <!-- 私信界面 -->
           <div v-else-if="selectedNotification.type === 'message'" class="flex flex-col h-full">
             <!-- 聊天头部 -->
             <div class="p-4 border-b border-gray-200 bg-gray-50">
@@ -159,7 +182,7 @@
                     <h3 class="font-semibold text-gray-900">
                       与 {{ selectedNotification.actor_nickname || selectedNotification.actor_username }} 的对话
                     </h3>
-                    <p class="text-sm text-gray-500">私信聊天</p>
+                    <p class="text-sm text-gray-500">私信</p>
                   </div>
                 </div>
                 <button
@@ -174,7 +197,7 @@
             </div>
 
             <!-- 聊天消息列表 -->
-            <div class="flex-1 overflow-y-auto" ref="chatContainer">
+            <div class="flex-1" ref="chatContainer">
               <ChatMessageList
                 v-if="currentConversation"
                 ref="chatMessageListRef"
@@ -190,12 +213,13 @@
               </div>
             </div>
 
-            <!-- 聊天输入框 -->
-            <ChatInputBox
-              v-if="currentConversation"
-              :conversation="currentConversation"
-              @message-sent="handleMessageSent"
-            />
+            <!-- 聊天输入框（吸底） -->
+            <div v-if="currentConversation" class="sticky bottom-0 z-10 bg-white border-t">
+              <ChatInputBox
+                :conversation="currentConversation"
+                @message-sent="handleMessageSent"
+              />
+            </div>
           </div>
 
           <!-- 其他通知的详情显示 -->
@@ -205,14 +229,14 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                   <span class="text-xl">
-                    {{ getNotificationIcon(selectedNotification.type) }}
+                    {{ notificationIconMap[selectedNotification.type] || '📢' }}
                   </span>
                   <div>
                     <h3 class="font-semibold text-gray-900">
-                      {{ getNotificationTitle(selectedNotification.type) }}
+                      {{ notificationTypeMap[selectedNotification.type] || '通知' }}
                     </h3>
                     <p class="text-sm text-gray-500">
-                      {{ formatTime(selectedNotification.created_at) }}
+                      {{ formatNotificationTime(selectedNotification.created_at) }}
                     </p>
                   </div>
                 </div>
@@ -233,7 +257,7 @@
                 <div class="flex items-start space-x-3">
                   <div class="flex-shrink-0">
                     <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                      <span class="text-sm">{{ getNotificationIcon(selectedNotification.type) }}</span>
+                      <span class="text-sm">{{ notificationIconMap[selectedNotification.type] || '📢' }}</span>
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
@@ -242,7 +266,7 @@
                         {{ selectedNotification.actor_nickname || selectedNotification.actor_username }}
                       </h4>
                       <span class="text-sm text-gray-500">
-                        {{ formatTime(selectedNotification.created_at) }}
+                        {{ formatNotificationTime(selectedNotification.created_at) }}
                       </span>
                     </div>
                     <p class="text-gray-700 mb-4">{{ selectedNotification.message }}</p>
@@ -264,7 +288,7 @@
                       <template v-else-if="selectedNotification.type === 'comment'">
                         <button
                           v-if="selectedNotification.resource_id"
-                          @click="router.push(`/articles/${selectedNotification.resource_id}#comments`)"
+                          @click="router.push({ path: `/articles/${selectedNotification.resource_id}` , query: { focus: 'comments' } })"
                           class="bg-pink-600 text-white px-3 py-2 text-sm rounded hover:bg-pink-700 transition-colors"
                         >
                           查看并回复
@@ -320,12 +344,13 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { NotificationApi, type NotificationWithDetails } from '../api/notification'
+import { NotificationApi, type Notification, formatNotificationTime, notificationIconMap, notificationTypeMap } from '../api/notification'
 import { ChatAPI, type ConversationResponse } from '@/api'
 import { useToast } from '@/composables/useToast'
 import BaseHeader from '@/components/BaseHeader.vue'
 import ChatMessageList from '@/components/ChatMessageList.vue'
 import ChatInputBox from '@/components/ChatInputBox.vue'
+import { useNotificationSync } from '@/composables/useNotificationSync'
 
 const route = useRoute()
 const router = useRouter()
@@ -333,7 +358,7 @@ const authStore = useAuthStore()
 const { showToast } = useToast()
 
 // 当前选中的通知
-const selectedNotification = ref<NotificationWithDetails | null>(null)
+const selectedNotification = ref<Notification | null>(null)
 
 // 所有未读消息数量
 const unreadMessagesCount = ref(0)
@@ -342,9 +367,14 @@ const unreadMessagesCount = ref(0)
 const currentConversation = ref<ConversationResponse | null>(null)
 const chatContainer = ref<HTMLElement>()
 const chatMessageListRef = ref<any>()
+const { triggerRefresh, onNotificationEvent } = useNotificationSync()
+let autoRefreshTimer: number | null = null
 
 // 通知相关数据
-const notifications = ref<NotificationWithDetails[]>([])
+const notifications = ref<Notification[]>([])
+const isMarkingAll = ref(false)
+const isClearingAll = ref(false)
+const deletingIds = ref<Set<number>>(new Set())
 const notificationsLoading = ref(false)
 const notificationsError = ref('')
 const unreadNotificationsCount = ref(0)
@@ -354,34 +384,74 @@ const notificationsPage = ref(1)
 const notificationsTotalPages = ref(1)
 const limit = ref(10)
 
-// 计算属性 - 所有通知，按优先级排序
+// 筛选页签
+type TabKey = 'all' | 'notify' | 'message' | 'unread'
+const activeTab = ref<TabKey>('all')
+const tabs = computed(() => [
+  { key: 'all' as TabKey, label: '全部', count: notifications.value.length },
+  { key: 'notify' as TabKey, label: '通知', count: notifications.value.filter(n => n.type !== 'message').length },
+  { key: 'message' as TabKey, label: '私信', count: notifications.value.filter(n => n.type === 'message').length },
+  { key: 'unread' as TabKey, label: '未读', count: notifications.value.filter(n => !n.is_read).length },
+])
+
+// 计算属性 - 所有通知，按时间倒序
 const allNotifications = computed(() => {
   if (!notifications.value) return []
+  const filtered = notifications.value.filter(n => ['like', 'comment', 'message', 'follow', 'bookmark'].includes(n.type))
+  return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+})
 
-  // 过滤需要的通知类型并按优先级排序
-  const filteredNotifications = notifications.value.filter(n => ['like', 'comment', 'message', 'follow', 'bookmark'].includes(n.type))
-
-  // 定义优先级：点赞 > 评论 > 私信 > 关注 > 收藏
-  const typePriority = {
-    'like': 1,
-    'comment': 2,
-    'message': 3,
-    'follow': 4,
-    'bookmark': 5
+// 对 message 做聚合（按 actor_id-receiver_id）
+const groupMessageNotifications = (list: Notification[]) => {
+  const messageGroups = new Map<string, Notification[]>()
+  const others: Notification[] = []
+  for (const n of list) {
+    if (n.type === 'message') {
+      const key = `${n.actor_id}-${n.receiver_id}`
+      if (!messageGroups.has(key)) messageGroups.set(key, [])
+      messageGroups.get(key)!.push(n)
+    } else {
+      others.push(n)
+    }
   }
+  const grouped: Notification[] = []
+  const meta: Record<number, { count: number; unread: number }> = {}
+  for (const [_key, group] of messageGroups) {
+    const latest = group.reduce((a, b) => new Date(a.created_at) > new Date(b.created_at) ? a : b)
+    const count = group.length
+    const unread = group.filter(n => !n.is_read).length
+    meta[latest.id] = { count, unread }
+    grouped.push(latest)
+  }
+  return { grouped, others, meta }
+}
 
-  return filteredNotifications.sort((a, b) => {
-    // 首先按类型优先级排序
-    const priorityDiff = typePriority[a.type] - typePriority[b.type]
-    if (priorityDiff !== 0) return priorityDiff
+// 当前展示的数据源
+const displayNotifications = computed(() => {
+  const list = allNotifications.value
+  const { grouped, others } = groupMessageNotifications(list)
+  switch (activeTab.value) {
+    case 'notify':
+      return others
+    case 'message':
+      return grouped.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    case 'unread':
+      return list.filter(n => !n.is_read)
+    case 'all':
+    default:
+      // 全部：非私信 + 聚合后的私信，按时间倒序
+      return [...others, ...grouped].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  }
+})
 
-    // 同类型内按时间倒序排序（最新的在前）
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  })
+// 分组元信息映射（key: 通知id, value: 分组数量/未读数量）
+const messageGroupMeta = computed(() => {
+  const list = allNotifications.value
+  return groupMessageNotifications(list).meta
 })
 
 // 获取通知列表
-const fetchNotifications = async (page = 1) => {
+const fetchNotifications = async (page = 1, append = false) => {
   notificationsLoading.value = true
   notificationsError.value = ''
 
@@ -392,7 +462,13 @@ const fetchNotifications = async (page = 1) => {
     })
 
     const pageData = response.data
-    notifications.value = pageData.items as any
+    if (append && notifications.value?.length) {
+      const map = new Map<number, any>()
+      ;[...notifications.value, ...pageData.items].forEach((n: any) => map.set(n.id, n))
+      notifications.value = Array.from(map.values()) as any
+    } else {
+      notifications.value = pageData.items as any
+    }
     notificationsPage.value = pageData.page
     notificationsTotalPages.value = pageData.total_pages
 
@@ -406,44 +482,17 @@ const fetchNotifications = async (page = 1) => {
   }
 }
 
-// 获取通知图标
-const getNotificationIcon = (type: string) => {
-  switch (type) {
-    case 'like':
-      return '❤️'
-    case 'comment':
-      return '💬'
-    case 'bookmark':
-      return '⭐'
-    case 'follow':
-      return '👤'
-    case 'message':
-      return '💌'
-    default:
-      return '📢'
-  }
+const hasMore = computed(() => notificationsPage.value < notificationsTotalPages.value)
+
+const loadMoreNotifications = async () => {
+  if (notificationsLoading.value || !hasMore.value) return
+  await fetchNotifications(notificationsPage.value + 1, true)
 }
 
-// 获取通知标题
-const getNotificationTitle = (type: string) => {
-  switch (type) {
-    case 'like':
-      return '点赞'
-    case 'comment':
-      return '评论'
-    case 'message':
-      return '私信'
-    case 'follow':
-      return '关注'
-    case 'bookmark':
-      return '收藏'
-    default:
-      return '通知'
-  }
-}
+// 图标/标题统一使用 notificationIconMap / notificationTypeMap
 
 // 处理通知点击
-const handleNotificationClick = async (notification: NotificationWithDetails) => {
+const handleNotificationClick = async (notification: Notification) => {
   // 如果通知未读，先标记为已读
   if (!notification.is_read) {
     try {
@@ -451,6 +500,7 @@ const handleNotificationClick = async (notification: NotificationWithDetails) =>
       notification.is_read = true
       unreadNotificationsCount.value = Math.max(0, unreadNotificationsCount.value - 1)
       unreadMessagesCount.value = Math.max(0, unreadMessagesCount.value - 1)
+      triggerRefresh()
     } catch (error) {
       console.error('标记通知已读失败:', error)
     }
@@ -472,7 +522,7 @@ const viewArticle = (articleId: number) => {
   router.push(`/articles/${articleId}`)
 }
 
-const viewUserProfile = (notification: NotificationWithDetails) => {
+const viewUserProfile = (notification: Notification) => {
   const username = notification.actor_username
   if (username) {
     router.push(`/users/${username}`)
@@ -484,35 +534,23 @@ const viewUserProfile = (notification: NotificationWithDetails) => {
 // 标记所有通知为已读
 const markAllMessagesAsRead = async () => {
   try {
+    isMarkingAll.value = true
     await NotificationApi.markAllAsRead()
     notifications.value.forEach(n => n.is_read = true)
     unreadNotificationsCount.value = 0
     unreadMessagesCount.value = 0
+    triggerRefresh()
   } catch (error) {
     console.error('标记所有通知已读失败:', error)
+  } finally {
+    isMarkingAll.value = false
   }
 }
 
-// 格式化时间
-const formatTime = (dateString: string) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`
-
-  return date.toLocaleDateString('zh-CN', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+// 时间格式统一使用 formatNotificationTime
 
 // 删除单个通知
-const deleteNotification = async (notification: NotificationWithDetails) => {
+const deleteNotification = async (notification: Notification) => {
   if (!authStore.user) {
     showToast('请先登录', 'error')
     return
@@ -525,6 +563,7 @@ const deleteNotification = async (notification: NotificationWithDetails) => {
   }
 
   try {
+    deletingIds.value.add(notification.id)
     // 立即从UI中移除该通知
     notifications.value = notifications.value.filter(n => n.id !== notification.id)
 
@@ -543,6 +582,7 @@ const deleteNotification = async (notification: NotificationWithDetails) => {
     await NotificationApi.deleteNotification(notification.id)
 
     showToast('通知已删除', 'success')
+    triggerRefresh()
 
   } catch (error: any) {
     console.error('删除通知失败:', error)
@@ -550,6 +590,8 @@ const deleteNotification = async (notification: NotificationWithDetails) => {
 
     // 如果删除失败，重新获取通知列表恢复UI状态
     await fetchNotifications()
+  } finally {
+    deletingIds.value.delete(notification.id)
   }
 }
 
@@ -567,16 +609,20 @@ const clearAllNotifications = async () => {
   }
 
   try {
+    isClearingAll.value = true
     // 立即清空UI中的通知
     notifications.value = []
     selectedNotification.value = null
     unreadNotificationsCount.value = 0
     unreadMessagesCount.value = 0
+    notificationsPage.value = 1
+    notificationsTotalPages.value = 1
 
     // 调用删除所有通知API
     await NotificationApi.deleteAllNotifications()
 
     showToast('所有消息已清空', 'success')
+    triggerRefresh()
 
   } catch (error: any) {
     console.error('清空所有通知失败:', error)
@@ -584,6 +630,8 @@ const clearAllNotifications = async () => {
 
     // 如果删除失败，重新获取通知列表恢复UI状态
     await fetchNotifications()
+  } finally {
+    isClearingAll.value = false
   }
 }
 
@@ -625,7 +673,7 @@ const handleMessageSent = async (message: any) => {
 }
 
 // 开始私信聊天（从关注通知等地方触发）
-const startPrivateChat = async (notification: NotificationWithDetails) => {
+const startPrivateChat = async (notification: Notification) => {
   if (!notification.actor_id) {
     showToast('无法获取用户信息', 'error')
     return
@@ -725,8 +773,8 @@ watch(() => authStore.isAuthenticated, (isAuth) => {
 const saveChatState = () => {
   if (selectedNotification.value && currentConversation.value) {
     const chatState = {
-      selectedNotification: selectedNotification.value,
-      currentConversation: currentConversation.value,
+      conversationId: currentConversation.value.id,
+      otherUserId: currentConversation.value.other_user?.id,
       timestamp: Date.now()
     }
     localStorage.setItem('godad-chat-state', JSON.stringify(chatState))
@@ -749,21 +797,12 @@ const restoreChatState = async () => {
       return false
     }
 
-    // 恢复对话状态
-    if (chatState.selectedNotification && chatState.currentConversation) {
-      // 验证对话是否仍然存在
+    // 恢复对话：按 otherUserId 重新获取/创建对话
+    if (chatState.otherUserId) {
       try {
-        const _response = await ChatAPI.getMessages(chatState.currentConversation.id, {
-          page: 1,
-          limit: 1
-        })
-
-        // 如果对话仍然存在，恢复状态
-        selectedNotification.value = chatState.selectedNotification
-        currentConversation.value = chatState.currentConversation
+        await startPrivateChatByUserId(chatState.otherUserId)
         return true
       } catch (error) {
-        // 对话不存在，清除保存的状态
         localStorage.removeItem('godad-chat-state')
         return false
       }
@@ -799,6 +838,45 @@ onMounted(async () => {
     if (userId && !isNaN(Number(userId))) {
       await startPrivateChatByUserId(Number(userId))
     }
+  }
+
+  // 监听来自其他组件的刷新事件（如标记已读/删除）
+  onNotificationEvent('refresh', () => {
+    fetchNotifications(notificationsPage.value)
+  })
+
+  // 页面可见时的轻量自动刷新（每 20s 刷新当前页）
+  const startAutoRefresh = () => {
+    stopAutoRefresh()
+    autoRefreshTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications(notificationsPage.value)
+      }
+    }, 20000)
+  }
+  const stopAutoRefresh = () => {
+    if (autoRefreshTimer) {
+      clearInterval(autoRefreshTimer)
+      autoRefreshTimer = null
+    }
+  }
+  startAutoRefresh()
+  const handleVisibilityChange = () => startAutoRefresh()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  // 存起来以便卸载时移除
+  ;(window as any)._godad_notif_handleVisibilityChange = handleVisibilityChange
+})
+
+import { onBeforeUnmount } from 'vue'
+onBeforeUnmount(() => {
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer)
+    autoRefreshTimer = null
+  }
+  const handler = (window as any)._godad_notif_handleVisibilityChange
+  if (handler) {
+    document.removeEventListener('visibilitychange', handler)
+    delete (window as any)._godad_notif_handleVisibilityChange
   }
 })
 </script>

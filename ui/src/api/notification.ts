@@ -108,7 +108,8 @@ export const notificationTypeMap: Record<NotificationType, string> = {
   like: '点赞',
   comment: '评论', 
   bookmark: '收藏',
-  follow: '关注'
+  follow: '关注',
+  message: '私信'
 }
 
 // 通知类型图标映射
@@ -116,7 +117,8 @@ export const notificationIconMap: Record<NotificationType, string> = {
   like: '❤️',
   comment: '💬',
   bookmark: '🔖', 
-  follow: '👤'
+  follow: '👤',
+  message: '💌'
 }
 
 // 格式化通知时间

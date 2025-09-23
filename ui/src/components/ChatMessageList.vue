@@ -1,7 +1,7 @@
 <template>
   <div class="chat-message-list h-full flex flex-col">
     <!-- 消息头部 -->
-    <div v-if="currentConversation && currentConversation.other_user" class="flex items-center justify-between p-4 border-b bg-white">
+    <div v-if="currentConversation && currentConversation.other_user" class="flex items-center justify-between p-4 border-b bg-white sticky top-0 z-10">
       <div class="flex items-center space-x-3">
         <img
           :src="currentConversation?.other_user?.avatar || '/default-avatar.png'"
@@ -41,17 +41,25 @@
     </div>
 
     <!-- 消息容器 -->
-    <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+    <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50" @scroll="handleScroll">
+      <!-- 顶部自动加载锚点（被看到时自动加载更早消息） -->
+      <div ref="topSentinel" class="h-1"></div>
       <!-- 加载更多按钮 -->
-      <div v-if="hasMore && !loading" class="text-center">
-        <button 
-          @click="loadMore"
-          class="px-4 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-          :disabled="loadingMore"
-        >
-          {{ loadingMore ? '加载中...' : '加载更早的消息' }}
-        </button>
+    <div class="text-center">
+      <!-- 顶部加载骨架 -->
+      <div v-if="loadingMore" class="py-2 text-gray-500 text-xs flex items-center justify-center gap-2">
+        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+        加载中...
       </div>
+      <!-- 备用按钮（IntersectionObserver 不可用时显示） -->
+      <button 
+        v-else-if="hasMore && !loading && !supportsIO"
+        @click="loadMore"
+        class="px-4 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+      >
+        加载更早的消息
+      </button>
+    </div>
 
       <!-- 初始加载状态 -->
       <div v-if="loading && (!messages || messages.length === 0)" class="flex items-center justify-center py-12">
@@ -144,40 +152,7 @@
                 {{ message.emoji?.image_url || '😀' }}
               </div>
 
-              <!-- 消息状态指示器 -->
-              <div class="flex items-center justify-end mt-1">
-                <!-- 已读状态（仅发送的消息显示） -->
-                <div v-if="message.sender_id === currentUserId" class="flex items-center">
-                  <svg 
-                    class="w-3 h-3" 
-                    :class="message.is_read ? 'text-blue-200' : 'text-blue-300'"
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path 
-                      stroke-linecap="round" 
-                      stroke-linejoin="round" 
-                      stroke-width="2" 
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <svg 
-                    v-if="message.is_read" 
-                    class="w-3 h-3 -ml-1 text-blue-200" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path 
-                      stroke-linecap="round" 
-                      stroke-linejoin="round" 
-                      stroke-width="2" 
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-              </div>
+              <!-- 轻量私信：不展示已读双勾，减少占位 -->
             </div>
           </div>
 
@@ -191,6 +166,21 @@
             >
           </div>
         </div>
+      </div>
+      <!-- 新消息提示（不在底部时出现） -->
+      <div v-if="newMessageCount > 0 && !isAtBottom" class="sticky bottom-2 flex justify-center">
+        <button @click="jumpToBottom" class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-full shadow hover:bg-blue-700">
+          有 {{ newMessageCount }} 条新消息，点击查看
+        </button>
+      </div>
+      <!-- 回到底部按钮（无新消息但不在底部时显示） -->
+      <div v-else-if="!isAtBottom" class="sticky bottom-2 flex justify-center">
+        <button @click="jumpToBottom" class="px-2.5 py-1.5 text-xs bg-gray-700 text-white rounded-full shadow hover:bg-gray-800 flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+          回到底部
+        </button>
       </div>
     </div>
 
@@ -216,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue'
 import { ChatAPI, type ChatMessage, type ConversationResponse } from '@/api'
 import { NotificationApi } from '@/api/notification'
 import { useAuthStore } from '@/stores/auth'
@@ -239,12 +229,26 @@ const messages = ref<ChatMessage[]>([])
 const loading = ref(false)
 const loadingMore = ref(false)
 const messagesContainer = ref<HTMLDivElement>()
+const topSentinel = ref<HTMLDivElement>()
 const currentPage = ref(1)
 const hasMore = ref(true)
+const isAtBottom = ref(true)
+const newMessageCount = ref(0)
+const supportsIO = ref(false)
 const imagePreview = ref({
   show: false,
   url: ''
 })
+
+// 限制渲染条数，避免超长列表拖慢页面（轻量私信：保留最近10条）
+const MAX_RENDERED_MESSAGES = 10
+const capMessagesIfNeeded = () => {
+  if (!isAtBottom.value) return
+  const extra = messages.value.length - MAX_RENDERED_MESSAGES
+  if (extra > 0) {
+    messages.value.splice(0, extra)
+  }
+}
 
 // 计算属性
 const currentConversation = computed(() => props.conversation)
@@ -263,7 +267,7 @@ const loadMessages = async (page = 1) => {
   try {
     const response = await ChatAPI.getMessages(currentConversation.value.id, {
       page,
-      limit: 30
+      limit: 10
     })
 
     if (page === 1) {
@@ -279,11 +283,15 @@ const loadMessages = async (page = 1) => {
     // 确保首次加载时滚动到底部
     if (page === 1) {
       await nextTick()
-      // 使用 setTimeout 确保 DOM 完全渲染后再滚动
       setTimeout(() => {
         scrollToBottomAnimated()
         markAsRead()
+        capMessagesIfNeeded()
       }, 100)
+      // 再次确保滚至底部（处理图片加载后高度变化）
+      setTimeout(() => {
+        scrollToBottomAnimated()
+      }, 300)
     }
   } catch (error: any) {
     showToast(error.message || '加载消息失败', 'error')
@@ -364,6 +372,8 @@ const scrollToBottomAnimated = () => {
 
   // 强制滚动到底部，不使用动画确保立即生效
   messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  isAtBottom.value = true
+  newMessageCount.value = 0
 }
 
 
@@ -477,8 +487,13 @@ const addMessage = (message: ChatMessage) => {
 
     // 立即滚动到底部并标记为已读
     nextTick(() => {
-      scrollToBottomAnimated()
-      markAsRead()
+      if (isAtBottom.value) {
+        scrollToBottomAnimated()
+        markAsRead()
+        capMessagesIfNeeded()
+      } else {
+        newMessageCount.value += 1
+      }
 
       // 延迟重启轮询，给消息显示足够时间
       if (wasPolling) {
@@ -492,16 +507,20 @@ const addMessage = (message: ChatMessage) => {
 
 // 轮询检查新消息
 let pollingTimer: NodeJS.Timeout | null = null
+let topObserver: IntersectionObserver | null = null
+const TOP_LOAD_THRESHOLD = 20
 
 const startPolling = () => {
   if (pollingTimer) return
 
   pollingTimer = setInterval(async () => {
+    // 仅在页面可见时进行低频轮询
+    if (document.visibilityState !== 'visible') return
     if (currentConversation.value && !loading.value) {
       try {
         const response = await ChatAPI.getMessages(currentConversation.value.id, {
           page: 1,
-          limit: 30
+          limit: 10
         })
 
         const newMessages = response.data.messages
@@ -519,6 +538,7 @@ const startPolling = () => {
               await nextTick()
               scrollToBottomAnimated()
               markAsRead()
+              capMessagesIfNeeded()
             } else {
               // 只添加新消息，避免重复
               const newMessagesToAdd = sortedNewMessages.filter(msg =>
@@ -527,8 +547,13 @@ const startPolling = () => {
               if (newMessagesToAdd.length > 0) {
                 messages.value.push(...newMessagesToAdd)
                 await nextTick()
-                scrollToBottomAnimated()
-                markAsRead()
+                if (isAtBottom.value) {
+                  scrollToBottomAnimated()
+                  markAsRead()
+                  capMessagesIfNeeded()
+                } else {
+                  newMessageCount.value += newMessagesToAdd.length
+                }
               }
             }
           }
@@ -538,7 +563,7 @@ const startPolling = () => {
         console.debug('轮询获取消息失败:', error)
       }
     }
-  }, 1500) // 改为1.5秒，更及时响应
+  }, 10000) // 10s 低频轮询，降低负担
 }
 
 const stopPolling = () => {
@@ -570,6 +595,10 @@ watch(
 // 生命周期
 onBeforeUnmount(() => {
   stopPolling()
+  if (topObserver) {
+    topObserver.disconnect()
+    topObserver = null
+  }
 })
 
 // 暴露方法给父组件
@@ -578,6 +607,53 @@ defineExpose({
   refreshMessages,
   scrollToBottomAnimated
 })
+
+// 滚动与提示逻辑
+const handleScroll = () => {
+  if (!messagesContainer.value) return
+  const el = messagesContainer.value
+  const threshold = 10
+  const atBottom = el.scrollHeight - el.clientHeight - el.scrollTop <= threshold
+  isAtBottom.value = atBottom
+  if (atBottom) {
+    newMessageCount.value = 0
+  }
+
+  // 到顶自动加载更早的消息
+  if (el.scrollTop <= TOP_LOAD_THRESHOLD && hasMore.value && !loadingMore.value && !loading.value) {
+    // 防抖：下一帧再触发，避免一次滚动多次触发
+    requestAnimationFrame(() => {
+      if (messagesContainer.value && messagesContainer.value.scrollTop <= TOP_LOAD_THRESHOLD) {
+        loadMore()
+      }
+    })
+  }
+}
+
+// 顶部自动加载：IntersectionObserver 作为滚动阈值的补充，更稳定
+onMounted(() => {
+  supportsIO.value = 'IntersectionObserver' in window
+  if (messagesContainer.value && topSentinel.value && supportsIO.value) {
+    try {
+      topObserver = new IntersectionObserver((entries) => {
+        const entry = entries[0]
+        if (entry && entry.isIntersecting) {
+          if (hasMore.value && !loadingMore.value && !loading.value) {
+            loadMore()
+          }
+        }
+      }, { root: messagesContainer.value, rootMargin: '0px', threshold: 0 })
+      topObserver.observe(topSentinel.value)
+    } catch (_) {
+      // 忽略观察器异常，回退到滚动监听
+    }
+  }
+})
+
+const jumpToBottom = () => {
+  scrollToBottomAnimated()
+  markAsRead()
+}
 </script>
 
 <style scoped>

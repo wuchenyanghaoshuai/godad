@@ -101,7 +101,6 @@
               <router-link
                 v-if="showNotifications"
                 to="/notifications"
-                @click="clearUnreadNotifications"
                 class="relative p-2 rounded-lg text-gray-600 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
                 title="消息通知"
               >
@@ -384,11 +383,10 @@ const totalUnreadCount = computed(() => {
   return Math.max(unreadMessagesCount.value, unreadNotificationsCount.value)
 })
 
-// 监听路由变化
-watch(() => route.path, async (newPath) => {
-  if (newPath === '/notifications') {
-    await clearUnreadNotifications()
-  }
+// 监听路由变化（进入通知中心不再自动全部已读，避免误清空未读）
+// 保留为空以避免自动清零未读
+watch(() => route.path, async (_newPath) => {
+  // no-op
 })
 
 // 监听认证状态变化

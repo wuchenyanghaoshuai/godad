@@ -99,8 +99,11 @@
                       </span>
                       {{ getShortMessage(notification.message) }}
                     </p>
-                    <p class="text-xs text-gray-500 mt-1">
-                      {{ formatNotificationTime(notification.created_at) }}
+                    <p class="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                      <span>{{ formatNotificationTime(notification.created_at) }}</span>
+                      <span v-if="notification.type === 'message' && messageGroupMeta[notification.id]" class="text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded">
+                        {{ messageGroupMeta[notification.id].count }} 条<span v-if="messageGroupMeta[notification.id].unread > 0">，未读 {{ messageGroupMeta[notification.id].unread }}</span>
+                      </span>
                     </p>
                   </div>
                   <!-- 未读指示器 -->
@@ -118,7 +121,7 @@
       <!-- 菜单底部 -->
       <div class="px-4 py-2 bg-gray-50 border-t border-gray-200">
         <router-link
-          to="/user-center?tab=notifications"
+          to="/notifications"
           @click="closeDropdown"
           class="block text-center text-sm text-pink-600 hover:text-pink-700 py-1"
         >
@@ -147,7 +150,38 @@ const router = useRouter()
 
 // 计算属性
 const unreadCount = computed(() => stats.value?.unread_count || 0)
-const displayNotifications = computed(() => notifications.value?.slice(0, 5) || []) // 只显示前5条
+
+// 分组私信，避免同一人多条刷屏
+function groupMessageNotifications(list: Notification[]) {
+  const messageGroups = new Map<string, Notification[]>()
+  const others: Notification[] = []
+  for (const n of list || []) {
+    if (n.type === 'message') {
+      const key = `${n.actor_id}-${n.receiver_id}`
+      if (!messageGroups.has(key)) messageGroups.set(key, [])
+      messageGroups.get(key)!.push(n)
+    } else {
+      others.push(n)
+    }
+  }
+  const grouped: Notification[] = []
+  const meta: Record<number, { count: number; unread: number }> = {}
+  for (const [_k, arr] of messageGroups) {
+    const latest = arr.reduce((a, b) => new Date(a.created_at) > new Date(b.created_at) ? a : b)
+    meta[latest.id] = { count: arr.length, unread: arr.filter(i => !i.is_read).length }
+    grouped.push(latest)
+  }
+  return { grouped, others, meta }
+}
+
+const messageGroupMeta = computed(() => groupMessageNotifications(notifications.value || []).meta)
+
+const displayNotifications = computed(() => {
+  const { grouped, others } = groupMessageNotifications(notifications.value || [])
+  const merged = [...others, ...grouped]
+  merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  return merged.slice(0, 5)
+})
 
 // 获取简短消息
 const getShortMessage = (message: string): string => {
@@ -165,10 +199,11 @@ const extractCommentContent = (message: string): string => {
 }
 
 // 切换下拉菜单
-const toggleDropdown = () => {
+const toggleDropdown = async () => {
   showDropdown.value = !showDropdown.value
   if (showDropdown.value) {
-    loadNotifications()
+    await loadStats()
+    await loadNotifications()
   }
 }
 
@@ -285,6 +320,12 @@ const handleNotificationClick = async (notification: Notification) => {
         // 后备：缺失用户名时仍保证可跳转
         await router.push('/user-center')
       }
+    } else if (notification.type === 'message') {
+      // 私信通知跳转到通知页并打开对应对话
+      if (!notification.is_read) {
+        await markAsRead([notification.id])
+      }
+      await router.push({ path: '/notifications', query: { user: notification.actor_id } })
     }
   } catch (error) {
     console.error('NotificationBell: 处理通知点击失败:', error)
