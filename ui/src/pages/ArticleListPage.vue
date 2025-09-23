@@ -12,39 +12,15 @@
     <PageContainer background="gray" padding="sm">
       <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 sticky top-[var(--header-h)] z-20">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <!-- 搜索框 -->
-          <div class="relative sm:col-span-2 lg:col-span-1">
-            <SearchIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
+          <!-- 搜索框（组件化） -->
+          <div class="sm:col-span-2 lg:col-span-2">
+            <ArticleSearchBar
               v-model="searchQuery"
-              @input="handleSearch"
-              type="text"
-              placeholder="搜索文章标题、内容..."
-              class="w-full pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-sm sm:text-base placeholder-gray-500"
+              :suggestions="hotKeywords"
+              placeholder="输入关键词搜索文章..."
+              @submit="searchNow"
+              @clear="clearKeyword"
             />
-          </div>
-          
-          <!-- 标签搜索（Chip 化） -->
-          <div class="relative sm:col-span-2 lg:col-span-1">
-            <div class="flex items-center flex-wrap gap-2 w-full px-3 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-purple-500 focus-within:border-purple-500 transition-all duration-300">
-              <template v-for="(tag, idx) in tagsList" :key="tag + idx">
-                <span class="inline-flex items-center gap-1 px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full">
-                  #{{ tag }}
-                  <button class="text-purple-600 hover:text-purple-800" @click.prevent="removeTag(idx)" title="移除标签">
-                    ×
-                  </button>
-                </span>
-              </template>
-              <input
-                v-model="currentTagInput"
-                @keydown.enter.prevent="commitTagInput"
-                @keydown.",".prevent="commitTagInput"
-                @blur="commitTagInput(true)"
-                type="text"
-                placeholder="输入标签后回车，或逗号分隔"
-                class="flex-1 min-w-[120px] outline-none text-sm placeholder-gray-500"
-              />
-            </div>
           </div>
           
           <!-- 分类筛选 -->
@@ -308,7 +284,6 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
-  SearchIcon,
   HeartIcon,
   PlusIcon,
   MessageCircleIcon,
@@ -323,6 +298,7 @@ import { CategoryApi } from '@/api/category'
 import type { Article, Category } from '@/api/types'
 import { AppLayout, PageContainer } from '@/components/layout'
 import HotArticles from '@/components/HotArticles.vue'
+import ArticleSearchBar from '@/components/ArticleSearchBar.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -345,7 +321,6 @@ const hasHotArticles = computed(() => {
 const searchQuery = ref('')
 const searchTags = ref('') // 兼容旧接口参数
 const tagsList = ref<string[]>([])
-const currentTagInput = ref('')
 const selectedCategory = ref('')
 const sortBy = ref('created_at')
 const sortLabel = computed(() => {
@@ -383,20 +358,15 @@ const handleSearch = () => {
   }, 500)
 }
 
-// 防抖标签搜索
-const commitTagInput = (onBlur = false) => {
-  const raw = currentTagInput.value.trim()
-  if (!raw) return
-  // 支持逗号分隔多标签
-  const parts = raw.split(',').map(s => s.trim()).filter(Boolean)
-  for (const p of parts) {
-    if (!tagsList.value.includes(p)) tagsList.value.push(p)
-  }
-  currentTagInput.value = ''
+// 立即搜索（回车/按钮）
+const searchNow = () => {
   currentPage.value = 1
   loadArticles()
   updateRouteQuery()
 }
+
+// 防抖标签搜索
+// 标签仅来源于卡片标签点击或 URL，同步在已选条件区域展示
 
 // 分类变化处理
 const handleCategoryChange = () => {
@@ -530,6 +500,11 @@ onMounted(() => {
   loadArticles()
 })
 
+// 输入变化时的防抖搜索
+watch(() => searchQuery.value, () => {
+  handleSearch()
+})
+
 // 路由同步
 const updateRouteQuery = () => {
   const query: Record<string, any> = {}
@@ -610,3 +585,4 @@ const resetFilters = () => {
   overflow: hidden;
 }
 </style>
+const hotKeywords = ref(['育儿', '早教', '亲子', '饮食', '睡眠', '心理'])
