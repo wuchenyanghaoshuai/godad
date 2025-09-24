@@ -21,7 +21,8 @@
     <!-- 详细模式 -->
     <div v-else-if="mode === 'detailed'" class="space-y-4">
       <!-- 当前积分和等级卡片 -->
-      <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-100">
+      <!-- 采用与用户中心统计卡一致的浅色渐变样式 -->
+      <div class="bg-gradient-to-r from-primary-50 to-secondary-50 rounded-lg p-4 border border-primary-100">
         <div class="flex items-center justify-between mb-3">
           <div>
             <div class="text-2xl font-bold text-gray-900">
@@ -44,14 +45,14 @@
             <span class="text-gray-700">
               {{ progressData.currentLevelName }} → {{ progressData.nextLevelName }}
             </span>
-            <span class="font-medium text-blue-600">
+            <span class="font-medium text-primary-600">
               还需 {{ progressData.needPoints }} 积分升级
             </span>
           </div>
           <!-- 进度条 -->
           <div class="w-full bg-gray-200 rounded-full h-2">
             <div
-              class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+              class="bg-gradient-to-r from-primary-500 to-secondary-500 h-2 rounded-full transition-all duration-300"
               :style="{ width: `${progressData.progressPercent}%` }"
             />
           </div>
@@ -63,20 +64,20 @@
 
         <!-- 已达到最高等级 -->
         <div v-else class="text-center py-2">
-          <span class="text-sm font-medium text-purple-600">🎉 已达到最高等级！</span>
+          <span class="text-sm font-medium text-primary-600">🎉 已达到最高等级！</span>
         </div>
       </div>
 
       <!-- 今日积分 -->
-      <div v-if="showTodayPoints && stats?.today_points" class="flex items-center justify-between p-2 bg-green-50 rounded-lg">
-        <span class="text-sm text-green-700">今日获得</span>
-        <span class="font-medium text-green-800">+{{ stats.today_points }}</span>
+      <div v-if="showTodayPoints && stats?.today_points" class="flex items-center justify-between p-2 bg-secondary-50 rounded-lg">
+        <span class="text-sm text-secondary-700">今日获得</span>
+        <span class="font-medium text-secondary-800">+{{ stats.today_points }}</span>
       </div>
     </div>
 
     <!-- 加载状态 -->
     <div v-if="loading" class="flex items-center space-x-2">
-      <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+      <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500"></div>
       <span class="text-sm text-gray-500">加载中...</span>
     </div>
   </div>
@@ -243,6 +244,6 @@ onMounted(() => {
 }
 
 .points-text {
-  @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent;
 }
 </style>
