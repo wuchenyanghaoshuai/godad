@@ -241,7 +241,7 @@ func (s *NotificationService) GetNotifications(userID uint, page, limit int) ([]
             COALESCE(a.title, '') as article_title, COALESCE(a.cover_image, '') as article_cover
         FROM notifications n
         LEFT JOIN users u ON n.actor_id = u.id
-        LEFT JOIN articles a ON n.resource_id = a.id AND n.type IN ('like', 'comment', 'bookmark')
+        LEFT JOIN articles a ON n.resource_id = a.id AND n.type IN ('like', 'comment', 'bookmark', 'mention')
         WHERE n.receiver_id = ? AND n.deleted_at IS NULL
         ORDER BY n.created_at DESC
         LIMIT ? OFFSET ?
@@ -311,11 +311,31 @@ func (s *NotificationService) GetNotificationStatsByType(userID uint) (*models.N
             stats.Bookmark = r.Count
         case string(models.NotificationTypeSystem):
             stats.System = r.Count
+        case string(models.NotificationTypeMention):
+            stats.Mention = r.Count
         default:
             // 未知类型暂不计入具体分类，仅计入总数
         }
     }
     return stats, nil
+}
+
+// CreateMentionNotification 创建@提及通知
+func (s *NotificationService) CreateMentionNotification(actorID, receiverID, articleID uint, commentContent string) error {
+    if actorID == receiverID { return nil }
+    var article models.Article
+    if err := s.db.First(&article, articleID).Error; err != nil { return err }
+    // 限制内容长度
+    if len(commentContent) > 100 { commentContent = commentContent[:100] + "..." }
+    n := &models.Notification{
+        ReceiverID: receiverID,
+        ActorID:    actorID,
+        Type:       models.NotificationTypeMention,
+        ResourceID: articleID,
+        Message:    fmt.Sprintf("在你的文章《%s》的评论中提到了你：%s", article.Title, commentContent),
+        Title:      "",
+    }
+    return s.CreateNotification(n)
 }
 
 // BroadcastSystemNotification 管理员广播系统通知到所有用户

@@ -190,10 +190,12 @@ export interface CommentCreateRequest {
   content: string
   article_id: number
   parent_id?: number
+  mentions?: number[]
 }
 
 export interface CommentUpdateRequest {
   content: string
+  mentions?: number[]
 }
 
 // 图片上传响应

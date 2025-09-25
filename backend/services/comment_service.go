@@ -136,12 +136,37 @@ func (s *CommentService) CreateComment(userID uint, req *models.CommentCreateReq
 		}
 	}
 
-	// 预加载关联数据
-	if err := s.db.Preload("User").Preload("Article").First(comment, comment.ID).Error; err != nil {
-		return nil, err
-	}
+    // 预加载关联数据
+    if err := s.db.Preload("User").Preload("Article").First(comment, comment.ID).Error; err != nil {
+        return nil, err
+    }
 
-	return comment, nil
+    // 处理@提及（互相关注限制）
+    if len(req.Mentions) > 0 {
+        // 去重并过滤
+        seen := make(map[uint]struct{})
+        for _, mid := range req.Mentions {
+            if mid == 0 || mid == userID { continue }
+            if _, ok := seen[mid]; ok { continue }
+            seen[mid] = struct{}{}
+            if s.isMutualFollow(userID, mid) {
+                _ = s.notificationService.CreateMentionNotification(userID, mid, req.ArticleID, req.Content)
+            }
+        }
+    }
+
+    return comment, nil
+}
+
+// isMutualFollow 判断两个用户是否互相关注
+func (s *CommentService) isMutualFollow(a, b uint) bool {
+    var cnt int64
+    // 存在 a->b
+    s.db.Model(&models.Follow{}).Where("follower_id = ? AND followee_id = ? AND deleted_at IS NULL", a, b).Count(&cnt)
+    if cnt == 0 { return false }
+    cnt = 0
+    s.db.Model(&models.Follow{}).Where("follower_id = ? AND followee_id = ? AND deleted_at IS NULL", b, a).Count(&cnt)
+    return cnt > 0
 }
 
 // UpdateComment 更新评论

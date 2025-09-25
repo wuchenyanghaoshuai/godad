@@ -449,7 +449,7 @@ const displayNotifications = computed(() => {
   const { grouped, others } = groupMessageNotifications(list)
   const filterOthersByCategory = (items: Notification[]) => {
     if (!categoryFilter.value) return items
-    const allowed = ['like', 'comment', 'follow', 'bookmark', 'system']
+    const allowed = ['like', 'comment', 'follow', 'bookmark', 'system', 'mention']
     if (!allowed.includes(categoryFilter.value)) return items
     return items.filter(n => n.type === (categoryFilter.value as any))
   }

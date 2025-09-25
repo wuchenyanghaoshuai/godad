@@ -30,15 +30,17 @@ type Comment struct {
 
 // CommentCreateRequest 评论创建请求
 type CommentCreateRequest struct {
-	Content   string `json:"content" binding:"required,min=1,max=1000" example:"这篇文章很有用，谢谢分享！"`
-	ArticleID uint   `json:"article_id" binding:"required,min=1" example:"1"`
-	ParentID  *uint  `json:"parent_id" example:"1"`
-	ReplyToID *uint  `json:"reply_to_id" example:"2"`
+    Content   string `json:"content" binding:"required,min=1,max=1000" example:"这篇文章很有用，谢谢分享！"`
+    ArticleID uint   `json:"article_id" binding:"required,min=1" example:"1"`
+    ParentID  *uint  `json:"parent_id" example:"1"`
+    ReplyToID *uint  `json:"reply_to_id" example:"2"`
+    Mentions  []uint `json:"mentions" example:"[2,3]"` // 被@的用户ID列表（可选）
 }
 
 // CommentUpdateRequest 评论更新请求
 type CommentUpdateRequest struct {
-	Content string `json:"content" binding:"required,min=1,max=1000"`
+    Content string `json:"content" binding:"required,min=1,max=1000"`
+    Mentions []uint `json:"mentions"` // 可选：编辑时更新@列表（v1可忽略）
 }
 
 // CommentListRequest 评论列表请求

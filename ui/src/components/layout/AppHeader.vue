@@ -147,15 +147,16 @@
                     <span v-if="unreadByType.comment > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.comment > 99 ? '99+' : unreadByType.comment }}</span>
                   </button>
 
-                  <!-- @我的（占位，仅展示） -->
-                  <div
-                    class="w-full flex items-center px-3 py-2 text-sm text-gray-500"
+                  <!-- @我的 -->
+                  <button
+                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     role="menuitem"
-                    title="@ 功能即将上线"
+                    @click="goNotifications('mention')"
                   >
-                    <AtSignIcon class="h-4 w-4 mr-2 text-gray-300" />
-                    <span>@我的（即将上线）</span>
-                  </div>
+                    <AtSignIcon class="h-4 w-4 mr-2 text-gray-400" />
+                    <span>@我的</span>
+                    <span v-if="unreadByType.mention > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.mention > 99 ? '99+' : unreadByType.mention }}</span>
+                  </button>
 
                   <!-- 收到的赞 -->
                   <button
@@ -375,7 +376,7 @@ const showNotifMenu = ref(false)
 let notifMenuHideTimer: number | null = null
 const unreadMessagesCount = ref(0)
 const unreadNotificationsCount = ref(0)
-const unreadByType = ref<{ [k: string]: number }>({ message: 0, like: 0, comment: 0, follow: 0, bookmark: 0, system: 0, total_unread: 0 })
+const unreadByType = ref<{ [k: string]: number }>({ message: 0, like: 0, comment: 0, follow: 0, bookmark: 0, system: 0, mention: 0, total_unread: 0 })
 let unreadByTypeFetchedAt = 0
 
 // 搜索相关
@@ -416,7 +417,7 @@ const fetchUnreadCounts = async () => {
 // 各类型未读统计（A方案）
 const fetchUnreadByType = async (force = false) => {
   if (!authStore.isAuthenticated) {
-    unreadByType.value = { message: 0, like: 0, comment: 0, follow: 0, bookmark: 0, system: 0, total_unread: 0 }
+    unreadByType.value = { message: 0, like: 0, comment: 0, follow: 0, bookmark: 0, system: 0, mention: 0, total_unread: 0 }
     return
   }
   const now = Date.now()
@@ -431,6 +432,7 @@ const fetchUnreadByType = async (force = false) => {
       follow: data.follow || 0,
       bookmark: data.bookmark || 0,
       system: data.system || 0,
+      mention: data.mention || 0,
       total_unread: data.total_unread || 0
     }
     unreadByTypeFetchedAt = now
@@ -565,7 +567,7 @@ const closeNotifMenuHover = () => {
   }, 220)
 }
 const toggleNotifMenu = () => { showNotifMenu.value = !showNotifMenu.value }
-const goNotifications = (category: 'message' | 'like' | 'comment' | 'system' | 'other') => {
+const goNotifications = (category: 'message' | 'like' | 'comment' | 'system' | 'mention' | 'other') => {
   showNotifMenu.value = false
   if (category === 'message') {
     router.push({ path: '/notifications', query: { tab: 'message' } })
@@ -578,7 +580,7 @@ const goNotifications = (category: 'message' | 'like' | 'comment' | 'system' | '
   }
   // 其余归类到通知
   const query: any = { tab: 'notify' }
-  if (['like', 'comment', 'follow', 'bookmark', 'system'].includes(category)) {
+  if (['like', 'comment', 'follow', 'bookmark', 'system', 'mention'].includes(category)) {
     query.category = category
   }
   router.push({ path: '/notifications', query })

@@ -103,7 +103,25 @@
                 rows="2"
                 maxlength="500"
                 class="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-white transition-colors"
+                @input="handleMentionInput()"
+                @keyup="handleMentionInput()"
               ></textarea>
+              <!-- 提及候选（回复框） -->
+              <div v-if="showMention" class="relative">
+                <div class="absolute z-10 mt-1 w-full max-w-sm bg-white border border-gray-200 rounded-lg shadow-lg">
+                  <div class="p-2 border-b">
+                    <input v-model="mentionQuery" @input="debouncedFetchMentions()" class="w-full text-sm px-2 py-1 border rounded" placeholder="搜索好友..." />
+                  </div>
+                  <div class="max-h-40 overflow-y-auto">
+                    <button v-for="u in mentionSuggestions" :key="u.id" @mousedown.prevent="insertMention(u)" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2">
+                      <img :src="u.avatar || '/default-avatar.png'" class="w-5 h-5 rounded-full" />
+                      <span class="font-medium">{{ u.nickname || u.username }}</span>
+                      <span class="text-xs text-gray-400">@{{ u.username }}</span>
+                    </button>
+                    <div v-if="!mentionSuggestions.length" class="px-3 py-2 text-xs text-gray-400">无匹配好友</div>
+                  </div>
+                </div>
+              </div>
               <div class="flex flex-col sm:flex-row sm:items-center justify-between mt-2 space-y-2 sm:space-y-0">
                 <div class="text-xs text-gray-500">
                   {{ replyContent.length }}/500
@@ -188,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineProps, defineEmits } from 'vue'
+import { ref, computed, defineProps, defineEmits, nextTick } from 'vue'
 import {
   HeartIcon,
   MessageCircleIcon,
@@ -201,6 +219,7 @@ import { useAuthStore } from '@/stores/auth'
 import { CommentApi } from '@/api/comment'
 import type { Comment, CommentCreateRequest } from '@/api/types'
 import { useToast } from '@/composables/useToast'
+import { MentionApi, type MentionUser } from '@/api/mention'
 import UserAvatar from '@/components/UserAvatar.vue'
 
 // 组件属性
@@ -236,6 +255,11 @@ const { toast } = useToast()
 // 响应式数据
 const showReplyInput = ref(false)
 const replyContent = ref('')
+const showMention = ref(false)
+const mentionQuery = ref('')
+const mentionSuggestions = ref<MentionUser[]>([])
+const selectedMentionMap = ref<Record<string, number>>({})
+let mentionTimer: any = null
 const isReplying = ref(false)
 const showingMore = ref(false)
 
@@ -328,6 +352,7 @@ const toggleReply = () => {
 const cancelReply = () => {
   showReplyInput.value = false
   replyContent.value = ''
+  showMention.value = false
 }
 
 // 提交回复
@@ -342,6 +367,9 @@ const submitReply = async () => {
        article_id: props.articleId,
        parent_id: props.comment.id // 回复当前评论，所以 parent_id 就是当前评论的 ID
      }
+     const names = Array.from(new Set((replyContent.value.match(/@([A-Za-z0-9_]+)/g) || []).map(s => s.slice(1))))
+     const ids = names.map(n => selectedMentionMap.value[n]).filter(Boolean) as number[]
+     if (ids.length) replyData.mentions = Array.from(new Set(ids))
      
      const reply = await CommentApi.createComment(replyData)
      
@@ -361,6 +389,7 @@ const submitReply = async () => {
     // 清空输入框并隐藏
     replyContent.value = ''
     showReplyInput.value = false
+    selectedMentionMap.value = {}
     
   } catch (err: any) {
     console.error('回复失败:', err)
@@ -368,6 +397,51 @@ const submitReply = async () => {
   } finally {
     isReplying.value = false
   }
+}
+
+// @ 输入处理（回复框）
+const handleMentionInput = () => {
+  const el = document.activeElement as HTMLTextAreaElement | null
+  if (!el) return
+  const pos = el.selectionStart || 0
+  const before = replyContent.value.slice(0, pos)
+  const match = before.match(/@([A-Za-z0-9_]*)$/)
+  if (match) {
+    showMention.value = true
+    mentionQuery.value = match[1] || ''
+    debouncedFetchMentions()
+  } else {
+    showMention.value = false
+  }
+}
+
+const debouncedFetchMentions = () => {
+  if (mentionTimer) clearTimeout(mentionTimer)
+  mentionTimer = setTimeout(async () => {
+    const q = mentionQuery.value.trim()
+    try {
+      const res = await MentionApi.suggest(q)
+      mentionSuggestions.value = res.data || []
+    } catch {
+      mentionSuggestions.value = []
+    }
+  }, 200)
+}
+
+const insertMention = (u: MentionUser) => {
+  // 替换最后一个 @query
+  const el = document.activeElement as HTMLTextAreaElement
+  const pos = el.selectionStart || 0
+  const before = replyContent.value.slice(0, pos)
+  const after = replyContent.value.slice(pos)
+  const replacedBefore = before.replace(/@([A-Za-z0-9_]*)$/, `@${u.username} `)
+  replyContent.value = replacedBefore + after
+  selectedMentionMap.value[u.username] = u.id
+  showMention.value = false
+  nextTick(() => {
+    el.setSelectionRange(replacedBefore.length, replacedBefore.length)
+    el.focus()
+  })
 }
 
 // 回复到上一级（当达到最大深度时）

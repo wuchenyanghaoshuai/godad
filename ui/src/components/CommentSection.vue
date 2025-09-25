@@ -34,7 +34,25 @@
             rows="3"
             maxlength="500"
             class="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-gray-50 focus:bg-white transition-colors"
+            @input="handleMentionInput('root')"
+            @keyup="handleMentionInput('root')"
           ></textarea>
+          <!-- 提及候选 -->
+          <div v-if="showMention && mentionTarget==='root'" class="relative">
+            <div class="absolute z-10 mt-1 w-full max-w-sm bg-white border border-gray-200 rounded-lg shadow-lg">
+              <div class="p-2 border-b">
+                <input v-model="mentionQuery" @input="debouncedFetchMentions()" class="w-full text-sm px-2 py-1 border rounded" placeholder="搜索好友..." />
+              </div>
+              <div class="max-h-48 overflow-y-auto">
+                <button v-for="u in mentionSuggestions" :key="u.id" @mousedown.prevent="insertMention(u, 'root')" class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2">
+                  <img :src="u.avatar || '/default-avatar.png'" class="w-6 h-6 rounded-full" />
+                  <span class="font-medium">{{ u.nickname || u.username }}</span>
+                  <span class="text-xs text-gray-400">@{{ u.username }}</span>
+                </button>
+                <div v-if="!mentionSuggestions.length" class="px-3 py-2 text-xs text-gray-400">无匹配好友</div>
+              </div>
+            </div>
+          </div>
           <div class="flex flex-col sm:flex-row sm:items-center justify-between mt-2 space-y-2 sm:space-y-0">
             <div class="text-xs sm:text-sm text-gray-500">
               {{ newComment.length }}/500
@@ -139,6 +157,7 @@ import { CommentApi } from '@/api/comment'
 import CommentItem from './CommentItem.vue'
 import type { Comment, CommentCreateRequest } from '@/api/types'
 import { useToast } from '@/composables/useToast'
+import { MentionApi, type MentionUser } from '@/api/mention'
 
 // 组件属性
 interface Props {
@@ -163,6 +182,12 @@ const { toast } = useToast()
 // 响应式数据
 const comments = ref<Comment[]>([])
 const newComment = ref('')
+const mentionTarget = ref<'root' | 'none'>('none')
+const showMention = ref(false)
+const mentionQuery = ref('')
+const mentionSuggestions = ref<MentionUser[]>([])
+const selectedMentionMap = ref<Record<string, number>>({})
+let mentionTimer: any = null
 const isLoading = ref(false)
 const isSubmitting = ref(false)
 const isLoadingMore = ref(false)
@@ -178,6 +203,7 @@ const commentTextareaRef = ref<HTMLTextAreaElement>()
 // 清空评论输入
 const clearComment = () => {
   newComment.value = ''
+  showMention.value = false
 }
 
 // 提交评论
@@ -191,12 +217,17 @@ const submitComment = async () => {
        content: newComment.value.trim(),
        article_id: props.articleId
      }
+     // 从内容中提取 @username，并转换为ID（仅限选择器选中的）
+     const names = Array.from(new Set((newComment.value.match(/@([A-Za-z0-9_]+)/g) || []).map(s => s.slice(1))))
+     const ids = names.map(n => selectedMentionMap.value[n]).filter(Boolean) as number[]
+     if (ids.length) commentData.mentions = Array.from(new Set(ids))
      
      const comment = await CommentApi.createComment(commentData)
     
     // 将新评论添加到列表顶部
     comments.value.unshift(comment.data)
     newComment.value = ''
+    selectedMentionMap.value = {}
     totalComments.value++
     
     // 通知父组件
@@ -208,6 +239,59 @@ const submitComment = async () => {
   } finally {
     isSubmitting.value = false
   }
+}
+
+// 处理 @ 输入
+const handleMentionInput = (where: 'root') => {
+  const text = newComment.value
+  const match = text.slice(0, getCaretPosition(commentTextareaRef.value)).match(/@([A-Za-z0-9_]*)$/)
+  if (match) {
+    mentionTarget.value = where
+    showMention.value = true
+    mentionQuery.value = match[1] || ''
+    debouncedFetchMentions()
+  } else {
+    showMention.value = false
+  }
+}
+
+const debouncedFetchMentions = () => {
+  if (mentionTimer) clearTimeout(mentionTimer)
+  mentionTimer = setTimeout(async () => {
+    const q = mentionQuery.value.trim()
+    try {
+      const res = await MentionApi.suggest(q)
+      mentionSuggestions.value = res.data || []
+    } catch {
+      mentionSuggestions.value = []
+    }
+  }, 200)
+}
+
+const insertMention = (u: MentionUser, where: 'root') => {
+  // 在光标位置把 @query 替换成 @username 空格
+  const ta = commentTextareaRef.value!
+  const pos = getCaretPosition(ta)
+  const before = newComment.value.slice(0, pos)
+  const after = newComment.value.slice(pos)
+  const replacedBefore = before.replace(/@([A-Za-z0-9_]*)$/, `@${u.username} `)
+  newComment.value = replacedBefore + after
+  // 记录映射
+  selectedMentionMap.value[u.username] = u.id
+  showMention.value = false
+  // 重置光标
+  nextTick(() => setCaretPosition(ta, replacedBefore.length))
+}
+
+// 工具：获取/设置光标位置
+import { nextTick } from 'vue'
+const getCaretPosition = (el?: HTMLTextAreaElement) => {
+  if (!el) return 0
+  return el.selectionStart || 0
+}
+const setCaretPosition = (el: HTMLTextAreaElement, pos: number) => {
+  el.setSelectionRange(pos, pos)
+  el.focus()
 }
 
 // 处理回复添加
