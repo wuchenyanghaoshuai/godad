@@ -46,7 +46,16 @@ export const AdminApi = {
   async updateUserStatus(id: number, status: number) {
     return http.put(`/admin/users/${id}/status`, { status })
   },
+
+  // 广播系统通知
+  async broadcastSystemNotification(payload: { title?: string; content: string }) {
+    return http.post(`/admin/notifications/system/broadcast`, payload)
+  },
+
+  // 系统通知历史
+  async getSystemNotificationHistory(params: { page?: number, size?: number } = {}) {
+    return http.get(`/admin/notifications/system/history`, params)
+  }
 }
 
 export default AdminApi
-

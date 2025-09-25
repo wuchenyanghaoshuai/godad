@@ -24,6 +24,7 @@ const TermsPage = () => import('@/pages/TermsPage.vue')
 const HelpPage = () => import('@/pages/HelpPage.vue')
 const CommunityPage = () => import('@/pages/CommunityPage.vue')
 const ResourcesPage = () => import('@/pages/ResourcesPage.vue')
+const AnnouncementsPage = () => import('@/pages/AnnouncementsPage.vue')
 const ForumPostCreatePage = () => import('@/pages/ForumPostCreatePage.vue')
 const ForumPostDetailPage = () => import('@/pages/ForumPostDetailPage.vue')
 import { useAuthStore } from '@/stores/auth'
@@ -43,6 +44,11 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomePage,
+    },
+    {
+      path: '/announcements',
+      name: 'Announcements',
+      component: AnnouncementsPage
     },
     {
       path: '/login',
@@ -203,11 +209,18 @@ const router = createRouter({
 // 路由守卫
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
-  
+
   try {
-    // 确保初始化过会话（Cookie-only 情况下可幂等调用）
-    if (!authStore.isAuthenticated) {
+    // 智能初始化：只在必要时初始化认证状态
+    const hasInitialized = sessionStorage.getItem('auth_initialized')
+    const needsAuth = to.meta.requiresAuth && !authStore.isAuthenticated
+
+    // 在以下情况下进行初始化：
+    // 1. 首次加载应用
+    // 2. 需要认证但当前未认证（可能是刷新后需要恢复状态）
+    if (!hasInitialized || (needsAuth && !authStore.user)) {
       await authStore.initAuth()
+      sessionStorage.setItem('auth_initialized', 'true')
     }
 
     // 需要认证的路由

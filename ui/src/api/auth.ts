@@ -34,8 +34,8 @@ export class AuthApi {
   }
 
   // 获取当前用户信息
-  static async getCurrentUser(): Promise<ApiResponse<User>> {
-    return http.get<User>(API_CONFIG.ENDPOINTS.USER.PROFILE)
+  static async getCurrentUser(silent = false): Promise<ApiResponse<User>> {
+    return http.get<User>(API_CONFIG.ENDPOINTS.USER.PROFILE, undefined, undefined, silent)
   }
 
   // 忘记密码

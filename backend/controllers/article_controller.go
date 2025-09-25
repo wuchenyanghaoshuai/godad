@@ -135,7 +135,7 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 // @Router /api/articles/{id} [get]
 func (c *ArticleController) GetArticle(ctx *gin.Context) {
 	// 获取文章ID
-	articleID, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	articleID, err := utils.ParseUintParam(ctx, "id")
 	if err != nil {
 		utils.Error(ctx, utils.CodeBadRequest, "文章ID格式错误")
 		return
@@ -145,7 +145,7 @@ func (c *ArticleController) GetArticle(ctx *gin.Context) {
 	userID, _ := middleware.GetCurrentUserID(ctx)
 
 	// 获取文章 - 允许用户查看自己的文章（包括草稿）
-	article, err := c.articleService.GetArticleByID(uint(articleID), userID, true)
+	article, err := c.articleService.GetArticleByID(articleID, userID, true)
 	if err != nil {
 		if err.Error() == "文章不存在" {
 			utils.Error(ctx, utils.CodeNotFound, err.Error())
@@ -166,13 +166,8 @@ func (c *ArticleController) GetArticleList(ctx *gin.Context) {
 		return
 	}
 
-	// 设置默认值
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.Size <= 0 {
-		req.Size = 10
-	}
+	// 解析分页参数
+	req.Page, req.Size = utils.ParsePaginationParams(ctx)
 
 	articles, total, err := c.articleService.GetArticleList(&req)
 	if err != nil {
@@ -186,8 +181,8 @@ func (c *ArticleController) GetArticleList(ctx *gin.Context) {
 		responses = append(responses, article.ToResponse(false))
 	}
 
-	// 使用分页响应
-	utils.SuccessPage(ctx, responses, total, req.Page, req.Size)
+	// 使用分页响应工具
+	utils.RespondWithPagination(ctx, responses, total, req.Page, req.Size)
 }
 
 // GetMyArticles 获取我的文章列表

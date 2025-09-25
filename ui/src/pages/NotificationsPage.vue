@@ -109,20 +109,34 @@
                 <div class="flex-1 min-w-0">
                   <div class="flex items-start justify-between">
                     <div class="flex-1 pr-2">
-                      <p class="text-sm text-gray-800">
-                        <span class="font-medium text-pink-600 mr-1">{{ notification.actor_nickname || notification.actor_username }}</span>
-                        <span class="text-gray-600">{{ notification.message }}</span>
+                      <!-- 标题行 -->
+                      <p class="text-sm text-gray-900 font-medium">
+                        {{ getNotificationTitle(notification) }}
                       </p>
-                      <div class="flex items-center gap-3 mt-1">
-                        <span class="text-xs text-gray-500">{{ formatNotificationTime(notification.created_at) }}</span>
-                        <span class="text-xs text-gray-400">{{ notificationTypeMap[notification.type] || '通知' }}</span>
-                        <!-- 私信分组计数徽标 -->
-                        <span v-if="notification.type === 'message' && messageGroupMeta[notification.id]" class="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                          {{ messageGroupMeta[notification.id].count }} 条<span v-if="messageGroupMeta[notification.id].unread > 0">，未读 {{ messageGroupMeta[notification.id].unread }}</span>
-                        </span>
+                      <!-- 次行：摘要 + 元信息 -->
+                      <div class="mt-1">
+                        <p class="text-xs text-gray-600 line-clamp-1">{{ getNotificationSummary(notification) }}</p>
+                        <div class="flex items-center gap-3 mt-1">
+                          <span class="text-xs text-gray-400">{{ formatNotificationTime(notification.created_at) }}</span>
+                          <span class="text-xs text-gray-400">{{ notificationTypeMap[notification.type] || '通知' }}</span>
+                          <!-- 私信分组计数徽标 -->
+                          <span v-if="notification.type === 'message' && messageGroupMeta[notification.id]" class="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                            {{ messageGroupMeta[notification.id].count }} 条<span v-if="messageGroupMeta[notification.id].unread > 0">，未读 {{ messageGroupMeta[notification.id].unread }}</span>
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        v-if="!notification.is_read"
+                        @click.stop="markOneAsRead(notification)"
+                        class="p-1 text-gray-400 hover:text-green-600"
+                        title="标记为已读"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </button>
                       <button
                         @click.stop="deleteNotification(notification)"
                         class="p-1 text-gray-400 hover:text-red-600"
@@ -397,7 +411,7 @@ const tabs = computed(() => [
 // 计算属性 - 所有通知，按时间倒序
 const allNotifications = computed(() => {
   if (!notifications.value) return []
-  const filtered = notifications.value.filter(n => ['like', 'comment', 'message', 'follow', 'bookmark'].includes(n.type))
+  const filtered = notifications.value.filter(n => ['like', 'comment', 'message', 'follow', 'bookmark', 'system'].includes(n.type))
   return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 })
 
@@ -426,13 +440,22 @@ const groupMessageNotifications = (list: Notification[]) => {
   return { grouped, others, meta }
 }
 
+// 分类过滤（来自路由的 category 参数）
+const categoryFilter = ref<string>('')
+
 // 当前展示的数据源
 const displayNotifications = computed(() => {
   const list = allNotifications.value
   const { grouped, others } = groupMessageNotifications(list)
+  const filterOthersByCategory = (items: Notification[]) => {
+    if (!categoryFilter.value) return items
+    const allowed = ['like', 'comment', 'follow', 'bookmark', 'system']
+    if (!allowed.includes(categoryFilter.value)) return items
+    return items.filter(n => n.type === (categoryFilter.value as any))
+  }
   switch (activeTab.value) {
     case 'notify':
-      return others
+      return filterOthersByCategory(others)
     case 'message':
       return grouped.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     case 'unread':
@@ -508,12 +531,35 @@ const handleNotificationClick = async (notification: Notification) => {
 
   selectedNotification.value = notification
 
-  // 如果是私信通知，加载对应的对话
-  if (notification.type === 'message' && notification.actor_id) {
-    await loadConversationByUserId(notification.actor_id)
+  // 如果是私信通知，优先按会话ID(resource_id) 打开；无则回退按用户ID
+  if (notification.type === 'message') {
+    if (notification.resource_id && !isNaN(Number(notification.resource_id))) {
+      await loadConversationByConversationId(Number(notification.resource_id))
+      if (!currentConversation.value && notification.actor_id) {
+        await loadConversationByUserId(notification.actor_id)
+      }
+    } else if (notification.actor_id) {
+      await loadConversationByUserId(notification.actor_id)
+    } else {
+      currentConversation.value = null
+    }
   } else {
     // 非私信通知，清空对话
     currentConversation.value = null
+  }
+}
+
+// 快速标记单条为已读
+const markOneAsRead = async (notification: Notification) => {
+  try {
+    if (notification.is_read) return
+    await NotificationApi.markAsRead([notification.id])
+    notification.is_read = true
+    unreadNotificationsCount.value = Math.max(0, unreadNotificationsCount.value - 1)
+    unreadMessagesCount.value = Math.max(0, unreadMessagesCount.value - 1)
+    triggerRefresh()
+  } catch (e) {
+    // 静默
   }
 }
 
@@ -529,6 +575,27 @@ const viewUserProfile = (notification: Notification) => {
   } else {
     showToast('无法获取用户信息', 'error')
   }
+}
+
+// 左侧列表：标题与摘要
+const getNotificationTitle = (n: Notification): string => {
+  if (n.type === 'system') {
+    return n.title && n.title.trim() ? n.title.trim() : '系统通知'
+  }
+  if (n.type === 'message') {
+    const name = n.actor_nickname || n.actor_username || '私信'
+    return `私信 · ${name}`
+  }
+  const typeName = notificationTypeMap[n.type] || '通知'
+  const name = n.actor_nickname || n.actor_username || ''
+  return name ? `${typeName} · ${name}` : typeName
+}
+
+const getNotificationSummary = (n: Notification): string => {
+  const text = (n.message || '').trim()
+  // 限制长度，避免泄露过多详情
+  const max = 80
+  return text.length > max ? text.slice(0, max) + '…' : text
 }
 
 // 标记所有通知为已读
@@ -652,24 +719,37 @@ const loadConversationByUserId = async (actorId: number) => {
   }
 }
 
+// 根据会话ID加载对话（通过会话列表查找）
+const loadConversationByConversationId = async (conversationId: number) => {
+  if (!authStore.user) return
+  try {
+    const resp = await ChatAPI.getConversations({ page: 1, limit: 100 })
+    const found = resp.data.conversations.find(c => c.id === conversationId)
+    if (found) {
+      currentConversation.value = found
+    } else {
+      currentConversation.value = null
+    }
+  } catch (error: any) {
+    console.error('根据会话ID加载对话失败:', error)
+    currentConversation.value = null
+  }
+}
+
 // 处理消息发送
 const handleMessageSent = async (message: any) => {
-
-  // 立即将新消息添加到聊天列表中
-  if (chatMessageListRef.value && chatMessageListRef.value.addMessage) {
-    chatMessageListRef.value.addMessage(message)
-  } else {
-    /* no-op */
+  // 立即将新消息添加到聊天列表中（若组件可用）
+  try {
+    chatMessageListRef.value?.addMessage?.(message)
+    chatMessageListRef.value?.scrollToBottomAnimated?.()
+  } catch (e) {
+    console.debug('即时添加消息失败，稍后刷新修复。', e)
   }
 
-  // 强制刷新消息列表确保同步
-  if (chatMessageListRef.value && chatMessageListRef.value.refreshMessages) {
-    setTimeout(() => {
-      if (chatMessageListRef.value && chatMessageListRef.value.refreshMessages) {
-        chatMessageListRef.value.refreshMessages()
-      }
-    }, 1000) // 给后端更多时间处理
-  }
+  // 无论如何，稍后强制刷新一次，确保与服务端状态一致
+  setTimeout(() => {
+    chatMessageListRef.value?.refreshMessages?.()
+  }, 1000)
 }
 
 // 开始私信聊天（从关注通知等地方触发）
@@ -827,6 +907,24 @@ onMounted(async () => {
     return
   }
 
+  // 解析路由查询参数，设置初始筛选
+  const initFromQuery = () => {
+    const tab = String(route.query.tab || '').toLowerCase()
+    const cat = String(route.query.category || '').toLowerCase()
+    const tabKeys = ['all', 'notify', 'message', 'unread']
+    if (tab && tabKeys.includes(tab)) {
+      activeTab.value = tab as any
+    }
+    if (cat) {
+      categoryFilter.value = cat
+      // 有明确分类时，默认切到通知大类
+      if (activeTab.value !== 'message' && activeTab.value !== 'unread') {
+        activeTab.value = 'notify'
+      }
+    }
+  }
+  initFromQuery()
+
   await fetchNotifications()
 
   // 先尝试恢复聊天状态
@@ -865,6 +963,20 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
   // 存起来以便卸载时移除
   ;(window as any)._godad_notif_handleVisibilityChange = handleVisibilityChange
+})
+
+// 监听路由参数变化，动态更新筛选
+watch(() => [route.query.tab, route.query.category], () => {
+  const tab = String(route.query.tab || '').toLowerCase()
+  const cat = String(route.query.category || '').toLowerCase()
+  const tabKeys = ['all', 'notify', 'message', 'unread']
+  if (tab && tabKeys.includes(tab)) {
+    activeTab.value = tab as any
+  }
+  categoryFilter.value = cat
+  if (cat && activeTab.value !== 'message' && activeTab.value !== 'unread') {
+    activeTab.value = 'notify'
+  }
 })
 
 import { onBeforeUnmount } from 'vue'

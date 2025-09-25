@@ -12,6 +12,7 @@ import (
 type FavoriteService struct {
 	db                  *gorm.DB
 	notificationService *NotificationService
+	cacheService        *CacheService
 }
 
 // NewFavoriteService 创建收藏服务实例
@@ -19,6 +20,7 @@ func NewFavoriteService(db *gorm.DB) *FavoriteService {
 	return &FavoriteService{
 		db:                  db,
 		notificationService: NewNotificationService(db),
+		cacheService:        NewCacheService(),
 	}
 }
 
@@ -39,6 +41,9 @@ func (s *FavoriteService) ToggleFavorite(userID, articleID uint) (*models.Favori
 			return nil, fmt.Errorf("更新收藏计数失败: %v", err)
 		}
 
+		// 清理相关缓存
+		s.clearArticleCache()
+
 		return nil, nil // 返回 nil 表示取消收藏
 	} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("查询收藏记录失败: %v", result.Error)
@@ -58,6 +63,9 @@ func (s *FavoriteService) ToggleFavorite(userID, articleID uint) (*models.Favori
 	if err := s.updateFavoriteCount(articleID, 1); err != nil {
 		return nil, fmt.Errorf("更新收藏计数失败: %v", err)
 	}
+
+	// 清理相关缓存
+	s.clearArticleCache()
 
 	// 创建收藏通知
 	var article models.Article
@@ -207,4 +215,12 @@ func (s *FavoriteService) GetPopularFavorites(limit int, days int) ([]map[string
 	}
 
 	return results, nil
+}
+
+// clearArticleCache 清理文章相关缓存
+func (s *FavoriteService) clearArticleCache() {
+	// 清理文章列表缓存
+	s.cacheService.DeletePattern("articles:*")
+	// 清理搜索缓存
+	s.cacheService.DeletePattern("search:*")
 }

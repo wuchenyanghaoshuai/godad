@@ -106,6 +106,7 @@ export const API_CONFIG = {
     NOTIFICATION: {
       BASE: '/notifications',
       STATS: '/notifications/stats',
+      STATS_BY_TYPE: '/notifications/stats/by-type',
       MARK_READ: '/notifications/mark-read',
       MARK_ALL_READ: '/notifications/mark-all-read',
       BATCH_MARK_READ: '/notifications/batch-mark-read',

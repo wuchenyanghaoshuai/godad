@@ -212,8 +212,13 @@ export class ErrorHandler {
 
   // 记录错误
   private logError(error: AppError) {
+    // 忽略正常的认证相关错误（401、403等），避免在控制台产生误导性的错误信息
+    if (error.code === 'AUTH_REQUIRED' || error.code === 'PERMISSION_DENIED') {
+      return
+    }
+
     console.error('应用错误:', error)
-    
+
     // 在生产环境中，可以将错误发送到监控服务
     if (import.meta.env.PROD) {
       // 发送错误到监控服务

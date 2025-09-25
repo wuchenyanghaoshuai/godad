@@ -21,7 +21,6 @@ func AutoMigrate(db *gorm.DB) error {
 		&PasswordReset{},
 		&Follow{},
 		&Like{},
-		&Tag{},
 		&Notification{},
 		&ChatConversation{},
 		&ChatMessage{},
@@ -44,6 +43,12 @@ func AutoMigrate(db *gorm.DB) error {
 		return err
 	}
 
+	// 确保枚举类型字段更新（例如：notifications.type 增加 system）
+	if err := ensureEnumColumns(db); err != nil {
+		log.Printf("更新枚举字段失败: %v", err)
+		return err
+	}
+
 	// 创建外键约束
 	if err := createForeignKeys(db); err != nil {
 		log.Printf("创建外键约束失败: %v", err)
@@ -58,6 +63,15 @@ func AutoMigrate(db *gorm.DB) error {
 
 	log.Println("数据库迁移完成")
 	return nil
+}
+
+// ensureEnumColumns 确保枚举字段包含最新取值
+func ensureEnumColumns(db *gorm.DB) error {
+    // MySQL: 扩展 notifications.type 枚举，加入 'system'
+    db.Exec("ALTER TABLE notifications MODIFY COLUMN type ENUM('like','comment','bookmark','follow','message','system') NOT NULL")
+    // 新增标题列（如果不存在）
+    db.Exec("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title VARCHAR(255) NULL AFTER type")
+    return nil
 }
 
 // createIndexes 创建额外的索引

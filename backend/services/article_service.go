@@ -65,7 +65,6 @@ func (s *ArticleService) CreateArticle(userID uint, req *models.ArticleCreateReq
 		CoverImage:  req.CoverImage,
 		AuthorID:    userID,
 		CategoryID:  req.CategoryID,
-		Tags:        req.Tags,
 		IsTop:       req.IsTop,
 		IsRecommend: req.IsRecommend,
 		Status:      req.Status,
@@ -154,9 +153,6 @@ func (s *ArticleService) UpdateArticle(articleID, userID uint, req *models.Artic
 	}
 	if req.CategoryID > 0 {
 		updateData["category_id"] = req.CategoryID
-	}
-	if req.Tags != "" {
-		updateData["tags"] = s.processTags(req.Tags)
 	}
 	if req.Status != nil {
 		updateData["status"] = *req.Status
@@ -464,26 +460,6 @@ func (s *ArticleService) validateUpdateRequest(req *models.ArticleUpdateRequest)
 	return nil
 }
 
-// processTags 处理标签
-func (s *ArticleService) processTags(tags string) string {
-	if tags == "" {
-		return ""
-	}
-	// 分割标签，去重，去空格
-	tagList := strings.Split(tags, ",")
-	tagMap := make(map[string]bool)
-	var result []string
-
-	for _, tag := range tagList {
-		tag = strings.TrimSpace(tag)
-		if tag != "" && !tagMap[tag] {
-			tagMap[tag] = true
-			result = append(result, tag)
-		}
-	}
-
-	return strings.Join(result, ",")
-}
 
 // generateSummary 生成文章摘要
 func (s *ArticleService) generateSummary(content string) string {

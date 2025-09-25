@@ -283,22 +283,29 @@ func RefreshToken(c *gin.Context) {
         return
     }
     // 写入新的 access_token Cookie
-    setAuthCookies(c, access, refreshCookie)
+    SetAuthCookies(c, access, refreshCookie)
     utils.SuccessWithMessage(c, "刷新成功", gin.H{"user": user.ToResponse()})
 }
 
-// setAuthCookies 设置 httpOnly Cookie
-func setAuthCookies(c *gin.Context, accessToken, refreshToken string) {
+// SetAuthCookies 设置 httpOnly Cookie (导出函数)
+func SetAuthCookies(c *gin.Context, accessToken, refreshToken string) {
     // Access Token: 短期（与 JWT 过期同步），Lax，路径根
     httpOnly := true
     secure := false // 开发环境可为 false；生产应为 true
     sameSite := http.SameSiteLaxMode
+
+    // 获取JWT配置的过期时间
+    cfg := config.GetConfig()
+    accessTokenExpiry := time.Now().Add(time.Duration(cfg.JWT.ExpireHours) * time.Hour)
+    refreshTokenExpiry := time.Now().Add(7 * 24 * time.Hour) // 7天
 
     // 设置 access_token
     http.SetCookie(c.Writer, &http.Cookie{
         Name:     "access_token",
         Value:    accessToken,
         Path:     "/",
+        Expires:  accessTokenExpiry,
+        MaxAge:   int(time.Duration(cfg.JWT.ExpireHours) * time.Hour / time.Second),
         HttpOnly: httpOnly,
         Secure:   secure,
         SameSite: sameSite,
@@ -308,14 +315,16 @@ func setAuthCookies(c *gin.Context, accessToken, refreshToken string) {
         Name:     "refresh_token",
         Value:    refreshToken,
         Path:     "/",
+        Expires:  refreshTokenExpiry,
+        MaxAge:   int(7 * 24 * time.Hour / time.Second), // 7天
         HttpOnly: httpOnly,
         Secure:   secure,
         SameSite: sameSite,
     })
 }
 
-// clearAuthCookies 清除 Cookie
-func clearAuthCookies(c *gin.Context) {
+// ClearAuthCookies 清除 Cookie (导出函数)
+func ClearAuthCookies(c *gin.Context) {
     expired := time.Now().Add(-time.Hour)
     for _, name := range []string{"access_token", "refresh_token"} {
         http.SetCookie(c.Writer, &http.Cookie{

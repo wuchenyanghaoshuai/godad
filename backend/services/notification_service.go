@@ -10,7 +10,7 @@ import (
 )
 
 type NotificationService struct {
-	db *gorm.DB
+    db *gorm.DB
 }
 
 func NewNotificationService(db *gorm.DB) *NotificationService {
@@ -231,19 +231,21 @@ func (s *NotificationService) GetNotifications(userID uint, page, limit int) ([]
 	}
 
 	// 查询通知详情
-	query := `
-		SELECT 
-			n.id, n.receiver_id, n.actor_id, n.type, n.resource_id, n.message, 
-			n.is_read, n.created_at, n.updated_at,
-			u.username as actor_username, u.nickname as actor_nickname, u.avatar as actor_avatar,
-			COALESCE(a.title, '') as article_title, COALESCE(a.cover_image, '') as article_cover
-		FROM notifications n
-		INNER JOIN users u ON n.actor_id = u.id
-		LEFT JOIN articles a ON n.resource_id = a.id AND n.type IN ('like', 'comment', 'bookmark')
-		WHERE n.receiver_id = ? AND n.deleted_at IS NULL
-		ORDER BY n.created_at DESC
-		LIMIT ? OFFSET ?
-	`
+    query := `
+        SELECT 
+            n.id, n.receiver_id, n.actor_id, n.type, n.title, n.resource_id, n.message, 
+            n.is_read, n.created_at, n.updated_at,
+            CASE WHEN n.type = 'system' THEN '系统' ELSE COALESCE(u.username, '') END as actor_username,
+            CASE WHEN n.type = 'system' THEN '系统' ELSE COALESCE(u.nickname, '') END as actor_nickname,
+            CASE WHEN n.type = 'system' THEN '' ELSE COALESCE(u.avatar, '') END as actor_avatar,
+            COALESCE(a.title, '') as article_title, COALESCE(a.cover_image, '') as article_cover
+        FROM notifications n
+        LEFT JOIN users u ON n.actor_id = u.id
+        LEFT JOIN articles a ON n.resource_id = a.id AND n.type IN ('like', 'comment', 'bookmark')
+        WHERE n.receiver_id = ? AND n.deleted_at IS NULL
+        ORDER BY n.created_at DESC
+        LIMIT ? OFFSET ?
+    `
 
 	err = s.db.Raw(query, userID, limit, offset).Scan(&notifications).Error
 	if err != nil {
@@ -274,6 +276,191 @@ func (s *NotificationService) GetNotificationStats(userID uint) (*models.Notific
 	}
 
 	return &stats, nil
+}
+
+// GetNotificationStatsByType 获取各类型未读统计
+func (s *NotificationService) GetNotificationStatsByType(userID uint) (*models.NotificationTypeStats, error) {
+    type row struct {
+        Type  string
+        Count int64
+    }
+
+    var rows []row
+    err := s.db.Model(&models.Notification{}).
+        Select("type, COUNT(*) as count").
+        Where("receiver_id = ? AND is_read = false AND deleted_at IS NULL", userID).
+        Group("type").
+        Scan(&rows).Error
+    if err != nil {
+        return nil, err
+    }
+
+    stats := &models.NotificationTypeStats{}
+    for _, r := range rows {
+        stats.TotalUnread += r.Count
+        switch r.Type {
+        case string(models.NotificationTypeMessage):
+            stats.Message = r.Count
+        case string(models.NotificationTypeLike):
+            stats.Like = r.Count
+        case string(models.NotificationTypeComment):
+            stats.Comment = r.Count
+        case string(models.NotificationTypeFollow):
+            stats.Follow = r.Count
+        case string(models.NotificationTypeBookmark):
+            stats.Bookmark = r.Count
+        case string(models.NotificationTypeSystem):
+            stats.System = r.Count
+        default:
+            // 未知类型暂不计入具体分类，仅计入总数
+        }
+    }
+    return stats, nil
+}
+
+// BroadcastSystemNotification 管理员广播系统通知到所有用户
+func (s *NotificationService) BroadcastSystemNotification(adminID uint, message string) error {
+    if message == "" {
+        return fmt.Errorf("message cannot be empty")
+    }
+
+    // 生成一次广播的标识，避免5分钟窗口内被误判为重复通知
+    // 使用当前时间戳作为 resource_id（秒级足够区分）
+    broadcastID := uint(time.Now().Unix())
+
+    // 拉取所有有效用户ID（排除管理员自己）
+    var userIDs []uint
+    if err := s.db.Model(&models.User{}).
+        Where("status = ? AND id <> ?", 1, adminID).
+        Pluck("id", &userIDs).Error; err != nil {
+        return err
+    }
+    if len(userIDs) == 0 {
+        return nil
+    }
+
+    // 分批插入，避免单次批量过大
+    batchSize := 500
+    now := time.Now()
+    for i := 0; i < len(userIDs); i += batchSize {
+        end := i + batchSize
+        if end > len(userIDs) { end = len(userIDs) }
+
+        batch := make([]models.Notification, 0, end-i)
+        for _, uid := range userIDs[i:end] {
+            // 避免自己给自己
+            if uid == adminID { continue }
+            batch = append(batch, models.Notification{
+                ReceiverID: uid,
+                ActorID:    adminID,
+                Type:       models.NotificationTypeSystem,
+                Title:      "",
+                ResourceID: broadcastID,
+                Message:    message,
+                IsRead:     false,
+                CreatedAt:  now,
+                UpdatedAt:  now,
+            })
+        }
+
+        if len(batch) == 0 { continue }
+
+        if err := s.db.Create(&batch).Error; err != nil {
+            return err
+        }
+    }
+
+    return nil
+}
+
+// BroadcastSystemNotificationWithTitle 广播系统通知（带标题）
+func (s *NotificationService) BroadcastSystemNotificationWithTitle(adminID uint, title, content string) error {
+    if content == "" && title == "" {
+        return fmt.Errorf("title or content required")
+    }
+    broadcastID := uint(time.Now().Unix())
+    var userIDs []uint
+    if err := s.db.Model(&models.User{}).
+        Where("status = ? AND id <> ?", 1, adminID).
+        Pluck("id", &userIDs).Error; err != nil {
+        return err
+    }
+    if len(userIDs) == 0 { return nil }
+    now := time.Now()
+    batchSize := 500
+    for i := 0; i < len(userIDs); i += batchSize {
+        end := i + batchSize
+        if end > len(userIDs) { end = len(userIDs) }
+        batch := make([]models.Notification, 0, end-i)
+        for _, uid := range userIDs[i:end] {
+            if uid == adminID { continue }
+            batch = append(batch, models.Notification{
+                ReceiverID: uid,
+                ActorID:    adminID,
+                Type:       models.NotificationTypeSystem,
+                Title:      title,
+                ResourceID: broadcastID,
+                Message:    content,
+                IsRead:     false,
+                CreatedAt:  now,
+                UpdatedAt:  now,
+            })
+        }
+        if len(batch) == 0 { continue }
+        if err := s.db.Create(&batch).Error; err != nil { return err }
+    }
+    return nil
+}
+
+// GetSystemBroadcastCount 返回系统广播历史条数（按 resource_id 去重）
+func (s *NotificationService) GetSystemBroadcastCount() (int64, error) {
+    type res struct{ Cnt int64 }
+    var r res
+    err := s.db.Raw("SELECT COUNT(DISTINCT resource_id) AS cnt FROM notifications WHERE type = ? AND deleted_at IS NULL", models.NotificationTypeSystem).Scan(&r).Error
+    return r.Cnt, err
+}
+
+// SystemBroadcastSummary 广播汇总
+type SystemBroadcastSummary struct {
+    BroadcastID uint      `json:"broadcast_id"`
+    Title       string    `json:"title"`
+    Message     string    `json:"message"`
+    CreatedAt   time.Time `json:"created_at"`
+    Total       int64     `json:"total"`
+    ReadCount   int64     `json:"read_count"`
+}
+
+// ListSystemBroadcasts 列出系统广播历史（按 resource_id 分组）
+func (s *NotificationService) ListSystemBroadcasts(page, limit int) ([]SystemBroadcastSummary, int64, error) {
+    var total int64
+    // 总组数
+    err := s.db.Table("notifications").
+        Where("type = ? AND deleted_at IS NULL", models.NotificationTypeSystem).
+        Select("COUNT(DISTINCT resource_id) as cnt").
+        Count(&total).Error
+    if err != nil { return nil, 0, err }
+
+    offset := (page - 1) * limit
+    var list []SystemBroadcastSummary
+    // 选取 MAX(created_at)、任意标题/消息（通常相同）、总数与已读数
+    q := `
+        SELECT 
+            resource_id AS broadcast_id,
+            COALESCE(MAX(NULLIF(title, '')), '') AS title,
+            COALESCE(MAX(message), '') AS message,
+            MAX(created_at) AS created_at,
+            COUNT(*) AS total,
+            SUM(CASE WHEN is_read = 1 THEN 1 ELSE 0 END) AS read_count
+        FROM notifications
+        WHERE type = 'system' AND deleted_at IS NULL
+        GROUP BY resource_id
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?`
+
+    if err := s.db.Raw(q, limit, offset).Scan(&list).Error; err != nil {
+        return nil, 0, err
+    }
+    return list, total, nil
 }
 
 // MarkAsRead 标记通知为已读

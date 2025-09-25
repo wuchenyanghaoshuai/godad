@@ -180,8 +180,15 @@
           @click="$router.push(`/articles/${a.id}`)"
         >
           <div class="h-40 sm:h-48 relative overflow-hidden">
-            <img v-if="a.cover_image" :src="a.cover_image" :alt="a.title" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-            <div v-else :class="['w-full h-full', gradientByIndex(idx)]"></div>
+            <img
+              v-if="a.cover_image && !(a as any)._imageError"
+              :src="a.cover_image"
+              :alt="a.title"
+              class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              @error="() => ((a as any)._imageError = true)"
+            />
+            <!-- 无封面或加载失败：采用与 /articles 同风格的占位配色 -->
+            <div v-else class="w-full h-full bg-gradient-warm"></div>
             <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300"></div>
             <div class="absolute top-3 sm:top-4 left-3 sm:left-4">
               <span class="bg-white/90 text-pink-800 text-xs font-medium px-2 sm:px-3 py-1 rounded-full backdrop-blur-sm">本周热门</span>

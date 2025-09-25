@@ -22,7 +22,7 @@
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- 统计卡片 -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
         <div class="bg-white rounded-lg shadow p-6">
           <div class="flex items-center">
             <div class="p-3 rounded-full bg-blue-100 text-blue-600">
@@ -75,6 +75,20 @@
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-600">资源总数</p>
               <p class="text-2xl font-bold text-gray-900">{{ stats.resourceCount }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center">
+            <div class="p-3 rounded-full bg-pink-100 text-pink-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3a1 1 0 011 0l7 4a1 1 0 010 1v8a1 1 0 01-.5.866l-7 4a1 1 0 01-1 0l-7-4A1 1 0 013 16V8a1 1 0 01.5-.866l7-4z" />
+              </svg>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-600">系统通知</p>
+              <p class="text-2xl font-bold text-gray-900">{{ stats.systemBroadcastCount || 0 }}</p>
             </div>
           </div>
         </div>
@@ -234,6 +248,89 @@
                 >
                   下一页
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 系统通知 -->
+          <div v-if="activeTab === 'system'">
+            <div class="max-w-3xl">
+              <h2 class="text-lg font-semibold text-gray-900 mb-4">发布系统通知（广播到所有用户）</h2>
+              <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded p-3 text-sm mb-4">
+                提示：系统通知会以“系统”类型消息出现在所有用户的通知列表中，且计入未读统计。
+              </div>
+
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">标题（可选）</label>
+                  <input v-model="sysNotice.title" type="text" maxlength="60" placeholder="例如：维护公告、功能更新"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <div class="text-xs text-gray-400 mt-1">最多60字</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">通知内容</label>
+                  <textarea v-model="sysNotice.content" rows="6" maxlength="1000" placeholder="填写要广播的通知内容..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                  <div class="flex items-center justify-between text-xs mt-1">
+                    <span class="text-gray-400">支持纯文本，最多1000字</span>
+                    <span :class="sysNotice.content.length > 900 ? 'text-red-500' : 'text-gray-400'">{{ sysNotice.content.length }}/1000</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                  <button @click="sendBroadcast" :disabled="sending || !canSend"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700">
+                    {{ sending ? '发送中…' : '发送广播' }}
+                  </button>
+                  <button @click="resetBroadcastForm" :disabled="sending"
+                    class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 disabled:opacity-50">
+                    重置
+                  </button>
+                </div>
+
+                <div v-if="lastBroadcastAt" class="text-xs text-gray-500">
+                  最近一次广播时间：{{ lastBroadcastAt }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 历史列表 -->
+            <div class="mt-8">
+              <h3 class="text-md font-semibold text-gray-900 mb-3">历史系统通知</h3>
+              <div v-if="historyLoading" class="text-gray-500 text-sm">加载中…</div>
+              <div v-else>
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead class="bg-gray-50">
+                    <tr>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">时间</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">标题</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">摘要</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">推送人数</th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">已读</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="item in systemHistory" :key="item.broadcast_id">
+                      <td class="px-4 py-2 text-sm text-gray-500 whitespace-nowrap">{{ formatDateTime(item.created_at) }}</td>
+                      <td class="px-4 py-2 text-sm text-gray-900">
+                        {{ item.title || '系统通知' }}
+                      </td>
+                      <td class="px-4 py-2 text-sm text-gray-600">
+                        {{ (item.message || '').length > 80 ? (item.message.slice(0,80) + '…') : item.message }}
+                      </td>
+                      <td class="px-4 py-2 text-sm text-gray-700">{{ item.total }}</td>
+                      <td class="px-4 py-2 text-sm text-gray-700">{{ item.read_count }}</td>
+                    </tr>
+                    <tr v-if="!systemHistory || systemHistory.length === 0">
+                      <td class="px-4 py-6 text-center text-gray-400" colspan="5">暂无历史通知</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="flex justify-end items-center gap-2 mt-3">
+                  <button class="px-3 py-1 border rounded text-sm" :disabled="historyPage<=1" @click="loadSystemHistory(historyPage-1)">上一页</button>
+                  <span class="text-xs text-gray-500">第 {{ historyPage }} / {{ Math.max(1, Math.ceil(historyTotal/historySize)) }} 页</span>
+                  <button class="px-3 py-1 border rounded text-sm" :disabled="historyPage>=Math.ceil(historyTotal/historySize)" @click="loadSystemHistory(historyPage+1)">下一页</button>
+                </div>
               </div>
             </div>
           </div>
@@ -1074,7 +1171,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 // import { http } from '../api/http' // unused
@@ -1105,7 +1202,8 @@ const stats = reactive({
   userCount: 0,
   categoryCount: 0,
   commentCount: 0,
-  resourceCount: 0
+  resourceCount: 0,
+  systemBroadcastCount: 0,
 })
 
 const tabs = [
@@ -1113,7 +1211,8 @@ const tabs = [
   { id: 'users', name: '用户管理' },
   { id: 'categories', name: '文章分类管理' },
   { id: 'topics', name: '话题管理' },
-  { id: 'resources', name: '资源管理' }
+  { id: 'resources', name: '资源管理' },
+  { id: 'system', name: '系统通知' }
 ]
 
 // 文章管理
@@ -1122,6 +1221,31 @@ const articleFilter = reactive({
   keyword: '',
   status: ''
 })
+
+// 系统通知
+const sysNotice = reactive({ title: '', content: '' })
+const sending = ref(false)
+const lastBroadcastAt = ref('')
+const canSend = computed(() => sysNotice.content.trim().length > 0)
+const resetBroadcastForm = () => { sysNotice.title = ''; sysNotice.content = '' }
+const sendBroadcast = async () => {
+  if (!canSend.value || sending.value) return
+  if (!confirm('确认向所有用户广播该系统通知？')) return
+  sending.value = true
+  try {
+    await AdminApi.broadcastSystemNotification({ title: sysNotice.title?.trim(), content: sysNotice.content.trim() })
+    showToast('系统通知已广播', 'success')
+    lastBroadcastAt.value = new Date().toLocaleString()
+    resetBroadcastForm()
+    // 刷新统计卡片与历史列表
+    await loadStats()
+    await loadSystemHistory(1)
+  } catch (e: any) {
+    showToast(e?.message || '广播失败', 'error')
+  } finally {
+    sending.value = false
+  }
+}
 const articlePagination = reactive({
   page: 1,
   limit: 10,
@@ -1210,6 +1334,30 @@ const resourcePagination = reactive({
   offset: 0
 })
 
+// 系统通知历史
+const systemHistory = ref<any[]>([])
+const historyLoading = ref(false)
+const historyPage = ref(1)
+const historySize = ref(10)
+const historyTotal = ref(0)
+const formatDateTime = (str: string | Date) => {
+  const d = typeof str === 'string' ? new Date(str) : str
+  return d.toLocaleString()
+}
+const loadSystemHistory = async (page = 1) => {
+  try {
+    historyLoading.value = true
+    const res = await AdminApi.getSystemNotificationHistory({ page, size: historySize.value })
+    systemHistory.value = res?.data?.items || []
+    historyTotal.value = res?.data?.total || 0
+    historyPage.value = page
+  } catch (e) {
+    // 静默失败
+  } finally {
+    historyLoading.value = false
+  }
+}
+
 // 加载统计数据
 const loadStats = async () => {
   try {
@@ -1219,6 +1367,7 @@ const loadStats = async () => {
     stats.categoryCount = response.data.categoryCount
     stats.commentCount = response.data.commentCount
     stats.resourceCount = response.data.resourceStats?.total || 0
+    stats.systemBroadcastCount = response.data.systemBroadcastCount || 0
   } catch (error) {
     console.error('加载统计数据失败:', error)
     // 如果API调用失败，使用默认值
@@ -1227,6 +1376,7 @@ const loadStats = async () => {
     stats.categoryCount = 0
     stats.commentCount = 0
     stats.resourceCount = 0
+    stats.systemBroadcastCount = 0
   }
 }
 
@@ -1819,5 +1969,12 @@ onMounted(() => {
   loadCategories()
   loadTopics()
   loadResources()
+  loadSystemHistory()
+})
+
+watch(activeTab, (val) => {
+  if (val === 'system') {
+    loadSystemHistory()
+  }
 })
 </script>

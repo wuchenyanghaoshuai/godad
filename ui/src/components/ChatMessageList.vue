@@ -40,9 +40,20 @@
     </div>
 
     <!-- 消息容器 -->
-    <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50" @scroll="handleScroll">
+    <div ref="messagesContainer" class="flex-1 overflow-y-scroll p-4 space-y-3 bg-gray-50" @scroll="handleScroll">
       <!-- 顶部自动加载锚点（被看到时自动加载更早消息） -->
       <div ref="topSentinel" class="h-1"></div>
+      <!-- 顶部提示与操作 -->
+      <div class="sticky top-2 z-10">
+        <!-- 首次进入的提示：上滑加载更多 -->
+        <div v-if="showTopHint && hasMore && !loading" class="flex justify-center pointer-events-none">
+          <div class="px-2 py-1 text-xs bg-gray-700 text-white rounded-full shadow pointer-events-auto opacity-90">上滑加载更多</div>
+        </div>
+        <!-- 回到顶部按钮（增强可发现性） -->
+        <div v-if="!isAtTop && hasMore" class="flex justify-end mt-2">
+          <button @click="scrollToTop" class="px-2.5 py-1.5 text-xs bg-gray-700 text-white rounded-full shadow hover:bg-gray-800">回到顶部</button>
+        </div>
+      </div>
       <!-- 加载更多按钮 -->
     <div class="text-center">
       <!-- 顶部加载骨架 -->
@@ -228,22 +239,24 @@ const topSentinel = ref<HTMLDivElement>()
 const currentPage = ref(1)
 const hasMore = ref(true)
 const isAtBottom = ref(true)
+const isAtTop = ref(true)
 const newMessageCount = ref(0)
 const supportsIO = ref(false)
+const showTopHint = ref(true)
 const imagePreview = ref({
   show: false,
   url: ''
 })
 
-// 限制渲染条数，避免超长列表拖慢页面（轻量私信：保留最近10条）
-const MAX_RENDERED_MESSAGES = 10
-const capMessagesIfNeeded = () => {
-  if (!isAtBottom.value) return
-  const extra = messages.value.length - MAX_RENDERED_MESSAGES
-  if (extra > 0) {
-    messages.value.splice(0, extra)
-  }
-}
+// 移除消息限制逻辑，保留所有历史消息，通过滚动查看
+// const MAX_RENDERED_MESSAGES = 10
+// const capMessagesIfNeeded = () => {
+//   if (!isAtBottom.value) return
+//   const extra = messages.value.length - MAX_RENDERED_MESSAGES
+//   if (extra > 0) {
+//     messages.value.splice(0, extra)
+//   }
+// }
 
 // 计算属性
 const currentConversation = computed(() => props.conversation)
@@ -265,11 +278,20 @@ const loadMessages = async (page = 1) => {
       limit: 10
     })
 
+    // 规范化后端返回的数据：将 images 字段从字符串(JSON) 转为数组
+    const normalize = (arr: any[]) => arr.map((m: any) => {
+      if (m && typeof m.images === 'string') {
+        try { m.images = JSON.parse(m.images) } catch (_) { m.images = [] }
+      }
+      return m
+    })
+
+    const incoming = normalize(response.data.messages as any)
     if (page === 1) {
-      messages.value = response.data.messages // 保持原有顺序：旧消息在前，新消息在后
+      messages.value = incoming // 保持原有顺序：旧消息在前，新消息在后
     } else {
       // 加载更早的消息，添加到数组开头
-      messages.value = [...response.data.messages, ...messages.value]
+      messages.value = [...incoming, ...messages.value]
     }
 
     currentPage.value = page
@@ -281,7 +303,6 @@ const loadMessages = async (page = 1) => {
       setTimeout(() => {
         scrollToBottomAnimated()
         markAsRead()
-        capMessagesIfNeeded()
       }, 100)
       // 再次确保滚至底部（处理图片加载后高度变化）
       setTimeout(() => {
@@ -468,8 +489,33 @@ const handleImageError = (event: Event) => {
 
 // 添加新消息到列表
 const addMessage = (message: ChatMessage) => {
+  // 仅处理当前会话的消息；若会话ID不同但用户对匹配，则视为当前会话（容错）
+  if (currentConversation.value && message.conversation_id !== currentConversation.value.id) {
+    const meId = authStore.user?.id
+    const otherId = currentConversation.value.other_user?.id
+    const logicallySame = (message.sender_id === meId && message.receiver_id === otherId) ||
+                          (message.receiver_id === meId && message.sender_id === otherId)
+    if (!logicallySame) return
+  }
+
+  // 规范化 images 字段
+  const m: any = { ...message }
+  if (m && typeof m.images === 'string') {
+    try { m.images = JSON.parse(m.images) } catch (_) { m.images = [] }
+  }
+
+  // 填充 sender/receiver 以避免模板访问 undefined 抛错
+  const me = authStore.user as any
+  const other = currentConversation.value?.other_user as any
+  if (!m.sender && m.sender_id && me && m.sender_id === me.id) {
+    m.sender = me
+  }
+  if (!m.receiver && other && m.receiver_id === other.id) {
+    m.receiver = other
+  }
+
   // 检查消息是否已存在，避免重复添加
-  const existingMessage = messages.value.find(msg => msg.id === message.id)
+  const existingMessage = messages.value.find(msg => msg.id === m.id)
   if (!existingMessage) {
     // 暂时停止轮询，避免干扰
     const wasPolling = pollingTimer !== null
@@ -477,18 +523,14 @@ const addMessage = (message: ChatMessage) => {
       stopPolling()
     }
 
-    // 添加到消息列表末尾
-    messages.value.push(message)
+  // 添加到消息列表末尾
+  messages.value.push(m as ChatMessage)
 
-    // 立即滚动到底部并标记为已读
-    nextTick(() => {
-      if (isAtBottom.value) {
-        scrollToBottomAnimated()
-        markAsRead()
-        capMessagesIfNeeded()
-      } else {
-        newMessageCount.value += 1
-      }
+  // 立即滚动到底部并标记为已读
+  nextTick(() => {
+      // 发送者本端添加消息后，优先滚到底部，确保看得到
+      scrollToBottomAnimated()
+      markAsRead()
 
       // 延迟重启轮询，给消息显示足够时间
       if (wasPolling) {
@@ -518,7 +560,14 @@ const startPolling = () => {
           limit: 10
         })
 
-        const newMessages = response.data.messages
+        // 规范化 images 字段
+        const normalize = (arr: any[]) => arr.map((m: any) => {
+          if (m && typeof m.images === 'string') {
+            try { m.images = JSON.parse(m.images) } catch (_) { m.images = [] }
+          }
+          return m
+        })
+        const newMessages = normalize(response.data.messages as any)
 
         if (newMessages && newMessages.length > 0) {
           const sortedNewMessages = [...newMessages] // 保持后端返回的顺序：旧消息在前，新消息在后
@@ -533,7 +582,6 @@ const startPolling = () => {
               await nextTick()
               scrollToBottomAnimated()
               markAsRead()
-              capMessagesIfNeeded()
             } else {
               // 只添加新消息，避免重复
               const newMessagesToAdd = sortedNewMessages.filter(msg =>
@@ -545,7 +593,6 @@ const startPolling = () => {
                 if (isAtBottom.value) {
                   scrollToBottomAnimated()
                   markAsRead()
-                  capMessagesIfNeeded()
                 } else {
                   newMessageCount.value += newMessagesToAdd.length
                 }
@@ -610,6 +657,7 @@ const handleScroll = () => {
   const threshold = 10
   const atBottom = el.scrollHeight - el.clientHeight - el.scrollTop <= threshold
   isAtBottom.value = atBottom
+  isAtTop.value = el.scrollTop <= TOP_LOAD_THRESHOLD
   if (atBottom) {
     newMessageCount.value = 0
   }
@@ -628,6 +676,8 @@ const handleScroll = () => {
 // 顶部自动加载：IntersectionObserver 作为滚动阈值的补充，更稳定
 onMounted(() => {
   supportsIO.value = 'IntersectionObserver' in window
+  // 顶部提示在进入后短暂显示，随后自动隐藏
+  setTimeout(() => { showTopHint.value = false }, 3500)
   if (messagesContainer.value && topSentinel.value && supportsIO.value) {
     try {
       topObserver = new IntersectionObserver((entries) => {
@@ -648,6 +698,11 @@ onMounted(() => {
 const jumpToBottom = () => {
   scrollToBottomAnimated()
   markAsRead()
+}
+
+const scrollToTop = () => {
+  if (!messagesContainer.value) return
+  messagesContainer.value.scrollTop = 0
 }
 </script>
 

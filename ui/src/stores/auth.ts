@@ -23,8 +23,14 @@ export const useAuthStore = defineStore('auth', () => {
       if (storedUser) {
         user.value = storedUser
       }
-      // Cookie 模式：直接探测会话，获取当前用户
-      await getCurrentUser().catch(() => {})
+
+      // 总是尝试验证当前会话状态（Cookie模式）
+      // 这样可以处理：页面刷新、浏览器重启等情况
+      await getCurrentUserSilently().catch(() => {
+        // 如果验证失败，清除本地用户信息
+        user.value = null
+        AuthUtils.clearAuthData()
+      })
     } catch (err) {
       console.error('初始化认证状态失败:', err)
       await logout()
@@ -36,18 +42,33 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       isLoading.value = true
       error.value = null
-      
+
       const response = await AuthApi.getCurrentUser()
       user.value = response.data
-      
+
       // 保存到本地存储
       AuthUtils.saveUser(response.data)
-    } catch (err) {
+    } catch (err: any) {
       error.value = err instanceof Error ? err.message : '获取用户信息失败'
-      console.error('getCurrentUser failed:', err)
+      // 只有在非认证错误时才打印日志
+      if (err?.code !== 'AUTH_REQUIRED' && err?.status !== 401 && err?.status !== 403) {
+        console.error('getCurrentUser failed:', err)
+      }
       throw err
     } finally {
       isLoading.value = false
+    }
+  }
+
+  // 静默获取当前用户信息（用于初始化时检查登录状态）
+  const getCurrentUserSilently = async () => {
+    try {
+      const response = await AuthApi.getCurrentUser(true) // 使用静默模式
+      user.value = response.data
+      AuthUtils.saveUser(response.data)
+    } catch (err: any) {
+      // 静默模式下不更新loading状态，不设置error，不打印日志
+      throw err
     }
   }
 
@@ -113,6 +134,9 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null
       error.value = null
       AuthUtils.clearAuthData()
+
+      // 清除路由守卫的初始化标记，允许重新初始化
+      sessionStorage.removeItem('auth_initialized')
       
       // 动态导入并清除用户数据同步缓存
       if (currentUsername) {
@@ -178,6 +202,7 @@ export const useAuthStore = defineStore('auth', () => {
     // 方法
     initAuth,
     getCurrentUser,
+    getCurrentUserSilently,
     login,
     register,
     logout,

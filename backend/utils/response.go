@@ -144,14 +144,6 @@ func SuccessResponse(c *gin.Context, data interface{}, message string) {
 	})
 }
 
-// PaginationResponse 分页响应结构体
-type PaginationResponse struct {
-	Data       interface{} `json:"data"`
-	Total      int64       `json:"total"`
-	Page       int         `json:"page"`
-	PageSize   int         `json:"page_size"`
-	TotalPages int         `json:"total_pages"`
-}
 
 // PagedResponse 新的分页响应结构体
 type PagedResponse struct {

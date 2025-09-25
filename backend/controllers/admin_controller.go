@@ -12,19 +12,21 @@ import (
 )
 
 type AdminController struct {
-	articleService  *services.ArticleService
-	userService     *services.UserService
-	categoryService *services.CategoryService
-	commentService  *services.CommentService
+    articleService  *services.ArticleService
+    userService     *services.UserService
+    categoryService *services.CategoryService
+    commentService  *services.CommentService
+    notificationService *services.NotificationService
 }
 
 func NewAdminController() *AdminController {
-	return &AdminController{
-		articleService:  services.NewArticleService(),
-		userService:     services.NewUserService(),
-		categoryService: services.NewCategoryService(),
-		commentService:  services.NewCommentService(),
-	}
+    return &AdminController{
+        articleService:  services.NewArticleService(),
+        userService:     services.NewUserService(),
+        categoryService: services.NewCategoryService(),
+        commentService:  services.NewCommentService(),
+        notificationService: services.NewNotificationService(config.GetDB()),
+    }
 }
 
 // AdminMiddleware 管理员中间件
@@ -98,9 +100,9 @@ func (ac *AdminController) GetStats(c *gin.Context) {
 		return
 	}
 
-	// 获取资源统计
-	resourceService := services.NewResourceService(config.GetDB())
-	resourceStats, err := resourceService.GetResourceStats()
+    // 获取资源统计
+    resourceService := services.NewResourceService(config.GetDB())
+    resourceStats, err := resourceService.GetResourceStats()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":  500,
@@ -109,13 +111,17 @@ func (ac *AdminController) GetStats(c *gin.Context) {
 		return
 	}
 
-	stats := gin.H{
-		"articleCount":  articleCount,
-		"userCount":     userCount,
-		"categoryCount": categoryCount,
-		"commentCount":  commentCount,
-		"resourceStats": resourceStats,
-	}
+    // 获取系统通知历史总数（按广播次数统计）
+    broadcastCount, _ := ac.notificationService.GetSystemBroadcastCount()
+
+    stats := gin.H{
+        "articleCount":  articleCount,
+        "userCount":     userCount,
+        "categoryCount": categoryCount,
+        "commentCount":  commentCount,
+        "resourceStats": resourceStats,
+        "systemBroadcastCount": broadcastCount,
+    }
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": 200,

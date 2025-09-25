@@ -15,8 +15,10 @@ func NotificationRoutes(router *gin.Engine, notificationController *controllers.
         // 获取通知列表
         auth.GET("", notificationController.GetNotifications)
         
-        // 获取通知统计
+        // 获取通知统计（总数）
         auth.GET("/stats", notificationController.GetNotificationStats)
+        // 获取各类型未读统计
+        auth.GET("/stats/by-type", notificationController.GetNotificationStatsByType)
 
         // SSE 实时流
         auth.GET("/stream", notificationController.Stream)

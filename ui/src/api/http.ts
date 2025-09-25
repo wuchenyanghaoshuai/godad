@@ -57,8 +57,8 @@ export class HttpClient {
   }
 
   // 发送请求的核心方法
-  private async request<T>(config: RequestConfig): Promise<ApiResponse<T>> {
-    const { url, method = 'GET', data, params, headers, timeout = this.timeout } = config
+  private async request<T>(config: RequestConfig & { silent?: boolean }): Promise<ApiResponse<T>> {
+    const { url, method = 'GET', data, params, headers, timeout = this.timeout, silent = false } = config
     
     const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`
     const requestHeaders = this.buildHeaders(headers)
@@ -169,8 +169,8 @@ export class HttpClient {
   }
 
   // GET请求
-  public get<T>(url: string, params?: any, headers?: Record<string, string>): Promise<ApiResponse<T>> {
-    return this.request<T>({ url, method: 'GET', params, headers })
+  public get<T>(url: string, params?: any, headers?: Record<string, string>, silent?: boolean): Promise<ApiResponse<T>> {
+    return this.request<T>({ url, method: 'GET', params, headers, silent })
   }
 
   // POST请求

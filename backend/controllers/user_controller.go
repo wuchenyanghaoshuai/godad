@@ -1,7 +1,6 @@
 package controllers
 
 import (
-    "net/http"
     "strconv"
 
     "godad-backend/middleware"
@@ -92,13 +91,8 @@ func (c *UserController) Login(ctx *gin.Context) {
     }
     // 设置 httpOnly Cookie（开发环境 secure=false）
     // 并返回用户信息（为兼容前端旧逻辑，保留 token 字段）
-    // 写入 Cookie
-    // 通过中间件方法设置
-    // 需要导出一个函数或在此处复制逻辑，这里直接调用未导出的函数不行，改为在此处设置 cookie
-    // 由于 setAuthCookies 在 middleware 包内未导出，这里重复设置
-    ctx.SetSameSite(http.SameSiteLaxMode)
-    ctx.SetCookie("access_token", token, 0, "/", "", false, true)
-    ctx.SetCookie("refresh_token", refresh, 0, "/", "", false, true)
+    // 使用中间件的导出函数设置 Cookie
+    middleware.SetAuthCookies(ctx, token, refresh)
 
 	// 返回用户信息和令牌
     utils.SuccessWithMessage(ctx, "登录成功", gin.H{
@@ -287,15 +281,14 @@ func (c *UserController) RefreshToken(ctx *gin.Context) {
 // @Failure 404 {object} utils.Response "用户不存在"
 // @Router /api/user/{id} [get]
 func (c *UserController) GetUserByID(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	id, err := utils.ParseUintParam(ctx, "id")
 	if err != nil {
 		utils.Error(ctx, utils.CodeBadRequest, "用户ID格式错误")
 		return
 	}
 
 	// 获取用户信息
-	user, err := c.userService.GetUserByID(uint(id))
+	user, err := c.userService.GetUserByID(id)
 	if err != nil {
 		utils.Error(ctx, utils.CodeNotFound, err.Error())
 		return
@@ -396,10 +389,8 @@ func (c *UserController) GetUserList(ctx *gin.Context) {
 // @Success 200 {object} utils.Response "登出成功"
 // @Router /api/user/logout [post]
 func (c *UserController) Logout(ctx *gin.Context) {
-    // 清除 Cookie（access_token, refresh_token）
-    ctx.SetSameSite(http.SameSiteLaxMode)
-    ctx.SetCookie("access_token", "", -1, "/", "", false, true)
-    ctx.SetCookie("refresh_token", "", -1, "/", "", false, true)
+    // 使用中间件的导出函数清除 Cookie
+    middleware.ClearAuthCookies(ctx)
     utils.SuccessWithMessage(ctx, "登出成功", nil)
 }
 

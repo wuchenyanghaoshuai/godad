@@ -149,16 +149,8 @@ func (lc *LikeController) GetUserLikes(c *gin.Context) {
 		return
 	}
 
-	// 构造分页响应
-	response := utils.PaginationResponse{
-		Data:       likes,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: (int(total) + pageSize - 1) / pageSize,
-	}
-
-	utils.SuccessResponse(c, response, "获取用户点赞列表成功")
+	// 使用新的分页响应工具
+	utils.RespondWithPagination(c, likes, total, page, pageSize)
 }
 
 // GetLikesByTarget 获取目标对象的点赞列表
@@ -208,16 +200,8 @@ func (lc *LikeController) GetLikesByTarget(c *gin.Context) {
 		return
 	}
 
-	// 构造分页响应
-	response := utils.PaginationResponse{
-		Data:       likes,
-		Total:      total,
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: (int(total) + pageSize - 1) / pageSize,
-	}
-
-	utils.SuccessResponse(c, response, "获取点赞列表成功")
+	// 使用新的分页响应工具
+	utils.RespondWithPagination(c, likes, total, page, pageSize)
 }
 
 // GetPopularContent 获取热门内容

@@ -97,22 +97,111 @@
                 发布文章
               </router-link>
 
-              <!-- 消息通知按钮 -->
-              <router-link
+              <!-- 消息通知按钮 + 下拉菜单 -->
+              <div
                 v-if="showNotifications"
-                to="/notifications"
-                class="relative p-2 rounded-lg text-gray-600 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
-                title="消息通知"
+                class="relative"
+                ref="notifMenuWrapper"
+                @mouseenter="openNotifMenuHover"
+                @mouseleave="closeNotifMenuHover"
               >
-                <BellIcon class="h-5 w-5" />
-                <!-- 未读通知红点 -->
-                <span
-                  v-if="totalUnreadCount > 0"
-                  class="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full"
+                <button
+                  class="relative p-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all duration-200"
+                  title="消息通知"
+                  @click="toggleNotifMenu"
+                  @mouseenter="cancelNotifMenuHide"
                 >
-                  {{ totalUnreadCount > 99 ? '99+' : totalUnreadCount }}
-                </span>
-              </router-link>
+                  <BellIcon class="h-5 w-5" />
+                  <!-- 未读通知红点 -->
+                  <span
+                    v-if="totalUnreadCount > 0"
+                    class="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full"
+                  >
+                    {{ totalUnreadCount > 99 ? '99+' : totalUnreadCount }}
+                  </span>
+                </button>
+
+                <!-- hover 桥接层，避免按钮与菜单之间空隙导致抖动 -->
+                <div
+                  v-if="showNotifMenu"
+                  class="absolute right-0 top-full w-56 h-3"
+                  @mouseenter="cancelNotifMenuHide"
+                ></div>
+
+                <!-- 下拉列表 -->
+                <div
+                  v-if="showNotifMenu"
+                  class="absolute right-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1"
+                  role="menu"
+                  @mouseenter="cancelNotifMenuHide"
+                  @mouseleave="closeNotifMenuHover"
+                >
+                  <!-- 回复我的（评论/回复） -->
+                  <button
+                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    role="menuitem"
+                    @click="goNotifications('comment')"
+                  >
+                    <MessageCircleIcon class="h-4 w-4 mr-2 text-gray-400" />
+                    <span>回复我的</span>
+                    <span v-if="unreadByType.comment > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.comment > 99 ? '99+' : unreadByType.comment }}</span>
+                  </button>
+
+                  <!-- @我的（占位，仅展示） -->
+                  <div
+                    class="w-full flex items-center px-3 py-2 text-sm text-gray-500"
+                    role="menuitem"
+                    title="@ 功能即将上线"
+                  >
+                    <AtSignIcon class="h-4 w-4 mr-2 text-gray-300" />
+                    <span>@我的（即将上线）</span>
+                  </div>
+
+                  <!-- 收到的赞 -->
+                  <button
+                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    role="menuitem"
+                    @click="goNotifications('like')"
+                  >
+                    <ThumbsUpIcon class="h-4 w-4 mr-2 text-gray-400" />
+                    <span>收到的赞</span>
+                    <span v-if="unreadByType.like > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.like > 99 ? '99+' : unreadByType.like }}</span>
+                  </button>
+
+                  <!-- 系统消息 -->
+                  <button
+                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    role="menuitem"
+                    @click="goNotifications('system')"
+                  >
+                    <AlertCircleIcon class="h-4 w-4 mr-2 text-gray-400" />
+                    <span>系统消息</span>
+                    <span v-if="unreadByType.system && unreadByType.system > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.system > 99 ? '99+' : unreadByType.system }}</span>
+                  </button>
+
+                  <!-- 我的消息（私信） -->
+                  <button
+                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    role="menuitem"
+                    @click="goNotifications('message')"
+                  >
+                    <MessageSquareIcon class="h-4 w-4 mr-2 text-gray-400" />
+                    <span>我的消息</span>
+                    <span v-if="unreadByType.message > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.message > 99 ? '99+' : unreadByType.message }}</span>
+                  </button>
+
+                  <!-- 其他通知（收藏、关注等） -->
+                  <button
+                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    role="menuitem"
+                    @click="goNotifications('other')"
+                  >
+                    <AlertCircleIcon class="h-4 w-4 mr-2 text-gray-400" />
+                    <span>其他通知</span>
+                    <span v-if="otherUnreadCount > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ otherUnreadCount > 99 ? '99+' : otherUnreadCount }}</span>
+                  </button>
+                </div>
+              </div>
 
               <!-- 用户头像菜单 -->
               <div v-if="showUserMenu" class="relative">
@@ -231,7 +320,12 @@ import {
   ChevronDownIcon,
   PlusIcon,
   SearchIcon,
-  BellIcon
+  BellIcon,
+  MessageCircleIcon,
+  AtSignIcon,
+  ThumbsUpIcon,
+  AlertCircleIcon,
+  MessageSquareIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { NotificationApi } from '@/api/notification'
@@ -276,8 +370,13 @@ const { onNotificationEvent } = useNotificationSync()
 const showUserMenuDropdown = ref(false)
 const showMobileMenu = ref(false)
 const userMenuButton = ref<HTMLElement>()
+const notifMenuWrapper = ref<HTMLElement | null>(null)
+const showNotifMenu = ref(false)
+let notifMenuHideTimer: number | null = null
 const unreadMessagesCount = ref(0)
 const unreadNotificationsCount = ref(0)
+const unreadByType = ref<{ [k: string]: number }>({ message: 0, like: 0, comment: 0, follow: 0, bookmark: 0, system: 0, total_unread: 0 })
+let unreadByTypeFetchedAt = 0
 
 // 搜索相关
 const searchQuery = ref('')
@@ -311,6 +410,32 @@ const fetchUnreadCounts = async () => {
     console.error('获取未读计数失败:', error)
     unreadMessagesCount.value = 0
     unreadNotificationsCount.value = 0
+  }
+}
+
+// 各类型未读统计（A方案）
+const fetchUnreadByType = async (force = false) => {
+  if (!authStore.isAuthenticated) {
+    unreadByType.value = { message: 0, like: 0, comment: 0, follow: 0, bookmark: 0, system: 0, total_unread: 0 }
+    return
+  }
+  const now = Date.now()
+  if (!force && now - unreadByTypeFetchedAt < 30000 && showNotifMenu.value) return
+  try {
+    const resp = await NotificationApi.getNotificationTypeStats()
+    const data: any = resp.data || {}
+    unreadByType.value = {
+      message: data.message || 0,
+      like: data.like || 0,
+      comment: data.comment || 0,
+      follow: data.follow || 0,
+      bookmark: data.bookmark || 0,
+      system: data.system || 0,
+      total_unread: data.total_unread || 0
+    }
+    unreadByTypeFetchedAt = now
+  } catch (e) {
+    // 静默失败，不影响下拉可用
   }
 }
 
@@ -368,6 +493,9 @@ const handleClickOutside = (event: Event) => {
   if (userMenuButton.value && !userMenuButton.value.contains(event.target as Node)) {
     showUserMenuDropdown.value = false
   }
+  if (notifMenuWrapper.value && !notifMenuWrapper.value.contains(event.target as Node)) {
+    showNotifMenu.value = false
+  }
   if (showMobileMenu.value && !(event.target as Element).closest('nav')) {
     showMobileMenu.value = false
   }
@@ -376,6 +504,11 @@ const handleClickOutside = (event: Event) => {
 // 计算属性：总未读数量
 const totalUnreadCount = computed(() => {
   return Math.max(unreadMessagesCount.value, unreadNotificationsCount.value)
+})
+
+// 计算属性：其他通知数量（收藏、关注等）
+const otherUnreadCount = computed(() => {
+  return (unreadByType.value.bookmark || 0) + (unreadByType.value.follow || 0)
 })
 
 // 监听路由变化（进入通知中心不再自动全部已读，避免误清空未读）
@@ -398,9 +531,12 @@ watch(() => authStore.isAuthenticated, async (isAuthenticated) => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   fetchUnreadCounts()
+  // 初始预取一次分类计数（不阻塞UI）
+  fetchUnreadByType()
 
   onNotificationEvent('refresh', () => {
     fetchUnreadCounts()
+    fetchUnreadByType(true)
   })
 })
 
@@ -408,4 +544,43 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
+
+// 通知下拉控制与路由跳转
+const cancelNotifMenuHide = () => {
+  if (notifMenuHideTimer) {
+    clearTimeout(notifMenuHideTimer)
+    notifMenuHideTimer = null
+  }
+}
+const openNotifMenuHover = () => {
+  cancelNotifMenuHide()
+  showNotifMenu.value = true
+  fetchUnreadByType()
+}
+const closeNotifMenuHover = () => {
+  cancelNotifMenuHide()
+  notifMenuHideTimer = window.setTimeout(() => {
+    showNotifMenu.value = false
+    notifMenuHideTimer = null
+  }, 220)
+}
+const toggleNotifMenu = () => { showNotifMenu.value = !showNotifMenu.value }
+const goNotifications = (category: 'message' | 'like' | 'comment' | 'system' | 'other') => {
+  showNotifMenu.value = false
+  if (category === 'message') {
+    router.push({ path: '/notifications', query: { tab: 'message' } })
+    return
+  }
+  // 其他通知类型，包含收藏和关注
+  if (category === 'other') {
+    router.push({ path: '/notifications', query: { tab: 'notify', category: 'bookmark,follow' } })
+    return
+  }
+  // 其余归类到通知
+  const query: any = { tab: 'notify' }
+  if (['like', 'comment', 'follow', 'bookmark', 'system'].includes(category)) {
+    query.category = category
+  }
+  router.push({ path: '/notifications', query })
+}
 </script>

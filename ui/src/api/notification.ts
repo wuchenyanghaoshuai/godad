@@ -3,7 +3,7 @@ import { API_CONFIG } from './config'
 import { normalizePageResponse } from './pagination'
 
 // 通知类型
-export type NotificationType = 'like' | 'comment' | 'bookmark' | 'follow' | 'message'
+export type NotificationType = 'like' | 'comment' | 'bookmark' | 'follow' | 'message' | 'system'
 
 // 通知接口
 export interface Notification {
@@ -11,6 +11,7 @@ export interface Notification {
   receiver_id: number
   actor_id: number
   type: NotificationType
+  title?: string
   resource_id?: number
   message: string
   is_read: boolean
@@ -30,6 +31,17 @@ export interface Notification {
 export interface NotificationStats {
   unread_count: number
   total_count: number
+}
+
+// 各类型未读统计（后端A方案）
+export interface NotificationTypeStats {
+  total_unread: number
+  message: number
+  like: number
+  comment: number
+  follow: number
+  bookmark: number
+  system: number
 }
 
 // 通知列表响应
@@ -68,6 +80,11 @@ export class NotificationApi {
   // 获取通知统计
   static async getNotificationStats(): Promise<{ code: number; message: string; data: NotificationStats }> {
     return http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.STATS)
+  }
+
+  // 获取各类型未读统计
+  static async getNotificationTypeStats(): Promise<{ code: number; message: string; data: NotificationTypeStats }> {
+    return http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.STATS_BY_TYPE)
   }
 
   // 标记通知为已读
@@ -109,7 +126,8 @@ export const notificationTypeMap: Record<NotificationType, string> = {
   comment: '评论', 
   bookmark: '收藏',
   follow: '关注',
-  message: '私信'
+  message: '私信',
+  system: '系统'
 }
 
 // 通知类型图标映射
@@ -118,7 +136,8 @@ export const notificationIconMap: Record<NotificationType, string> = {
   comment: '💬',
   bookmark: '🔖', 
   follow: '👤',
-  message: '💌'
+  message: '💌',
+  system: '📢'
 }
 
 // 格式化通知时间

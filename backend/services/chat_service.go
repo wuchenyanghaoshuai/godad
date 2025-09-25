@@ -213,11 +213,12 @@ func (cs *ChatService) GetMessagesByConversation(conversationID uint, userID uin
 		return nil, 0, fmt.Errorf("对话不存在或无权限访问")
 	}
 	
-	// 构建查询条件：用户可以看到未被自己删除的消息
+	// 构建查询条件：用户可以看到对话中所有未被自己删除的消息
 	query := cs.db.Where("conversation_id = ?", conversationID)
-	
-	// 添加删除条件
-	query = query.Where("(sender_id = ? AND is_deleted_by_sender = false) OR (receiver_id = ? AND is_deleted_by_receiver = false)", userID, userID)
+
+	// 简化删除条件：只排除被当前用户删除的消息
+	// 如果用户作为发送者删除了消息，或者作为接收者删除了消息，则不显示
+	query = query.Where("NOT ((sender_id = ? AND is_deleted_by_sender = true) OR (receiver_id = ? AND is_deleted_by_receiver = true))", userID, userID)
 	
 	// 计算总数
 	err = query.Model(&models.ChatMessage{}).Count(&total).Error

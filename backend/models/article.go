@@ -16,7 +16,6 @@ type Article struct {
 	CoverImage  string         `json:"cover_image" gorm:"type:varchar(255);comment:封面图片"`
 	AuthorID    uint           `json:"author_id" gorm:"not null;index;comment:作者ID"`
 	CategoryID  uint           `json:"category_id" gorm:"not null;index;comment:分类ID"`
-	Tags        string         `json:"tags" gorm:"type:varchar(500);comment:标签,逗号分隔"`
 	ViewCount   int64          `json:"view_count" gorm:"type:bigint;default:0;comment:浏览次数"`
 	LikeCount   int64          `json:"like_count" gorm:"type:bigint;default:0;comment:点赞次数"`
 	CommentCount int64         `json:"comment_count" gorm:"type:bigint;default:0;comment:评论次数"`
@@ -44,7 +43,6 @@ type ArticleCreateRequest struct {
 	Content     string `json:"content" binding:"required,min=1" example:"文章内容..."`
 	CoverImage  string `json:"cover_image" binding:"max=255" example:"https://example.com/cover.jpg"`
 	CategoryID  uint   `json:"category_id" binding:"required,min=1" example:"1"`
-	Tags        string `json:"tags" binding:"max=500" example:"育儿,阅读,习惯"`
 	IsTop       bool   `json:"is_top" example:"false"`
 	IsRecommend bool   `json:"is_recommend" example:"false"`
 	Status      int8   `json:"status" binding:"min=0,max=2" example:"1"`
@@ -58,7 +56,6 @@ type ArticleUpdateRequest struct {
 	Content     string `json:"content" binding:"min=1"`
 	CoverImage  string `json:"cover_image" binding:"max=255"`
 	CategoryID  uint   `json:"category_id" binding:"min=1"`
-	Tags        string `json:"tags" binding:"max=500"`
 	IsTop       *bool  `json:"is_top"`
 	IsRecommend *bool  `json:"is_recommend"`
 	Status      *int8  `json:"status" binding:"omitempty,min=0,max=2"`
@@ -87,7 +84,6 @@ type ArticleResponse struct {
 	CoverImage    string            `json:"cover_image"`
 	AuthorID      uint              `json:"author_id"`
 	CategoryID    uint              `json:"category_id"`
-	Tags          string            `json:"tags"`
 	ViewCount     int64             `json:"view_count"`
 	LikeCount     int64             `json:"like_count"`
 	CommentCount  int64             `json:"comment_count"`
@@ -112,7 +108,6 @@ func (a *Article) ToResponse(includeContent bool) *ArticleResponse {
 		CoverImage:    a.CoverImage,
 		AuthorID:      a.AuthorID,
 		CategoryID:    a.CategoryID,
-		Tags:          a.Tags,
 		ViewCount:     a.ViewCount,
 		LikeCount:     a.LikeCount,
 		CommentCount:  a.CommentCount,

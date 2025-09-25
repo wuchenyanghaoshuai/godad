@@ -85,6 +85,27 @@ func (c *NotificationController) GetNotificationStats(ctx *gin.Context) {
 	})
 }
 
+// GetNotificationStatsByType 获取按类型的未读统计
+func (c *NotificationController) GetNotificationStatsByType(ctx *gin.Context) {
+    userID, exists := ctx.Get("user_id")
+    if !exists {
+        ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+        return
+    }
+
+    stats, err := c.notificationService.GetNotificationStatsByType(userID.(uint))
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get notification type stats"})
+        return
+    }
+
+    ctx.JSON(http.StatusOK, gin.H{
+        "code":    200,
+        "message": "Notification type stats retrieved successfully",
+        "data":    stats,
+    })
+}
+
 // Stream 通知SSE流（开发阶段：定时推送未读数）
 func (c *NotificationController) Stream(ctx *gin.Context) {
     userID, exists := ctx.Get("user_id")
