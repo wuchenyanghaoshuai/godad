@@ -13,6 +13,7 @@ export interface Notification {
   type: NotificationType
   title?: string
   resource_id?: number
+  comment_id?: number
   message: string
   is_read: boolean
   created_at: string

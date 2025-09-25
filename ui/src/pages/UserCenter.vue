@@ -297,7 +297,7 @@
               </div>
 
               <!-- 收藏列表 -->
-              <div v-else-if="myFavorites.length > 0" class="space-y-4">
+              <div v-else-if="myFavorites && myFavorites.length > 0" class="space-y-4">
                 <div
                   v-for="favorite in myFavorites"
                   :key="favorite.id"
@@ -1320,7 +1320,7 @@ const loadMyFavorites = async (page: number = 1) => {
       size: favoritesPagination.value.per_page
     })
 
-    myFavorites.value = response.data.favorites
+    myFavorites.value = response.data.favorites || []
     favoritesPagination.value = response.data.pagination
   } catch (error: any) {
     favoritesError.value = error.message || '加载收藏失败'

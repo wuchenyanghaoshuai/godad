@@ -71,6 +71,8 @@ func ensureEnumColumns(db *gorm.DB) error {
     db.Exec("ALTER TABLE notifications MODIFY COLUMN type ENUM('like','comment','bookmark','follow','message','system','mention') NOT NULL")
     // 新增标题列（如果不存在）
     db.Exec("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title VARCHAR(255) NULL AFTER type")
+    // 新增 comment_id 列（如果不存在）
+    db.Exec("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS comment_id BIGINT UNSIGNED NULL AFTER resource_id")
     return nil
 }
 

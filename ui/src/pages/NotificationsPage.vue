@@ -316,6 +316,24 @@
                         </button>
                       </template>
 
+                      <!-- 提及(@我)通知按钮 -->
+                      <template v-else-if="selectedNotification.type === 'mention'">
+                        <button
+                          v-if="selectedNotification.resource_id"
+                          @click="goToMention()"
+                          class="bg-pink-600 text-white px-3 py-2 text-sm rounded hover:bg-pink-700 transition-colors"
+                        >
+                          查看@位置
+                        </button>
+                        <button
+                          v-if="selectedNotification.resource_id"
+                          @click="viewArticle(selectedNotification.resource_id)"
+                          class="bg-gray-500 text-white px-3 py-2 text-sm rounded hover:bg-gray-600 transition-colors"
+                        >
+                          查看文章
+                        </button>
+                      </template>
+
                       <!-- 关注通知按钮 -->
                       <template v-else-if="selectedNotification.type === 'follow'">
                         <button
@@ -411,7 +429,7 @@ const tabs = computed(() => [
 // 计算属性 - 所有通知，按时间倒序
 const allNotifications = computed(() => {
   if (!notifications.value) return []
-  const filtered = notifications.value.filter(n => ['like', 'comment', 'message', 'follow', 'bookmark', 'system'].includes(n.type))
+  const filtered = notifications.value.filter(n => ['like', 'comment', 'message', 'follow', 'bookmark', 'system', 'mention'].includes(n.type))
   return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 })
 
@@ -574,6 +592,18 @@ const viewUserProfile = (notification: Notification) => {
     router.push(`/users/${username}`)
   } else {
     showToast('无法获取用户信息', 'error')
+  }
+}
+
+// 跳转到具体 @ 的评论位置（优先使用 comment_id）
+const goToMention = () => {
+  if (!selectedNotification.value || !selectedNotification.value.resource_id) return
+  const articleId = selectedNotification.value.resource_id
+  const commentId = selectedNotification.value.comment_id
+  if (commentId) {
+    router.push({ path: `/articles/${articleId}` , query: { focus: 'comment_id', comment_id: commentId } })
+  } else {
+    router.push({ path: `/articles/${articleId}` , query: { focus: 'comments' } })
   }
 }
 

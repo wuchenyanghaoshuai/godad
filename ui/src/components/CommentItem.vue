@@ -1,5 +1,5 @@
 <template>
-  <div class="comment-item" :data-author-id="comment.user?.id" :data-comment-content="comment.content">
+  <div class="comment-item" :id="`comment-${comment.id}`" :data-comment-id="comment.id" :data-author-id="comment.user?.id" :data-comment-content="comment.content">
     <!-- 主评论 -->
     <div class="flex items-start space-x-2 sm:space-x-3">
       <!-- 用户头像 -->
@@ -31,7 +31,7 @@
                 博主
               </span>
               <!-- 回复信息和内容在同一行 -->
-              <span v-if="depth > 0 && parentComment" class="font-normal text-gray-900">
+              <span v-if="depth > 0 && parentComment" class="font-normal text-gray-900" @click="handleContentClick">
                 回复了<router-link
                   v-if="parentComment.user?.username"
                   :to="`/users/${parentComment.user.username}`"
@@ -42,7 +42,7 @@
                 >{{ parentComment.user?.username || '匿名用户' }}</span>：<span class="text-gray-800">{{ comment.content }}</span>
               </span>
               <!-- 主评论内容 -->
-              <span v-else class="font-normal text-gray-800 ml-2">{{ comment.content }}</span>
+              <span v-else class="font-normal text-gray-800 ml-2" v-html="formatContent(comment.content)" @click="handleContentClick"></span>
             </span>
           </div>
           <span class="text-xs sm:text-sm text-gray-500">
@@ -102,7 +102,7 @@
                 placeholder="写下您的回复..."
                 rows="2"
                 maxlength="500"
-                class="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-white transition-colors"
+                class="w-full px-3 py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-0 focus:border-pink-400 focus:shadow-sm resize-none bg-white transition-colors"
                 @input="handleMentionInput()"
                 @keyup="handleMentionInput()"
               ></textarea>
@@ -207,6 +207,7 @@
 
 <script setup lang="ts">
 import { ref, computed, defineProps, defineEmits, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   HeartIcon,
   MessageCircleIcon,
@@ -489,6 +490,32 @@ const handleDelete = async () => {
   } catch (error) {
     console.error('删除评论失败:', error)
     toast.error('删除失败：' + (error.message || '未知错误'))
+  }
+}
+
+// 高亮 @用户名：将纯文本转义后，仅将 @username 转为链接
+const escapeHtml = (s: string) => s
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;')
+
+const formatContent = (text: string): string => {
+  const escaped = escapeHtml(text || '')
+  return escaped.replace(/@([A-Za-z0-9_]+)/g, (m, u) => {
+    const uname = String(u)
+    return `<a href="/users/${uname}" class="mention-link text-blue-600 hover:underline" data-username="${uname}">@${uname}</a>`
+  })
+}
+
+const router = useRouter()
+const handleContentClick = (e: Event) => {
+  const target = e.target as HTMLElement
+  if (target && target.matches('a.mention-link')) {
+    e.preventDefault()
+    const uname = target.getAttribute('data-username')
+    if (uname) router.push(`/users/${uname}`)
   }
 }
 </script>

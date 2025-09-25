@@ -1053,6 +1053,12 @@ const handleFocusParameter = async () => {
     // 聚焦到评论区底部输入框
     await nextTick()
     await focusToComments()
+  } else if (route.query.focus === 'comment_id' && route.query.comment_id) {
+    // 清除参数
+    router.replace({ path: route.path, query: { ...route.query, focus: undefined, comment_id: undefined } })
+    await nextTick()
+    const cid = parseInt(route.query.comment_id as string)
+    await focusToCommentId(cid)
   } else if (route.query.focus === 'comment' && route.query.actor_id) {
     
     // 立即清除URL参数，防止刷新页面时重复触发
@@ -1087,6 +1093,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.comment-highlight {
+  outline: 2px solid #ec4899;
+  box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.2);
+  transition: box-shadow 0.3s ease;
+}
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1250,3 +1261,25 @@ onMounted(() => {
   opacity: 1;
 }
 </style>
+// 根据评论ID定位
+const focusToCommentId = async (commentId: number) => {
+  showComments.value = true
+  await nextTick()
+  const el = document.getElementById(`comment-${commentId}`)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // 高亮闪烁
+    el.classList.add('comment-highlight')
+    setTimeout(() => el.classList.remove('comment-highlight'), 1600)
+  } else {
+    // 如果未渲染出来，延迟再尝试一次
+    setTimeout(() => {
+      const el2 = document.getElementById(`comment-${commentId}`)
+      if (el2) {
+        el2.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el2.classList.add('comment-highlight')
+        setTimeout(() => el2.classList.remove('comment-highlight'), 1600)
+      }
+    }, 400)
+  }
+}

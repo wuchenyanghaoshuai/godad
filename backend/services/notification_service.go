@@ -1,12 +1,12 @@
 package services
 
 import (
-	"fmt"
-	"godad-backend/models"
-	"log"
-	"time"
+    "fmt"
+    "godad-backend/models"
+    "log"
+    "time"
 
-	"gorm.io/gorm"
+    "gorm.io/gorm"
 )
 
 type NotificationService struct {
@@ -233,7 +233,7 @@ func (s *NotificationService) GetNotifications(userID uint, page, limit int) ([]
 	// 查询通知详情
     query := `
         SELECT 
-            n.id, n.receiver_id, n.actor_id, n.type, n.title, n.resource_id, n.message, 
+            n.id, n.receiver_id, n.actor_id, n.type, n.title, n.resource_id, n.comment_id, n.message, 
             n.is_read, n.created_at, n.updated_at,
             CASE WHEN n.type = 'system' THEN '系统' ELSE COALESCE(u.username, '') END as actor_username,
             CASE WHEN n.type = 'system' THEN '系统' ELSE COALESCE(u.nickname, '') END as actor_nickname,
@@ -321,18 +321,23 @@ func (s *NotificationService) GetNotificationStatsByType(userID uint) (*models.N
 }
 
 // CreateMentionNotification 创建@提及通知
-func (s *NotificationService) CreateMentionNotification(actorID, receiverID, articleID uint, commentContent string) error {
+func (s *NotificationService) CreateMentionNotification(actorID, receiverID, articleID, commentID uint, commentContent string) error {
     if actorID == receiverID { return nil }
     var article models.Article
     if err := s.db.First(&article, articleID).Error; err != nil { return err }
-    // 限制内容长度
-    if len(commentContent) > 100 { commentContent = commentContent[:100] + "..." }
+    // 模板：在文章《标题》的评论中提到了你：{评论摘录}
+    snippet := commentContent
+    if len(snippet) > 100 {
+        snippet = snippet[:100] + "..."
+    }
+    msg := fmt.Sprintf("在文章《%s》的评论中提到了你：%s", article.Title, snippet)
     n := &models.Notification{
         ReceiverID: receiverID,
         ActorID:    actorID,
         Type:       models.NotificationTypeMention,
         ResourceID: articleID,
-        Message:    fmt.Sprintf("在你的文章《%s》的评论中提到了你：%s", article.Title, commentContent),
+        CommentID:  commentID,
+        Message:    msg,
         Title:      "",
     }
     return s.CreateNotification(n)

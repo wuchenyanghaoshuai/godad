@@ -5,7 +5,6 @@ import (
     "strings"
 
     "godad-backend/middleware"
-    "godad-backend/models"
     "godad-backend/config"
 
     "github.com/gin-gonic/gin"
@@ -53,4 +52,3 @@ func (mc *MentionController) Suggest(ctx *gin.Context) {
 
     ctx.JSON(http.StatusOK, gin.H{"code": 200, "data": users})
 }
-

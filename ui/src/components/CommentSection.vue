@@ -33,7 +33,7 @@
             placeholder="写下您的评论..."
             rows="3"
             maxlength="500"
-            class="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none bg-gray-50 focus:bg-white transition-colors"
+            class="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-0 focus:border-pink-400 focus:shadow-sm resize-none bg-gray-50 focus:bg-white transition-colors"
             @input="handleMentionInput('root')"
             @keyup="handleMentionInput('root')"
           ></textarea>

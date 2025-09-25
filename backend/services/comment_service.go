@@ -150,7 +150,7 @@ func (s *CommentService) CreateComment(userID uint, req *models.CommentCreateReq
             if _, ok := seen[mid]; ok { continue }
             seen[mid] = struct{}{}
             if s.isMutualFollow(userID, mid) {
-                _ = s.notificationService.CreateMentionNotification(userID, mid, req.ArticleID, req.Content)
+                _ = s.notificationService.CreateMentionNotification(userID, mid, req.ArticleID, comment.ID, req.Content)
             }
         }
     }
