@@ -128,7 +128,7 @@ export default defineComponent({
       startY: 0,
       cropX: 0,
       cropY: 0,
-      cropSize: 200
+      cropSize: 240
     })
 
     const imageData = ref({
@@ -262,6 +262,9 @@ export default defineComponent({
       
       const canvas = cropCanvas.value
       const ctx = canvas.getContext('2d')!
+      // 提高插值质量，避免缩小偏灰
+      ;(ctx as any).imageSmoothingEnabled = true
+      ;(ctx as any).imageSmoothingQuality = 'high'
       const img = imageData.value.img
       
       // 清空画布
@@ -278,21 +281,19 @@ export default defineComponent({
         scaledHeight
       )
       
-      // 绘制遮罩
+      // 绘制遮罩（边框四周），避免影响裁剪区域像素
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      
-      // 清除裁剪区域的遮罩
-      ctx.globalCompositeOperation = 'destination-out'
-      ctx.fillRect(
-        cropState.value.cropX,
-        cropState.value.cropY,
-        cropState.value.cropSize,
-        cropState.value.cropSize
-      )
-      
-      // 重置合成模式
-      ctx.globalCompositeOperation = 'source-over'
+      const x = cropState.value.cropX
+      const y = cropState.value.cropY
+      const s = cropState.value.cropSize
+      // 上
+      ctx.fillRect(0, 0, canvas.width, y)
+      // 左
+      ctx.fillRect(0, y, x, s)
+      // 右
+      ctx.fillRect(x + s, y, canvas.width - (x + s), s)
+      // 下
+      ctx.fillRect(0, y + s, canvas.width, canvas.height - (y + s))
       
       // 绘制裁剪框边框
       ctx.strokeStyle = '#ec4899'
@@ -313,23 +314,18 @@ export default defineComponent({
       if (!previewCanvas.value || !cropCanvas.value || !imageData.value.img) return
       
       const previewCtx = previewCanvas.value.getContext('2d')!
-      const mainCanvas = cropCanvas.value
+      ;(previewCtx as any).imageSmoothingEnabled = true
+      ;(previewCtx as any).imageSmoothingQuality = 'high'
       
       // 清空预览画布
       previewCtx.clearRect(0, 0, 64, 64)
       
-      // 从主画布裁剪区域复制到预览画布
-      previewCtx.drawImage(
-        mainCanvas,
-        cropState.value.cropX,
-        cropState.value.cropY,
-        cropState.value.cropSize,
-        cropState.value.cropSize,
-        0,
-        0,
-        64,
-        64
-      )
+      // 从源图绘制预览（避免遮罩影响）
+      const img = imageData.value.img
+      const sx = Math.max(0, Math.round((cropState.value.cropX - imageData.value.offsetX) / imageData.value.scale))
+      const sy = Math.max(0, Math.round((cropState.value.cropY - imageData.value.offsetY) / imageData.value.scale))
+      const sSize = Math.round(cropState.value.cropSize / imageData.value.scale)
+      previewCtx.drawImage(img, sx, sy, sSize, sSize, 0, 0, 64, 64)
     }
 
     // 开始裁剪拖拽
@@ -391,29 +387,25 @@ export default defineComponent({
         croppedCanvas.width = 200
         croppedCanvas.height = 200
         const croppedCtx = croppedCanvas.getContext('2d')!
+        ;(croppedCtx as any).imageSmoothingEnabled = true
+        ;(croppedCtx as any).imageSmoothingQuality = 'high'
         
-        // 从主画布复制裁剪区域
-        croppedCtx.drawImage(
-          cropCanvas.value,
-          cropState.value.cropX,
-          cropState.value.cropY,
-          cropState.value.cropSize,
-          cropState.value.cropSize,
-          0,
-          0,
-          200,
-          200
-        )
+        // 从源图复制裁剪区域，避免遮罩影响
+        const img = imageData.value.img
+        const sx = Math.max(0, Math.round((cropState.value.cropX - imageData.value.offsetX) / imageData.value.scale))
+        const sy = Math.max(0, Math.round((cropState.value.cropY - imageData.value.offsetY) / imageData.value.scale))
+        const sSize = Math.round(cropState.value.cropSize / imageData.value.scale)
+        croppedCtx.drawImage(img, sx, sy, sSize, sSize, 0, 0, 200, 200)
         
-        // 转换为Blob (使用PNG格式保持最佳质量)
+        // 转换为Blob：使用 JPEG 高质量，并尽量保留 sRGB 外观
         const blob = await new Promise<Blob>((resolve) => {
           croppedCanvas.toBlob((blob) => {
             resolve(blob!)
-          }, 'image/png')
+          }, 'image/jpeg', 0.92)
         })
         
         // 创建File对象
-        const croppedFile = new File([blob], 'avatar.png', { type: 'image/png' })
+        const croppedFile = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
         
         // 模拟上传进度
         const progressInterval = setInterval(() => {

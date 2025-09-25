@@ -138,6 +138,15 @@ func (c *CacheService) GetUser(userID uint) (*models.User, error) {
 	return &user, nil
 }
 
+// DeleteUser 移除用户缓存
+func (c *CacheService) DeleteUser(userID uint) error {
+    if rdb == nil {
+        return nil
+    }
+    key := fmt.Sprintf("user:%d", userID)
+    return rdb.Del(ctx, key).Err()
+}
+
 func (c *CacheService) SetCategories(categories []models.Category, duration time.Duration) error {
 	key := "categories"
 	categoriesJSON, err := json.Marshal(categories)
