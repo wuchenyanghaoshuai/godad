@@ -10,24 +10,9 @@
               社区管理
             </h1>
             <nav class="flex space-x-4">
-              <router-link
-                to="/management-dashboard"
-                class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-md"
-              >
-                系统管理
-              </router-link>
-              <router-link
-                to="/community-management"
-                class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
-              >
-                社区管理
-              </router-link>
-              <router-link
-                to="/report-center"
-                class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-md"
-              >
-                举报中心
-              </router-link>
+              <AdminNavLink to="/management-dashboard" label="系统管理" />
+              <AdminNavLink to="/community-management" label="社区管理" />
+              <AdminNavLink to="/report-center" label="举报中心" :badge="pendingCount" />
             </nav>
           </div>
           <div class="flex items-center space-x-4">
@@ -298,6 +283,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { usePendingReports } from '@/composables/usePendingReports'
+import AdminNavLink from '@/components/AdminNavLink.vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -325,6 +312,7 @@ import {
 const router = useRouter()
 const authStore = useAuthStore()
 const { showToast } = useToast()
+const { pendingCount, refresh: refreshPendingReports, startPolling: pollPendingReports } = usePendingReports()
 
 // 响应式数据
 const activeTab = ref('posts')
@@ -693,6 +681,8 @@ onMounted(() => {
   loadForumPosts()
   // 加载论坛统计
   loadForumStats()
+  // 刷新未处理举报数量并开始轮询
+  refreshPendingReports(); pollPendingReports(60000)
   // loadReplies()
 })
 

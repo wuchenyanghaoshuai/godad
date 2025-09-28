@@ -9,4 +9,5 @@ type ReportWithDetails struct {
     HandlerUsername  string `json:"handler_username,omitempty"`
     HandlerNickname  string `json:"handler_nickname,omitempty"`
     HandlerAvatar    string `json:"handler_avatar,omitempty"`
+    TargetTitle      string `json:"target_title,omitempty"`
 }

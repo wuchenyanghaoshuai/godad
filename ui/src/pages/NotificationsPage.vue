@@ -115,7 +115,16 @@
                       </p>
                       <!-- 次行：摘要 + 元信息 -->
                       <div class="mt-1">
-                        <p class="text-xs text-gray-600 line-clamp-1">{{ getNotificationSummary(notification) }}</p>
+                        <p class="text-xs text-gray-600 line-clamp-1">
+                          {{ getNotificationSummary(notification) }}
+                          <button
+                            v-if="canAppeal(notification)"
+                            @click.stop="openAppeal(notification)"
+                            class="ml-2 px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                          >
+                            申诉
+                          </button>
+                        </p>
                         <div class="flex items-center gap-3 mt-1">
                           <span class="text-xs text-gray-400">{{ formatNotificationTime(notification.created_at) }}</span>
                           <span class="text-xs text-gray-400">{{ notificationTypeMap[notification.type] || '通知' }}</span>
@@ -370,6 +379,27 @@
       </div>
     </div>
   </div>
+
+  <!-- 申诉弹窗 -->
+  <div v-if="showAppealModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div class="bg-white w-full max-w-md rounded-lg shadow-lg">
+      <div class="px-4 py-3 border-b font-semibold">发起申诉</div>
+      <div class="p-4 space-y-3">
+        <div>
+          <div class="text-xs text-gray-500 mb-1">申诉原因</div>
+          <textarea v-model="appealReason" rows="3" class="w-full border rounded px-3 py-2 text-sm" placeholder="请简要说明您的理由"></textarea>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 mb-1">证据（可选）</div>
+          <input v-model="appealEvidence" type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="证据链接或补充说明" />
+        </div>
+      </div>
+      <div class="px-4 py-3 border-t flex items-center justify-end gap-2">
+        <button @click="closeAppeal" class="px-3 py-1 text-gray-600 border rounded">取消</button>
+        <button @click="submitAppeal" :disabled="!appealReason.trim()" class="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50">提交</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -383,6 +413,7 @@ import BaseHeader from '@/components/BaseHeader.vue'
 import ChatMessageList from '@/components/ChatMessageList.vue'
 import ChatInputBox from '@/components/ChatInputBox.vue'
 import { useNotificationSync } from '@/composables/useNotificationSync'
+import AppealApi from '@/api/appeal'
 
 const route = useRoute()
 const router = useRouter()
@@ -1021,6 +1052,45 @@ onBeforeUnmount(() => {
     delete (window as any)._godad_notif_handleVisibilityChange
   }
 })
+
+// ========== 申诉功能 ==========
+// 申诉相关状态
+const showAppealModal = ref(false)
+const appealReason = ref('')
+const appealEvidence = ref('')
+const selectedForAppeal = ref<Notification | null>(null)
+
+// 是否可申诉：系统通知 + 有资源ID + 消息包含"申诉"
+const canAppeal = (n: Notification) => {
+  return n.type === 'system' && !!n.resource_id && n.message?.includes('申诉')
+}
+
+// 打开申诉弹窗
+const openAppeal = (n: Notification) => {
+  selectedForAppeal.value = n
+  appealReason.value = ''
+  appealEvidence.value = ''
+  showAppealModal.value = true
+}
+
+// 关闭申诉弹窗
+const closeAppeal = () => {
+  showAppealModal.value = false
+  selectedForAppeal.value = null
+}
+
+// 提交申诉
+const submitAppeal = async () => {
+  if (!selectedForAppeal.value) return
+  try {
+    const targetId = Number(selectedForAppeal.value.resource_id)
+    await AppealApi.create({ target_id: targetId, reason: appealReason.value.trim(), evidence: appealEvidence.value.trim() || undefined })
+    showToast('申诉已提交', 'success')
+    closeAppeal()
+  } catch (e: any) {
+    showToast(e?.message || '申诉提交失败', 'error')
+  }
+}
 </script>
 
 <style scoped>

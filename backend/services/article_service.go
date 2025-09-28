@@ -222,16 +222,28 @@ func (s *ArticleService) GetArticleByID(articleID, userID uint, checkOwner bool)
 		}
 	}
 
-	var article models.Article
-	query := s.db.Preload("Author").Preload("Category")
+    var article models.Article
+    query := s.db.Preload("Author").Preload("Category")
 
-	// 如果不是检查所有者，只查询已发布的文章
-	if !checkOwner {
-		query = query.Where("status = ?", 1)
-	} else if userID > 0 {
-		// 如果是检查所有者，可以查看自己的所有文章
-		query = query.Where("author_id = ? OR status = ?", userID, 1)
-	}
+    // 访问控制：
+    // - 未登录：只能看已发布
+    // - 已登录且是作者：可看自己的所有文章 + 其他人的已发布
+    // - 已登录且是管理员：可看所有文章
+    // - 已登录且非作者非管理员：只能看已发布
+    if userID == 0 {
+        query = query.Where("status = ?", 1)
+    } else if checkOwner {
+        // 检查是否为管理员
+        userService := NewUserService()
+        if user, err := userService.GetUserByID(userID); err == nil && user.Role == 2 {
+            // 管理员可以查看所有文章
+        } else {
+            // 非管理员只能查看自己的文章或已发布的文章
+            query = query.Where("author_id = ? OR status = ?", userID, 1)
+        }
+    } else {
+        query = query.Where("status = ?", 1)
+    }
 
 	if err := query.First(&article, articleID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

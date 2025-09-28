@@ -17,10 +17,10 @@ type Report struct {
     Status      string         `json:"status" gorm:"type:varchar(20);default:'pending';index;comment:处理状态 pending/reviewed/rejected"`
     HandledBy   *uint          `json:"handled_by" gorm:"index;comment:处理人ID(管理员)"`
     HandledNote string         `json:"handled_note" gorm:"type:varchar(255);comment:处理备注"`
+    HandledAction string       `json:"handled_action" gorm:"type:varchar(50);comment:处理动作(下架/删除/锁帖/警告等)"`
     CreatedAt   time.Time      `json:"created_at"`
     UpdatedAt   time.Time      `json:"updated_at"`
     DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 func (Report) TableName() string { return "reports" }
-

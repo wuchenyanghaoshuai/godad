@@ -4,9 +4,9 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div class="flex items-center space-x-4">
           <h1 class="text-xl font-semibold text-gray-900">举报中心</h1>
-          <router-link to="/management-dashboard" class="text-sm text-gray-600 hover:text-blue-600">后台管理</router-link>
-          <router-link to="/community-management" class="text-sm text-gray-600 hover:text-blue-600">社区管理</router-link>
-          <router-link to="/report-center" class="text-sm text-blue-600">举报中心</router-link>
+          <AdminNavLink to="/management-dashboard" label="后台管理" />
+          <AdminNavLink to="/community-management" label="社区管理" />
+          <AdminNavLink to="/report-center" label="举报中心" :badge="pendingCount" />
         </div>
         <div class="flex items-center space-x-4">
           <span class="text-sm text-gray-600">欢迎，{{ authStore.user?.nickname }}</span>
@@ -31,12 +31,20 @@
             <option value="article">文章</option>
             <option value="forum_post">社区帖子</option>
           </select>
-          <button @click="loadReports" class="px-4 py-2 bg-blue-600 text-white rounded">查询</button>
+          <button @click="loadReports(1)" class="px-4 py-2 bg-blue-600 text-white rounded" :disabled="loading">
+            {{ loading ? '查询中...' : '查询' }}
+          </button>
         </div>
 
         <!-- 卡片列表 -->
         <div class="p-4">
-          <div v-if="reports.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- 加载状态 -->
+          <div v-if="loading" class="flex justify-center items-center py-12">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span class="ml-3 text-gray-600">加载中...</span>
+          </div>
+
+          <div v-else-if="reports.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div
               v-for="r in reports"
               :key="r.id"
@@ -84,6 +92,70 @@
             </div>
           </div>
           <div v-else class="py-12 text-center text-gray-500">暂无举报</div>
+
+          <!-- 分页组件 -->
+          <div v-if="!loading && totalPages > 1" class="flex justify-center items-center mt-6 space-x-2">
+            <!-- 上一页 -->
+            <button
+              @click="goToPrevPage"
+              :disabled="currentPage <= 1"
+              class="px-3 py-2 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              上一页
+            </button>
+
+            <!-- 页码 -->
+            <div class="flex space-x-1">
+              <!-- 第一页 -->
+              <button
+                v-if="currentPage > 3"
+                @click="goToPage(1)"
+                class="px-3 py-2 text-sm border rounded hover:bg-gray-50"
+              >
+                1
+              </button>
+              <span v-if="currentPage > 4" class="px-3 py-2 text-sm">...</span>
+
+              <!-- 当前页附近的页码 -->
+              <template v-for="page in Array.from({length: Math.min(5, totalPages)}, (_, i) => Math.max(1, currentPage - 2) + i).filter(p => p <= totalPages)" :key="page">
+                <button
+                  @click="goToPage(page)"
+                  :class="[
+                    'px-3 py-2 text-sm border rounded',
+                    page === currentPage
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'hover:bg-gray-50'
+                  ]"
+                >
+                  {{ page }}
+                </button>
+              </template>
+
+              <!-- 最后一页 -->
+              <span v-if="currentPage < totalPages - 3" class="px-3 py-2 text-sm">...</span>
+              <button
+                v-if="currentPage < totalPages - 2 && totalPages > 5"
+                @click="goToPage(totalPages)"
+                class="px-3 py-2 text-sm border rounded hover:bg-gray-50"
+              >
+                {{ totalPages }}
+              </button>
+            </div>
+
+            <!-- 下一页 -->
+            <button
+              @click="goToNextPage"
+              :disabled="currentPage >= totalPages"
+              class="px-3 py-2 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              下一页
+            </button>
+
+            <!-- 页码信息 -->
+            <div class="ml-4 text-sm text-gray-600">
+              第 {{ currentPage }} / {{ totalPages }} 页，共 {{ totalCount }} 条
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -168,14 +240,27 @@
           </div>
 
           <div class="mt-2">
+            <div class="text-xs text-gray-500 mb-1">处理动作 <span class="text-red-500" v-if="selectedReport?.status==='pending'">（通过时必选）</span></div>
+            <select v-model="handledAction" class="w-full border rounded px-3 py-2 text-sm" :disabled="isProcessed">
+              <option value="">请选择处理动作</option>
+              <option v-for="opt in actionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+
+          <div class="mt-2">
             <div class="text-xs text-gray-500 mb-1">处理备注</div>
-            <textarea v-model="handledNote" class="w-full border rounded px-3 py-2 text-sm" rows="3" placeholder="可填写处理说明（可选）"></textarea>
+            <textarea v-model="handledNote" class="w-full border rounded px-3 py-2 text-sm" rows="3" placeholder="可填写处理说明（可选）" :disabled="isProcessed"></textarea>
           </div>
         </div>
         <div class="px-6 py-4 border-t flex items-center justify-end gap-3">
-          <button @click="closeDetail" class="px-4 py-2 rounded border">取消</button>
-          <button :disabled="actionLoading" @click="submitAction('rejected')" class="px-4 py-2 rounded bg-gray-600 text-white disabled:opacity-50">驳回</button>
-          <button :disabled="actionLoading" @click="submitAction('reviewed')" class="px-4 py-2 rounded bg-green-600 text-white disabled:opacity-50">通过</button>
+          <button @click="closeDetail" class="px-4 py-2 rounded border">关闭</button>
+          <template v-if="!isProcessed">
+            <button :disabled="actionLoading" @click="submitAction('rejected')" class="px-4 py-2 rounded bg-gray-600 text-white disabled:opacity-50">驳回</button>
+            <button :disabled="actionLoading || (requiresAction && !handledAction)" @click="submitAction('reviewed')" class="px-4 py-2 rounded bg-green-600 text-white disabled:opacity-50">通过</button>
+          </template>
+          <template v-else>
+            <span class="text-sm text-gray-500">此举报已{{ statusLabel(selectedReport?.status) }}，不可重复处理</span>
+          </template>
         </div>
       </div>
     </div>
@@ -183,13 +268,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AdminApi from '@/api/admin'
 import { UserApi } from '@/api/user'
 import { useToast } from '@/composables/useToast'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { usePendingReports } from '@/composables/usePendingReports'
+import AdminNavLink from '@/components/AdminNavLink.vue'
 import { ArticleApi } from '@/api/article'
 import { ForumApi } from '@/api/forum'
 
@@ -201,7 +288,15 @@ const showDetail = ref(false)
 const selectedReport = ref<any | null>(null)
 const actionLoading = ref(false)
 const handledNote = ref('')
+const handledAction = ref('')
+// 分页相关状态
+const currentPage = ref(1)
+const pageSize = ref(12)
+const totalPages = ref(1)
+const totalCount = ref(0)
+const loading = ref(false)
 const { showToast } = useToast()
+const { pendingCount, refresh: refreshPendingReports, startPolling: pollPendingReports } = usePendingReports()
 
 const formatDate = (d?: string) => d ? new Date(d).toLocaleString() : '—'
 const typeLabel = (t?: string) => t === 'article' ? '文章' : t === 'forum_post' ? '社区帖子' : (t || '未知')
@@ -225,57 +320,42 @@ const targetPath = (r: any) => {
 
 // 已不再直接使用 displayUser，改为在模板中分别处理名称与ID，避免重复显示 #ID
 
-const loadReports = async () => {
+const loadReports = async (page = 1) => {
   try {
+    loading.value = true
     const res = await AdminApi.getReports({
-      page: 1,
-      size: 20,
+      page,
+      size: pageSize.value,
       keyword: filters.value.keyword || undefined,
       status: filters.value.status || undefined,
       target_type: filters.value.type || undefined
     })
+
     reports.value = res.data.items || []
+    currentPage.value = page
+    totalPages.value = res.data.pages || 1
+    totalCount.value = res.data.total || 0
+
     await Promise.all([
       enrichReportUsers(),
       enrichTargetDetails(),
     ])
-    if (import.meta.env.DEV) {
-      // 调试输出举报人/处理人信息
-      console.log('[ReportCenter] loaded reports:', reports.value.map((r: any) => ({
-        id: r.id,
-        reporter_id: r.reporter_id,
-        reporter_username: r.reporter_username,
-        reporter_nickname: r.reporter_nickname,
-        reporter_avatar: r.reporter_avatar,
-        handled_by: r.handled_by,
-        handler_username: r.handler_username,
-        handler_nickname: r.handler_nickname,
-        target_type: r.target_type,
-        target_id: r.target_id,
-        target_title: r.target_title,
-      })))
-    }
   } catch (error) {
     console.error('Failed to load reports:', error)
     reports.value = []
+    totalPages.value = 1
+    totalCount.value = 0
+    showToast('加载举报列表失败', 'error')
+  } finally {
+    loading.value = false
   }
 }
 
 const openDetail = (r: any) => {
   selectedReport.value = r
   handledNote.value = r?.handled_note || ''
+  handledAction.value = r?.handled_action || ''
   showDetail.value = true
-  if (import.meta.env.DEV) {
-    console.log('[ReportCenter] open detail:', {
-      id: r?.id,
-      reporter_id: r?.reporter_id,
-      reporter_username: r?.reporter_username,
-      reporter_nickname: r?.reporter_nickname,
-      handled_by: r?.handled_by,
-      handler_username: r?.handler_username,
-      handler_nickname: r?.handler_nickname,
-    })
-  }
   ensureReportTargetTitle(selectedReport.value)
 }
 
@@ -374,16 +454,34 @@ const closeDetail = () => {
   handledNote.value = ''
 }
 
+// 分页功能
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
+    loadReports(page)
+  }
+}
+
+const goToPrevPage = () => {
+  goToPage(currentPage.value - 1)
+}
+
+const goToNextPage = () => {
+  goToPage(currentPage.value + 1)
+}
+
 const submitAction = async (status: 'reviewed' | 'rejected') => {
   if (!selectedReport.value) return
   try {
     actionLoading.value = true
-    await AdminApi.updateReportStatus(selectedReport.value.id, status, handledNote.value || undefined)
+    await AdminApi.updateReportStatus(selectedReport.value.id, status, handledNote.value || undefined, status === 'reviewed' ? handledAction.value || undefined : undefined)
     showToast(status === 'reviewed' ? '已标记为通过' : '已驳回', 'success')
     await loadReports()
+    // 立即刷新未处理举报数量徽标
+    await refreshPendingReports()
     // 更新本地选中对象状态
     selectedReport.value.status = status
     selectedReport.value.handled_note = handledNote.value
+    if (status === 'reviewed') selectedReport.value.handled_action = handledAction.value
     closeDetail()
   } catch (e) {
     showToast('操作失败，请稍后重试', 'error')
@@ -402,9 +500,38 @@ const initPage = async () => {
 
   // 加载举报数据
   await loadReports()
+  // 刷新未处理举报数量并开始轮询
+  await refreshPendingReports()
+  pollPendingReports(60000)
 }
 
 initPage()
+
+const isProcessed = computed(() => (selectedReport.value?.status || '') !== 'pending')
+const requiresAction = computed(() => !isProcessed.value)
+const actionOptions = computed(() => {
+  const t = String(selectedReport.value?.target_type || '').toLowerCase()
+  if (t === 'article') {
+    return [
+      { value: 'unpublish', label: '下架文章' },
+      { value: 'delete', label: '删除文章' },
+      { value: 'warning', label: '警告（仅通知）' }
+    ]
+  } else if (t === 'forum_post') {
+    return [
+      { value: 'lock', label: '锁定帖子' },
+      { value: 'delete', label: '删除帖子' },
+      { value: 'warning', label: '警告（仅通知）' }
+    ]
+  }
+  // 兜底：类型未知时展示常用动作
+  return [
+    { value: 'unpublish', label: '下架文章' },
+    { value: 'delete', label: '删除' },
+    { value: 'lock', label: '锁定' },
+    { value: 'warning', label: '警告（仅通知）' }
+  ]
+})
 
 const logout = () => {
   authStore.logout()

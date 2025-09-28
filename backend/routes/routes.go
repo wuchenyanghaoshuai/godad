@@ -99,6 +99,9 @@ func SetupRoutes() *gin.Engine {
 	// 举报路由
 	SetupReportRoutes(router)
 
+	// 申诉路由
+	SetupAppealRoutes(router)
+
 	// 提及(@) 路由
 	SetupMentionRoutes(router)
 

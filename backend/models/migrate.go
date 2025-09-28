@@ -31,6 +31,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&Topic{},
 		&Resource{},
 		&Report{},
+		&Appeal{},
 	)
 
 	if err != nil {
@@ -168,12 +169,16 @@ func createIndexes(db *gorm.DB) error {
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_download_count ON resources(download_count)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_created_at ON resources(created_at)")
 
-	// 举报表索引
-	db.Exec("CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id)")
-	db.Exec("CREATE INDEX IF NOT EXISTS idx_reports_reporter ON reports(reporter_id)")
-	db.Exec("CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)")
+    // 举报表索引
+    db.Exec("CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id)")
+    db.Exec("CREATE INDEX IF NOT EXISTS idx_reports_reporter ON reports(reporter_id)")
+    db.Exec("CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)")
 
-	return nil
+    // 申诉表索引
+    db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_appeals_unique ON appeals(report_id, appellant_id) WHERE deleted_at IS NULL")
+    db.Exec("CREATE INDEX IF NOT EXISTS idx_appeals_status ON appeals(status)")
+
+    return nil
 }
 
 // createForeignKeys 创建外键约束
@@ -415,6 +420,6 @@ func initTopics(db *gorm.DB) error {
 		}
 	}
 
-	log.Println("话题数据初始化完成")
-	return nil
-}
+        log.Println("话题数据初始化完成")
+        return nil
+    }

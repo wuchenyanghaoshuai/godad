@@ -24,7 +24,7 @@ type Notification struct {
     ActorID    uint             `gorm:"not null;index" json:"actor_id"`    // 行为发起者ID
     Type       NotificationType `gorm:"not null;type:enum('like','comment','bookmark','follow','message','system','mention')" json:"type"`
     Title      string           `gorm:"type:varchar(255)" json:"title,omitempty"` // 标题（系统通知等）
-    ResourceID uint             `json:"resource_id,omitempty"` // 资源ID（文章ID、会话ID等）
+    ResourceID uint             `gorm:"column:resource_id" json:"resource_id"` // 资源ID（文章ID、会话ID等）
     CommentID  uint             `json:"comment_id,omitempty"`  // 扩展资源ID（用于@提及精确到评论）
     Message    string           `gorm:"type:text" json:"message"`
     IsRead     bool             `gorm:"default:false;index" json:"is_read"`

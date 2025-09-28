@@ -1,6 +1,7 @@
 package services
 
 import (
+    "errors"
     "fmt"
     "strings"
 
@@ -65,15 +66,37 @@ func (s *ReportService) ListReports(p *ReportListParams) ([]models.Report, int64
     return items, total, nil
 }
 
-func (s *ReportService) UpdateStatus(id uint, status string, handledBy uint, note string) (*models.Report, error) {
+func (s *ReportService) UpdateStatus(id uint, status string, handledBy uint, note string, action string) (*models.Report, error) {
     if status != "reviewed" && status != "rejected" { return nil, fmt.Errorf("无效状态") }
+    // 先读取当前状态，防止重复处理
+    var current models.Report
+    if err := s.db.Where("id = ?", id).First(&current).Error; err != nil {
+        if errors.Is(err, gorm.ErrRecordNotFound) { return nil, fmt.Errorf("举报不存在") }
+        return nil, err
+    }
+    if current.Status != "pending" {
+        return nil, fmt.Errorf("举报已处理")
+    }
     updates := map[string]interface{}{
         "status":       status,
         "handled_by":   handledBy,
         "handled_note": strings.TrimSpace(note),
     }
-    if err := s.db.Model(&models.Report{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-        return nil, err
+    if action != "" { updates["handled_action"] = strings.TrimSpace(action) }
+    tx := s.db.Model(&models.Report{}).Where("id = ? AND status = ?", id, "pending").Updates(updates)
+    if tx.Error != nil {
+        // 兼容旧库：若 handled_action 不存在导致失败，去掉该字段重试
+        if action != "" {
+            delete(updates, "handled_action")
+            if err2 := s.db.Model(&models.Report{}).Where("id = ? AND status = ?", id, "pending").Updates(updates).Error; err2 != nil {
+                return nil, tx.Error
+            }
+        } else {
+            return nil, tx.Error
+        }
+    }
+    if tx.RowsAffected == 0 {
+        return nil, fmt.Errorf("举报已处理")
     }
     var r models.Report
     if err := s.db.Where("id = ?", id).First(&r).Error; err != nil {

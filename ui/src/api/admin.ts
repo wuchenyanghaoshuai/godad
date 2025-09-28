@@ -83,8 +83,8 @@ export const AdminApi = {
   async getReports(params: { page?: number; size?: number; status?: string; target_type?: string; keyword?: string } = {}) {
     return http.get('/admin/reports', params)
   },
-  async updateReportStatus(id: number, status: 'reviewed' | 'rejected', handled_note?: string) {
-    return http.put(`/admin/reports/${id}/status`, { status, handled_note })
+  async updateReportStatus(id: number, status: 'reviewed' | 'rejected', handled_note?: string, action?: string) {
+    return http.put(`/admin/reports/${id}/status`, { status, handled_note, action })
   }
 }
 

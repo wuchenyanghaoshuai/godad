@@ -7,27 +7,9 @@
           <div class="flex items-center space-x-6">
             <h1 class="text-xl font-semibold text-gray-900">管理员后台</h1>
             <nav class="flex space-x-4">
-              <router-link
-                to="/management-dashboard"
-                class="px-3 py-2 text-sm font-medium rounded-md"
-                :class="$route.path.startsWith('/management-dashboard') ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'"
-              >
-                后台管理
-              </router-link>
-              <router-link
-                to="/community-management"
-                class="px-3 py-2 text-sm font-medium rounded-md"
-                :class="$route.path.startsWith('/community-management') ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'"
-              >
-                社区管理
-              </router-link>
-              <router-link
-                to="/report-center"
-                class="px-3 py-2 text-sm font-medium rounded-md"
-                :class="$route.path.startsWith('/report-center') ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'"
-              >
-                举报中心
-              </router-link>
+              <AdminNavLink to="/management-dashboard" label="后台管理" />
+              <AdminNavLink to="/community-management" label="社区管理" />
+              <AdminNavLink to="/report-center" label="举报中心" :badge="pendingCount" />
             </nav>
           </div>
           <div class="flex items-center space-x-4">
@@ -1396,6 +1378,8 @@ import { TopicApi } from '@/api/topic'
 import { useToast } from '../composables/useToast'
 import { CategoryApi } from '@/api/category'
 import UserAvatar from '@/components/UserAvatar.vue'
+import AdminNavLink from '@/components/AdminNavLink.vue'
+import { usePendingReports } from '@/composables/usePendingReports'
 
 // Icons
 import {
@@ -1409,6 +1393,7 @@ import {
 const router = useRouter()
 const authStore = useAuthStore()
 const { showToast } = useToast()
+const { pendingCount, refresh: refreshPendingReports, startPolling: pollPendingReports } = usePendingReports()
 
 // 响应式数据
 const activeTab = ref('articles')
@@ -1633,7 +1618,7 @@ const toggleArticleStatus = async (article) => {
     article.status = newStatus
   } catch (error) {
     console.error('切换文章状态失败:', error)
-    toast.error('操作失败，请重试')
+    showToast('操作失败，请重试', 'error')
   }
 }
 
@@ -1684,7 +1669,7 @@ const toggleUserStatus = async (user) => {
     user.status = newStatus
   } catch (error) {
     console.error('切换用户状态失败:', error)
-    toast.error('操作失败，请重试')
+    showToast('操作失败，请重试', 'error')
   }
 }
 
@@ -1780,7 +1765,7 @@ const toggleCategoryStatus = async (category) => {
     category.status = newStatus
   } catch (error) {
     console.error('切换分类状态失败:', error)
-    toast.error('操作失败，请重试')
+    showToast('操作失败，请重试', 'error')
   }
 }
 
@@ -2184,6 +2169,8 @@ onMounted(() => {
   }
 
   loadStats()
+  // 加载未处理举报数并轮询
+  refreshPendingReports(); pollPendingReports(60000)
   loadArticles()
   loadUsers()
   loadCategories()

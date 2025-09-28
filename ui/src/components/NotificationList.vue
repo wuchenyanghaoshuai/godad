@@ -89,6 +89,15 @@
                         {{ notification.actor_nickname || notification.actor_username }}
                       </span>
                       {{ notification.message }}
+                      <a
+                        v-if="canAppeal(notification)"
+                        href="#"
+                        @click.stop.prevent="openAppeal(notification)"
+                        class="ml-2 text-xs text-blue-600 hover:underline inline-flex items-center cursor-pointer"
+                        style="color: #2563eb !important; text-decoration: underline !important; font-weight: bold !important;"
+                      >
+                        【申诉】
+                      </a>
                     </p>
                     <div class="flex items-center space-x-4 mt-2">
                       <span class="text-xs text-gray-500">
@@ -163,6 +172,27 @@
       <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto"></div>
     </div>
   </div>
+
+  <!-- 申诉弹窗 -->
+  <div v-if="showAppealModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div class="bg-white w-full max-w-md rounded-lg shadow-lg">
+      <div class="px-4 py-3 border-b font-semibold">发起申诉</div>
+      <div class="p-4 space-y-3">
+        <div>
+          <div class="text-xs text-gray-500 mb-1">申诉原因</div>
+          <textarea v-model="appealReason" rows="3" class="w-full border rounded px-3 py-2 text-sm" placeholder="请简要说明您的理由"></textarea>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 mb-1">证据（可选）</div>
+          <input v-model="appealEvidence" type="text" class="w-full border rounded px-3 py-2 text-sm" placeholder="证据链接或补充说明" />
+        </div>
+      </div>
+      <div class="px-4 py-3 border-t flex items-center justify-end gap-2">
+        <button @click="closeAppeal" class="px-3 py-1 text-gray-600 border rounded">取消</button>
+        <button @click="submitAppeal" :disabled="!appealReason.trim()" class="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-50">提交</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -170,6 +200,8 @@ import { ref, onMounted } from 'vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useRouter } from 'vue-router'
 import { NotificationApi, type Notification, type NotificationStats, formatNotificationTime, notificationTypeMap, notificationIconMap } from '@/api/notification'
+import AppealApi from '@/api/appeal'
+import { useToast } from '@/composables/useToast'
 
 // Props
 interface Props {
@@ -193,10 +225,52 @@ const clearing = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(20)
 const hasMore = ref(true)
+const showAppealModal = ref(false)
+const appealReason = ref('')
+const appealEvidence = ref('')
+const selectedForAppeal = ref<Notification | null>(null)
+const { toast } = useToast()
 
 // 获取通知图标
 const getNotificationIcon = (type: string) => {
   return notificationIconMap[type as keyof typeof notificationIconMap] || '📢'
+}
+
+// 是否可申诉：系统通知 + 有资源ID
+const canAppeal = (n: Notification) => {
+  console.log('[DEBUG] canAppeal:', {
+    id: n.id,
+    type: n.type,
+    resource_id: n.resource_id,
+    message: n.message,
+    message_includes_申诉: n.message?.includes('申诉')
+  })
+  // 临时：对所有包含"申诉"的系统通知都显示申诉按钮
+  return n.type === 'system' && n.message?.includes('申诉')
+}
+
+const openAppeal = (n: Notification) => {
+  selectedForAppeal.value = n
+  appealReason.value = ''
+  appealEvidence.value = ''
+  showAppealModal.value = true
+}
+
+const closeAppeal = () => {
+  showAppealModal.value = false
+  selectedForAppeal.value = null
+}
+
+const submitAppeal = async () => {
+  if (!selectedForAppeal.value) return
+  try {
+    const targetId = Number(selectedForAppeal.value.resource_id)
+    await AppealApi.create({ target_id: targetId, reason: appealReason.value.trim(), evidence: appealEvidence.value.trim() || undefined })
+    toast.success('申诉已提交')
+    closeAppeal()
+  } catch (e: any) {
+    toast.error(e?.message || '申诉提交失败')
+  }
 }
 
 // 对消息通知进行分组处理
@@ -265,14 +339,20 @@ const loadNotifications = async (reset = false) => {
       notifications.value = []
     }
 
+    console.log('[DEBUG] 正在加载通知列表...')
     const response = await NotificationApi.getNotificationsPage({
       page: currentPage.value,
       limit: pageSize.value
     })
 
+    console.log('[DEBUG] 通知API响应:', response)
+
     if (response.code === 200) {
       const page = response.data
       const newNotifications = page.items as Notification[]
+
+      console.log('[DEBUG] 收到通知数量:', newNotifications?.length)
+      console.log('[DEBUG] 通知数据:', newNotifications)
 
       if (reset) {
         notifications.value = newNotifications
@@ -460,6 +540,7 @@ const stopAutoRefresh = () => {
 
 // 组件挂载
 onMounted(() => {
+  console.log('[DEBUG] NotificationList 组件已挂载!')
   refreshNotifications()
   startAutoRefresh()
 })
