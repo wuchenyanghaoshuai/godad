@@ -1,32 +1,36 @@
 <template>
   <div
     @click="$emit('click', post)"
-    class="p-6 hover:bg-gray-50 transition-colors cursor-pointer"
+    class="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer"
   >
-    <div class="flex items-start space-x-4">
+    <div class="flex items-start space-x-3">
       <!-- 用户头像 -->
       <div class="flex-shrink-0">
         <img
           :src="post.author.avatar"
           :alt="post.author.name"
-          class="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+          class="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
         />
       </div>
 
       <!-- 帖子内容 -->
       <div class="flex-1 min-w-0">
-        <!-- 置顶/精华徽标 -->
+        <!-- 置顶/精华/锁定徽标 -->
         <div class="flex items-center gap-2 mb-1">
           <span v-if="post.is_top" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">置顶</span>
           <span v-if="post.is_hot" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-700">精华</span>
+          <span v-if="post.is_locked" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+            <LockIcon class="h-3 w-3" />
+            锁定
+          </span>
         </div>
         <!-- 帖子标题 -->
-        <h3 class="text-lg font-semibold text-gray-900 hover:text-pink-600 transition-colors mb-2 line-clamp-2">
+        <h3 class="text-base font-semibold text-gray-900 hover:text-pink-600 transition-colors mb-1 line-clamp-2">
           {{ post.title }}
         </h3>
 
         <!-- 作者和时间 -->
-        <div class="flex items-center text-sm text-gray-500 mb-3">
+        <div class="flex items-center text-sm text-gray-500 mb-2">
           <span class="font-medium text-gray-700">{{ post.author.name }}</span>
           <span class="mx-2">·</span>
           <span>{{ post.timeAgo }}</span>
@@ -37,7 +41,7 @@
         </div>
 
         <!-- 统计信息 -->
-        <div class="flex items-center space-x-6 text-sm text-gray-500">
+        <div class="flex items-center space-x-4 text-sm text-gray-500">
           <div class="flex items-center space-x-1">
             <MessageSquareIcon class="h-4 w-4" />
             <span>{{ post.replies }} 回复</span>
@@ -58,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { MessageSquareIcon, EyeIcon, ChevronRightIcon } from 'lucide-vue-next'
+import { MessageSquareIcon, EyeIcon, ChevronRightIcon, LockIcon } from 'lucide-vue-next'
 
 // Props
 interface Author {
@@ -76,6 +80,7 @@ interface Post {
   topic: string
   is_top?: boolean
   is_hot?: boolean
+  is_locked?: boolean
 }
 
 defineProps<{

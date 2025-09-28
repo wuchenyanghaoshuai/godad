@@ -55,6 +55,7 @@ type ForumPostListRequest struct {
   Sort     string `form:"sort" example:"created_at desc"` // created_at desc, reply_count desc, view_count desc, last_reply_at desc
   IsTop    *bool  `form:"is_top" example:"true"`
   IsHot    *bool  `form:"is_hot" example:"true"`
+  IsLocked *bool  `form:"is_locked" example:"true"`
 }
 
 // AdminForumPostListRequest 管理员帖子列表请求（可查看所有状态）
@@ -67,6 +68,7 @@ type AdminForumPostListRequest struct {
     Sort           string `form:"sort" example:"created_at desc"`
     IsTop          *bool  `form:"is_top" example:"true"`
     IsHot          *bool  `form:"is_hot" example:"true"`
+    IsLocked       *bool  `form:"is_locked" example:"true"`
     Status         *int8  `form:"status" example:"1"` // 0-草稿 1-已发布 2-已删除；为空时返回所有
     IncludeDeleted bool   `form:"include_deleted" example:"false"` // 是否包含软删除记录
 }

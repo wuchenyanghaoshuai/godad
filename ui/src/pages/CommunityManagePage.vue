@@ -147,6 +147,7 @@
                     <option value="normal">普通</option>
                     <option value="pinned">置顶</option>
                     <option value="featured">精华</option>
+                    <option value="locked">锁定</option>
                   </select>
                 </div>
               </div>
@@ -454,6 +455,7 @@ const loadForumPosts = async () => {
     if (postFilter.topic) params.topic = postFilter.topic
     if (postFilter.status === 'pinned') params.is_top = true
     else if (postFilter.status === 'featured') params.is_hot = true
+    else if (postFilter.status === 'locked') params.is_locked = true
     const res = await AdminApi.getForumPostsPage(params)
     const page = res.data
     forumPosts.value = page.items || []
@@ -467,6 +469,7 @@ const loadForumPosts = async () => {
       if (postFilter.topic) params.topic = postFilter.topic
       if (postFilter.status === 'pinned') params.is_top = true
       else if (postFilter.status === 'featured') params.is_hot = true
+      else if (postFilter.status === 'locked') params.is_locked = true
       const res = await ForumApi.getPostList(params)
       const page = res.data
       forumPosts.value = page.items || []

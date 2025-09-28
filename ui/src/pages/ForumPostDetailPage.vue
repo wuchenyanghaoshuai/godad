@@ -106,6 +106,7 @@
               </button>
 
               <button
+                v-if="!post.is_locked"
                 @click="showReplyForm = !showReplyForm"
                 class="flex items-center space-x-1 px-3 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
               >
@@ -114,6 +115,13 @@
                 </svg>
                 <span>回复</span>
               </button>
+              <!-- 锁定提示 -->
+              <div v-if="post.is_locked" class="flex items-center space-x-1 px-3 py-2 bg-gray-200 text-gray-500 rounded-lg">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>帖子已锁定</span>
+              </div>
 
               <!-- 举报按钮 -->
               <button
@@ -129,7 +137,7 @@
       </div>
 
       <!-- 回复表单 -->
-      <div v-if="post && showReplyForm" class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div v-if="post && showReplyForm && !post.is_locked" class="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 class="text-lg font-medium text-gray-900 mb-4">发表回复</h3>
         <form @submit.prevent="submitReply">
           <textarea
@@ -398,8 +406,9 @@ const submitReply = async () => {
       content: replyContent.value.trim()
     })
 
-    // 添加新回复到列表
-    replies.value.unshift(response.data)
+    // 重新加载回复列表以保证排序一致性
+    await loadReplies()
+    // 更新帖子回复数
     post.value.reply_count++
 
     // 重置表单

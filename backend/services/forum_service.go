@@ -160,6 +160,11 @@ func (s *ForumService) GetPostList(req *models.ForumPostListRequest) ([]models.F
 		query = query.Where("is_hot = ?", *req.IsHot)
 	}
 
+	// 锁定筛选
+	if req.IsLocked != nil {
+		query = query.Where("is_locked = ?", *req.IsLocked)
+	}
+
 	// 获取总数
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("统计帖子数量失败: %w", err)
@@ -218,12 +223,15 @@ func (s *ForumService) GetAdminPostList(req *models.AdminForumPostListRequest) (
         query = query.Where("title LIKE ? OR content LIKE ?", keyword, keyword)
     }
 
-    // 置顶/热门筛选
+    // 置顶/热门/锁定筛选
     if req.IsTop != nil {
         query = query.Where("is_top = ?", *req.IsTop)
     }
     if req.IsHot != nil {
         query = query.Where("is_hot = ?", *req.IsHot)
+    }
+    if req.IsLocked != nil {
+        query = query.Where("is_locked = ?", *req.IsLocked)
     }
 
     // 统计总数
@@ -403,6 +411,11 @@ func (s *ForumService) CreateReply(req *models.ForumReplyCreateRequest, userID u
 		return nil, fmt.Errorf("验证帖子失败: %w", err)
 	}
 
+	// 验证帖子是否被锁定
+	if post.IsLocked {
+		return nil, errors.New("帖子已被锁定，无法回复")
+	}
+
 	// 如果是回复某个评论，验证父评论是否存在
 	if req.ParentID != nil {
 		var parentReply models.ForumReply
@@ -486,13 +499,11 @@ func (s *ForumService) GetReplyList(req *models.ForumReplyListRequest) ([]models
 		return nil, 0, fmt.Errorf("统计回复数量失败: %w", err)
 	}
 
-    // 排序：优先置顶/精华，再按指定排序
+    // 回复排序：直接按指定排序（回复没有置顶/精华属性）
     orderStr := s.buildOrderString(req.Sort)
-    orderClause := "is_top DESC, is_hot DESC"
     if orderStr != "" {
-        orderClause = orderClause + ", " + orderStr
+        query = query.Order(orderStr)
     }
-    query = query.Order(orderClause)
 
 	// 分页
 	offset := (req.Page - 1) * req.Size
