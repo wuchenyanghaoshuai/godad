@@ -13,8 +13,6 @@ import (
 
 	"godad-backend/config"
 	"godad-backend/models"
-    
-    "godad-backend/services"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/google/uuid"
@@ -161,7 +159,7 @@ func (s *UploadService) UploadAvatar(file *multipart.FileHeader, userID uint) (*
 	}
 
     // 头像变更后，清理用户缓存，避免刷新后读到旧数据
-    _ = services.NewCacheService().DeleteUser(userID)
+    _ = NewCacheService().DeleteUser(userID)
 
 	return upload, nil
 }

@@ -264,6 +264,15 @@
                     <span class="whitespace-nowrap">分享</span>
                   </button>
                   
+                  <!-- 举报按钮 -->
+                  <button
+                    @click="openReportModal"
+                    class="group flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md font-medium transition-all duration-300 text-sm min-w-[72px] justify-center hover:border-red-300 hover:text-red-600 hover:bg-red-50"
+                  >
+                    <svg class="h-4 w-4 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8a6 6 0 00-12 0v5a3 3 0 006 0V9m-6 8h12"/></svg>
+                    举报
+                  </button>
+
                   <!-- 编辑按钮（作者可见） -->
                   <button
                     v-if="canEdit"
@@ -289,6 +298,39 @@
           </div>
         </div>
       </article>
+
+      <!-- 举报模态框 -->
+      <div v-if="showReport" class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md shadow">
+          <h3 class="text-lg font-semibold mb-4">举报文章</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-sm mb-1">举报理由</label>
+              <select v-model="reportForm.reason" class="w-full border rounded px-3 py-2">
+                <option value="">请选择</option>
+                <option>垃圾广告</option>
+                <option>不实信息</option>
+                <option>辱骂/人身攻击</option>
+                <option>涉黄/违法</option>
+                <option>版权问题</option>
+                <option>其他</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm mb-1">补充说明</label>
+              <textarea v-model="reportForm.description" rows="3" class="w-full border rounded px-3 py-2" placeholder="请描述问题..." />
+            </div>
+            <div>
+              <label class="block text-sm mb-1">证据链接（可选）</label>
+              <input v-model="reportForm.evidence" class="w-full border rounded px-3 py-2" placeholder="https://" />
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end gap-2">
+            <button @click="showReport = false" class="px-4 py-2 border rounded">取消</button>
+            <button @click="submitReport" class="px-4 py-2 bg-red-600 text-white rounded">提交举报</button>
+          </div>
+        </div>
+      </div>
 
       <!-- 评论区域 -->
       <div ref="commentsSectionRef" class="mt-6 sm:mt-8">
@@ -457,6 +499,7 @@ import CommentSection from '@/components/CommentSection.vue'
 import BaseHeader from '@/components/BaseHeader.vue'
 import { useToast } from '@/composables/useToast'
 import UserAvatar from '@/components/UserAvatar.vue'
+import ReportApi from '@/api/report'
 
 const route = useRoute()
 const router = useRouter()
@@ -472,6 +515,8 @@ const isLiking = ref(false)
 const isLiked = ref(false)
 const imageLoadError = ref(false)
 const showComments = ref(false)
+const showReport = ref(false)
+const reportForm = ref({ reason: '', description: '', evidence: '' })
 const isFavorited = ref(false)
 const isFavoriting = ref(false)
 const { toast } = useToast()
@@ -586,6 +631,33 @@ const shareArticle = () => {
     navigator.clipboard.writeText(window.location.href)
     // 这里可以显示复制成功的提示
     toast.success('链接已复制到剪贴板')
+  }
+}
+
+// 举报
+const openReportModal = () => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login')
+    return
+  }
+  showReport.value = true
+}
+
+const submitReport = async () => {
+  if (!article.value) return
+  try {
+    await ReportApi.createReport({
+      target_type: 'article',
+      target_id: article.value.id,
+      reason: reportForm.value.reason || '其他',
+      description: reportForm.value.description,
+      evidence: reportForm.value.evidence
+    })
+    toast.success('举报已提交，我们会尽快核实')
+    showReport.value = false
+    reportForm.value = { reason: '', description: '', evidence: '' }
+  } catch (e: any) {
+    toast.error(e.message || '提交失败，请重试')
   }
 }
 

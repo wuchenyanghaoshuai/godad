@@ -56,6 +56,36 @@ export const AdminApi = {
   async getSystemNotificationHistory(params: { page?: number, size?: number } = {}) {
     return http.get(`/admin/notifications/system/history`, params)
   }
+  ,
+  // 社区帖子（管理员）分页
+  async getForumPostsPage(params: { page?: number; size?: number; topic?: string; author_id?: number; keyword?: string; sort?: string; status?: number; include_deleted?: boolean; is_top?: boolean; is_hot?: boolean } = {}) {
+    const res = await http.get<any>('/admin/forum/posts', params)
+    const page = normalizePageResponse<any>(res)
+    return { code: 200, message: 'success', data: page }
+  },
+  // 论坛统计（管理员）
+  async getForumStats() {
+    return http.get<any>('/admin/forum/stats')
+  },
+  async toggleForumPostTop(id: number, top: boolean) {
+    return http.put(`/admin/forum/posts/${id}/top`, { top })
+  },
+  async toggleForumPostHot(id: number, hot: boolean) {
+    return http.put(`/admin/forum/posts/${id}/hot`, { hot })
+  },
+  async toggleForumPostLock(id: number, locked: boolean) {
+    return http.put(`/admin/forum/posts/${id}/lock`, { locked })
+  },
+  async deleteForumPost(id: number) {
+    return http.delete(`/admin/forum/posts/${id}`)
+  },
+  // 举报管理
+  async getReports(params: { page?: number; size?: number; status?: string; target_type?: string; keyword?: string } = {}) {
+    return http.get('/admin/reports', params)
+  },
+  async updateReportStatus(id: number, status: 'reviewed' | 'rejected', handled_note?: string) {
+    return http.put(`/admin/reports/${id}/status`, { status, handled_note })
+  }
 }
 
 export default AdminApi

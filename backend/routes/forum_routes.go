@@ -62,13 +62,21 @@ func SetupForumRoutes(router *gin.Engine) {
 	forumAdmin.Use(middleware.AuthMiddleware())
 	forumAdmin.Use(middleware.AdminMiddleware())
 	{
+		// 论坛统计（管理员）
+		forumAdmin.GET("/stats", forumController.AdminGetStats)
+		// 管理员获取帖子列表（包含所有状态）
+		forumAdmin.GET("/posts", forumController.AdminGetPostList)
 		// 置顶/取消置顶帖子
 		forumAdmin.PUT("/posts/:id/top", forumController.TogglePostTop)
 		// 标记/取消标记热门帖子
 		forumAdmin.PUT("/posts/:id/hot", forumController.TogglePostHot)
+		// 锁定/解锁帖子
+		forumAdmin.PUT("/posts/:id/lock", forumController.TogglePostLock)
 		// 批量删除帖子
 		forumAdmin.DELETE("/posts/batch", forumController.BatchDeletePosts)
 		// 批量删除回复
 		forumAdmin.DELETE("/replies/batch", forumController.BatchDeleteReplies)
+		// 删除单个帖子
+		forumAdmin.DELETE("/posts/:id", forumController.AdminDeletePost)
 	}
 }

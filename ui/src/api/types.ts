@@ -251,6 +251,7 @@ export interface ForumPost {
   like_count: number
   is_top: boolean
   is_hot: boolean
+  is_locked?: boolean
   status: number // 0-草稿 1-已发布 2-已删除
   last_reply_at?: string
   created_at: string

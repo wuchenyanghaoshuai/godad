@@ -67,8 +67,8 @@
               <LoaderIcon class="inline h-4 w-4 animate-spin mr-1" />
               正在搜索...
             </template>
-            <template v-else-if="searchResults.total > 0">
-              找到 <span class="font-semibold">{{ searchResults.total }}</span> 条关于 
+            <template v-else-if="(searchResults.total + userResults.total) > 0">
+              找到 <span class="font-semibold">{{ (searchResults.total + userResults.total) }}</span> 条关于 
               "<span class="font-semibold">{{ currentSearchQuery }}</span>" 的结果
             </template>
             <template v-else>
@@ -83,6 +83,23 @@
 
       <!-- 搜索结果 -->
       <div v-if="hasSearched && !isSearching">
+        <!-- 用户结果优先 -->
+        <div v-if="userResults.total > 0" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">找到相关用户（{{ userResults.total }}）</h3>
+            <!-- 预留“查看全部用户”入口 -->
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div v-for="u in userResults.items" :key="u.id" class="flex items-center bg-gray-50 rounded-lg p-3 border border-gray-100 hover:shadow-sm">
+              <UserAvatar :avatar="u.avatar || ''" :name="u.nickname || u.username" :size="40" />
+              <div class="ml-3 min-w-0">
+                <div class="text-sm font-medium text-gray-900 truncate">{{ u.nickname || u.username }}</div>
+                <div class="text-xs text-gray-500 truncate">@{{ u.username }}</div>
+              </div>
+              <router-link :to="`/users/${u.username}`" class="ml-auto text-sm text-pink-600 hover:text-pink-700">查看</router-link>
+            </div>
+          </div>
+        </div>
         <!-- 文章结果 -->
         <div v-if="searchResults.total > 0" class="space-y-6">
           <article
@@ -177,8 +194,8 @@
           </div>
         </div>
 
-        <!-- 空搜索结果 -->
-        <div v-else class="text-center py-12">
+        <!-- 空搜索结果（当文章与用户都为空时显示） -->
+        <div v-else-if="userResults.total === 0" class="text-center py-12">
           <SearchIcon class="h-16 w-16 text-gray-300 mx-auto mb-4" />
           <h3 class="text-lg font-medium text-gray-900 mb-2">没有找到相关内容</h3>
           <p class="text-gray-600 mb-6">
@@ -228,6 +245,9 @@ import { ArticleApi } from '@/api/article'
 import { CategoryApi } from '@/api/category'
 import type { Article, Category, PaginatedResponse } from '@/api/types'
 import BaseHeader from '@/components/BaseHeader.vue'
+import UserAvatar from '@/components/UserAvatar.vue'
+import { UserApi } from '@/api/user'
+import { normalizePageResponse } from '@/api/pagination'
 
 const route = useRoute()
 const router = useRouter()
@@ -249,6 +269,8 @@ const searchResults = ref<PaginatedResponse<Article>>({
   size: 10,
   total_pages: 0
 })
+// 用户搜索结果（简要，最多5条）
+const userResults = ref<{ items: Array<{ id: number; username: string; nickname: string; avatar?: string }>; total: number }>({ items: [], total: 0 })
 const categories = ref<Category[]>([])
 
 // 热门搜索词
@@ -308,8 +330,14 @@ const performSearch = async (page = 1) => {
       status: 1 // 只搜索已发布的文章
     }
     
-    const response = await ArticleApi.getArticlePage(params)
-    searchResults.value = response.data
+    const [articleResp, userResp] = await Promise.all([
+      ArticleApi.getArticlePage(params),
+      UserApi.searchUsers({ keyword: currentSearchQuery.value, page: 1, size: 5 })
+    ])
+    searchResults.value = articleResp.data
+    // 统一解析用户分页响应
+    const userPage = normalizePageResponse<any>(userResp)
+    userResults.value = { items: (userPage.items || []) as any, total: userPage.total || 0 }
     
     const endTime = performance.now()
     searchTime.value = Math.round(endTime - startTime)

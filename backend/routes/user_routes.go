@@ -16,6 +16,7 @@ func SetupUserRoutes(router *gin.Engine) {
 	{
 		// 公开路由（无需认证）
 		userGroup.GET("/:id", userController.GetUserByID)        // 获取用户公开信息
+		userGroup.GET("/search", userController.SearchPublicUsers) // 公共用户搜索
 		userGroup.GET("/:id/articles", userController.GetUserArticles) // 获取用户文章列表
 		userGroup.GET("/profile/:username", userController.GetUserByUsername) // 根据用户名获取用户信息
 		userGroup.GET("/profile/:username/articles", userController.GetUserArticlesByUsername) // 根据用户名获取用户文章列表

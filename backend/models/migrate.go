@@ -30,6 +30,7 @@ func AutoMigrate(db *gorm.DB) error {
 		&ForumReply{},
 		&Topic{},
 		&Resource{},
+		&Report{},
 	)
 
 	if err != nil {
@@ -166,6 +167,11 @@ func createIndexes(db *gorm.DB) error {
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_uploader_id ON resources(uploader_id)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_download_count ON resources(download_count)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_resources_created_at ON resources(created_at)")
+
+	// 举报表索引
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_reports_reporter ON reports(reporter_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)")
 
 	return nil
 }

@@ -16,6 +16,8 @@ const SearchPage = () => import('@/pages/SearchPage.vue')
 const NotFoundPage = () => import('@/pages/NotFoundPage.vue')
 const AdminDashboard = () => import('@/pages/AdminDashboard.vue')
 const AdminLoginPage = () => import('@/pages/AdminLoginPage.vue')
+const CommunityManagePage = () => import('@/pages/CommunityManagePage.vue')
+const ReportCenterPage = () => import('@/pages/ReportCenterPage.vue')
 const NotificationsPage = () => import('@/pages/NotificationsPage.vue')
 const AboutPage = () => import('@/pages/AboutPage.vue')
 const ContactPage = () => import('@/pages/ContactPage.vue')
@@ -127,6 +129,18 @@ const router = createRouter({
       path: '/management-dashboard',
       name: 'AdminDashboard',
       component: AdminDashboard,
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/community-management',
+      name: 'CommunityManage',
+      component: CommunityManagePage,
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/report-center',
+      name: 'ReportCenter',
+      component: ReportCenterPage,
       meta: { requiresAuth: true, requiresAdmin: true }
     },
     {

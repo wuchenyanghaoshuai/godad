@@ -96,6 +96,9 @@ func SetupRoutes() *gin.Engine {
 	// 设置资源路由
 	SetupResourceRoutes(router, config.GetDB())
 
+	// 举报路由
+	SetupReportRoutes(router)
+
 	// 提及(@) 路由
 	SetupMentionRoutes(router)
 

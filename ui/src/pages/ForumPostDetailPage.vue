@@ -114,6 +114,15 @@
                 </svg>
                 <span>回复</span>
               </button>
+
+              <!-- 举报按钮 -->
+              <button
+                @click="openReportModal"
+                class="group flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md font-medium transition-all duration-300 text-sm min-w-[72px] justify-center hover:border-red-300 hover:text-red-600 hover:bg-red-50"
+              >
+                <svg class="h-4 w-4 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 8a6 6 0 00-12 0v5a3 3 0 006 0V9m-6 8h12"/></svg>
+                举报
+              </button>
             </div>
           </div>
         </div>
@@ -164,9 +173,22 @@
                 class="w-10 h-10 rounded-full"
               />
               <div class="flex-1">
-                <div class="flex items-center space-x-2 mb-2">
-                  <span class="font-medium text-gray-900">{{ reply.author?.nickname || reply.author?.username }}</span>
-                  <span class="text-sm text-gray-500">{{ formatDate(reply.created_at) }}</span>
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center space-x-2">
+                    <span class="font-medium text-gray-900">{{ reply.author?.nickname || reply.author?.username }}</span>
+                    <span class="text-sm text-gray-500">{{ formatDate(reply.created_at) }}</span>
+                  </div>
+                  <!-- 删除按钮 -->
+                  <button
+                    v-if="canDeleteReply(reply)"
+                    @click="handleDeleteReply(reply.id)"
+                    class="flex items-center space-x-1 text-xs text-red-500 hover:text-red-700 transition-all duration-200 px-2 py-1 rounded-lg hover:bg-red-50"
+                  >
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>删除</span>
+                  </button>
                 </div>
                 <p class="text-gray-800 whitespace-pre-wrap">{{ reply.content }}</p>
               </div>
@@ -193,6 +215,38 @@
         </button>
       </div>
     </div>
+    <!-- 举报模态框 -->
+    <div v-if="showReport" class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md shadow">
+        <h3 class="text-lg font-semibold mb-4">举报帖子</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-sm mb-1">举报理由</label>
+            <select v-model="reportForm.reason" class="w-full border rounded px-3 py-2">
+              <option value="">请选择</option>
+              <option>垃圾广告</option>
+              <option>不实信息</option>
+              <option>辱骂/人身攻击</option>
+              <option>涉黄/违法</option>
+              <option>版权问题</option>
+              <option>其他</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm mb-1">补充说明</label>
+            <textarea v-model="reportForm.description" rows="3" class="w-full border rounded px-3 py-2" placeholder="请描述问题..." />
+          </div>
+          <div>
+            <label class="block text-sm mb-1">证据链接（可选）</label>
+            <input v-model="reportForm.evidence" class="w-full border rounded px-3 py-2" placeholder="https://" />
+          </div>
+        </div>
+        <div class="mt-4 flex justify-end gap-2">
+          <button @click="showReport = false" class="px-4 py-2 border rounded">取消</button>
+          <button @click="submitReport" class="px-4 py-2 bg-red-600 text-white rounded">提交举报</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -205,6 +259,7 @@ import { useAuthStore } from '@/stores/auth'
 import BaseHeader from '@/components/BaseHeader.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
 import type { ForumPost, ForumReply } from '@/api/types'
+import ReportApi from '@/api/report'
 
 const route = useRoute()
 const router = useRouter()
@@ -219,6 +274,8 @@ const isLiking = ref(false)
 const showReplyForm = ref(false)
 const replyContent = ref('')
 const isSubmitting = ref(false)
+const showReport = ref(false)
+const reportForm = ref({ reason: '', description: '', evidence: '' })
 
 // 话题标签映射
 const topicLabels: Record<string, string> = {
@@ -374,8 +431,67 @@ const loadReplies = async () => {
   }
 }
 
+// 检查是否可以删除回复
+const canDeleteReply = (reply: ForumReply) => {
+  if (!authStore.isAuthenticated) return false
+  // 回复作者本人或管理员可以删除
+  return authStore.user?.id === reply.author?.id || authStore.isAdmin
+}
+
+// 删除回复
+const handleDeleteReply = async (replyId: number) => {
+  if (!confirm('确定要删除这条回复吗？')) {
+    return
+  }
+
+  try {
+    await ForumApi.deleteReply(replyId)
+
+    // 从列表中移除已删除的回复
+    replies.value = replies.value.filter(reply => reply.id !== replyId)
+
+    // 更新帖子的回复数量
+    if (post.value) {
+      post.value.reply_count = Math.max(0, (post.value.reply_count || 1) - 1)
+    }
+
+    showToast('删除回复成功', 'success')
+  } catch (error: any) {
+    console.error('删除回复失败:', error)
+    showToast('删除回复失败', 'error')
+  }
+}
+
 const goBack = () => {
   router.push('/community')
+}
+
+const openReportModal = () => {
+  if (!authStore.isAuthenticated) {
+    showToast('请先登录', 'warning')
+    router.push('/login')
+    return
+  }
+  showReport.value = true
+}
+
+const submitReport = async () => {
+  if (!post.value) return
+  try {
+    const payload = {
+      target_type: 'forum_post' as const,
+      target_id: post.value.id,
+      reason: reportForm.value.reason || '其他',
+      description: reportForm.value.description,
+      evidence: reportForm.value.evidence
+    }
+    await ReportApi.createReport(payload)
+    showToast('举报已提交，我们会尽快核实', 'success')
+    showReport.value = false
+    reportForm.value = { reason: '', description: '', evidence: '' }
+  } catch (e: any) {
+    showToast(e.message || '提交失败，请重试', 'error')
+  }
 }
 
 onMounted(async () => {

@@ -379,6 +379,34 @@ func (c *UserController) GetUserList(ctx *gin.Context) {
 	utils.SuccessPage(ctx, userResponses, total, page, size)
 }
 
+// SearchPublicUsers 公共用户搜索（仅返回安全字段）
+// GET /api/user/search?keyword=&page=&size=
+func (c *UserController) SearchPublicUsers(ctx *gin.Context) {
+    page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+    size, _ := strconv.Atoi(ctx.DefaultQuery("size", "10"))
+    keyword := ctx.Query("keyword")
+
+    if page < 1 { page = 1 }
+    if size < 1 || size > 100 { size = 10 }
+
+    users, total, err := c.userService.GetUserList(page, size, keyword)
+    if err != nil {
+        utils.Error(ctx, utils.CodeInternalError, err.Error())
+        return
+    }
+    // 仅返回公开字段
+    var briefs []gin.H
+    for _, u := range users {
+        briefs = append(briefs, gin.H{
+            "id": u.ID,
+            "username": u.Username,
+            "nickname": u.Nickname,
+            "avatar": u.Avatar,
+        })
+    }
+    utils.SuccessPage(ctx, briefs, total, page, size)
+}
+
 // Logout 用户登出
 // @Summary 用户登出
 // @Description 用户登出接口（客户端删除token即可）

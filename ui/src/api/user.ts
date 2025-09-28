@@ -84,4 +84,9 @@ export class UserApi {
     const page = normalizePageResponse<any>(resp)
     return { code: 200, message: 'success', data: page }
   }
+
+  // 公共用户搜索（仅返回安全字段）
+  static async searchUsers(params: { keyword: string; page?: number; size?: number }) {
+    return http.get<any>(`/user/search`, params)
+  }
 }

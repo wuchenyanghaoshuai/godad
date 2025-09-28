@@ -13,14 +13,35 @@ import (
 
 // ForumController 论坛控制器
 type ForumController struct {
-	forumService *services.ForumService
+    forumService *services.ForumService
 }
 
 // NewForumController 创建论坛控制器实例
 func NewForumController() *ForumController {
-	return &ForumController{
-		forumService: services.NewForumService(),
-	}
+    return &ForumController{
+        forumService: services.NewForumService(),
+    }
+}
+
+// AdminGetStats 管理员获取论坛统计
+// @Summary 管理员获取论坛统计
+// @Description 返回帖子、回复、活跃用户等统计数据
+// @Tags 论坛管理/管理员
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer token"
+// @Success 200 {object} utils.Response{data=models.ForumStats}
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Failure 500 {object} utils.Response
+// @Router /api/admin/forum/stats [get]
+func (c *ForumController) AdminGetStats(ctx *gin.Context) {
+    stats, err := c.forumService.GetForumStats()
+    if err != nil {
+        utils.Error(ctx, utils.CodeInternalServerError, "获取论坛统计失败: "+err.Error())
+        return
+    }
+    utils.SuccessWithMessage(ctx, "获取论坛统计成功", stats)
 }
 
 // CreatePost 创建帖子
@@ -126,6 +147,63 @@ func (c *ForumController) GetPostList(ctx *gin.Context) {
 	utils.SuccessWithMessage(ctx, "获取帖子列表成功", response)
 }
 
+// AdminGetPostList 管理员获取帖子列表（包含所有状态，可选包含软删除）
+// @Summary 管理员获取帖子列表
+// @Description 管理员查看社区帖子，支持按状态筛选与包含软删除
+// @Tags 论坛管理/管理员
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer token"
+// @Param page query int false "页码" default(1)
+// @Param size query int false "每页数量" default(10)
+// @Param topic query string false "话题分类"
+// @Param author_id query int false "作者ID"
+// @Param keyword query string false "搜索关键词"
+// @Param sort query string false "排序方式" default("created_at desc")
+// @Param status query int false "状态 0-草稿 1-已发布 2-已删除"
+// @Param include_deleted query bool false "是否包含软删除"
+// @Success 200 {object} utils.Response{data=utils.PagedResponse{items=[]models.ForumPostResponse}}
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Failure 500 {object} utils.Response
+// @Router /api/admin/forum/posts [get]
+func (c *ForumController) AdminGetPostList(ctx *gin.Context) {
+    // 绑定查询参数
+    var req models.AdminForumPostListRequest
+    if err := ctx.ShouldBindQuery(&req); err != nil {
+        utils.Error(ctx, utils.CodeBadRequest, "参数格式错误: "+err.Error())
+        return
+    }
+
+    // 默认值
+    if req.Page <= 0 { req.Page = 1 }
+    if req.Size <= 0 { req.Size = 10 }
+    if req.Sort == "" { req.Sort = "created_at desc" }
+
+    // 查询
+    posts, total, err := c.forumService.GetAdminPostList(&req)
+    if err != nil {
+        utils.Error(ctx, utils.CodeInternalServerError, "获取帖子列表失败: "+err.Error())
+        return
+    }
+
+    // 转换响应
+    var postResponses []models.ForumPostResponse
+    for _, post := range posts {
+        postResponses = append(postResponses, *post.ToResponse(false))
+    }
+
+    response := utils.PagedResponse{
+        Items: postResponses,
+        Total: total,
+        Page:  req.Page,
+        Size:  req.Size,
+        Pages: (total + int64(req.Size) - 1) / int64(req.Size),
+    }
+    utils.SuccessWithMessage(ctx, "获取帖子列表成功", response)
+}
+
 // GetPost 获取帖子详情
 // @Summary 获取帖子详情
 // @Description 根据ID获取论坛帖子详情
@@ -202,18 +280,24 @@ func (c *ForumController) UpdatePost(ctx *gin.Context) {
 		return
 	}
 
-	// 调用服务层更新帖子
-	post, err := c.forumService.UpdatePost(uint(id), &req, userID)
+    // 判断是否管理员
+    role, _ := ctx.Get("role")
+    isAdmin := role == "admin"
+
+    // 调用服务层更新帖子
+    post, err := c.forumService.UpdatePost(uint(id), &req, userID, isAdmin)
 	if err != nil {
 		if err.Error() == "帖子不存在" {
 			utils.Error(ctx, utils.CodeNotFound, "帖子不存在")
 		} else if err.Error() == "无权限修改此帖子" {
-			utils.Error(ctx, utils.CodeForbidden, "无权限修改此帖子")
-		} else {
-			utils.Error(ctx, utils.CodeInternalServerError, "更新帖子失败: "+err.Error())
-		}
-		return
-	}
+            utils.Error(ctx, utils.CodeForbidden, "无权限修改此帖子")
+        } else if err.Error() == "帖子已锁定，无法编辑" {
+            utils.Error(ctx, utils.CodeForbidden, "帖子已锁定，仅管理员可编辑")
+        } else {
+            utils.Error(ctx, utils.CodeInternalServerError, "更新帖子失败: "+err.Error())
+        }
+        return
+    }
 
 	utils.SuccessWithMessage(ctx, "更新帖子成功", post.ToResponse(true))
 }
@@ -488,9 +572,50 @@ func (c *ForumController) UpdateReply(ctx *gin.Context) {
 }
 
 // DeleteReply 删除回复
+// @Summary 删除回复
+// @Description 删除论坛回复
+// @Tags 论坛管理
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer token"
+// @Param id path int true "回复ID"
+// @Success 200 {object} utils.Response
+// @Failure 400 {object} utils.Response
+// @Failure 401 {object} utils.Response
+// @Failure 403 {object} utils.Response
+// @Failure 404 {object} utils.Response
+// @Failure 500 {object} utils.Response
+// @Router /api/forum/replies/{id} [delete]
 func (c *ForumController) DeleteReply(ctx *gin.Context) {
-	// TODO: 实现删除回复逻辑
-	utils.SuccessWithMessage(ctx, "功能开发中", nil)
+	// 获取当前用户ID
+	userID, exists := middleware.GetCurrentUserID(ctx)
+	if !exists {
+		utils.Error(ctx, utils.CodeUnauthorized, "用户未登录")
+		return
+	}
+
+	// 获取回复ID
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		utils.Error(ctx, utils.CodeBadRequest, "无效的回复ID")
+		return
+	}
+
+	// 调用服务层删除回复
+	err = c.forumService.DeleteReply(uint(id), userID)
+	if err != nil {
+		if err.Error() == "回复不存在" {
+			utils.Error(ctx, utils.CodeNotFound, "回复不存在")
+		} else if err.Error() == "无权限删除此回复" {
+			utils.Error(ctx, utils.CodeForbidden, "无权限删除此回复")
+		} else {
+			utils.Error(ctx, utils.CodeInternalServerError, "删除回复失败: "+err.Error())
+		}
+		return
+	}
+
+	utils.SuccessWithMessage(ctx, "删除回复成功", nil)
 }
 
 // LikePost 点赞帖子
@@ -519,14 +644,84 @@ func (c *ForumController) GetMyReplies(ctx *gin.Context) {
 
 // TogglePostTop 置顶/取消置顶帖子
 func (c *ForumController) TogglePostTop(ctx *gin.Context) {
-	// TODO: 实现置顶帖子逻辑
-	utils.SuccessWithMessage(ctx, "功能开发中", nil)
+    // 获取帖子ID
+    idStr := ctx.Param("id")
+    id, err := strconv.ParseUint(idStr, 10, 32)
+    if err != nil {
+        utils.Error(ctx, utils.CodeBadRequest, "无效的帖子ID")
+        return
+    }
+    var req struct{ Top bool `json:"top"` }
+    if err := ctx.ShouldBindJSON(&req); err != nil {
+        utils.Error(ctx, utils.CodeBadRequest, "参数错误")
+        return
+    }
+    if err := c.forumService.AdminSetPostTop(uint(id), req.Top); err != nil {
+        utils.Error(ctx, utils.CodeInternalServerError, "更新置顶状态失败: "+err.Error())
+        return
+    }
+    utils.SuccessWithMessage(ctx, "更新成功", nil)
 }
 
 // TogglePostHot 标记/取消标记热门帖子
 func (c *ForumController) TogglePostHot(ctx *gin.Context) {
-	// TODO: 实现标记热门帖子逻辑
-	utils.SuccessWithMessage(ctx, "功能开发中", nil)
+    idStr := ctx.Param("id")
+    id, err := strconv.ParseUint(idStr, 10, 32)
+    if err != nil {
+        utils.Error(ctx, utils.CodeBadRequest, "无效的帖子ID")
+        return
+    }
+    var req struct{ Hot bool `json:"hot"` }
+    if err := ctx.ShouldBindJSON(&req); err != nil {
+        utils.Error(ctx, utils.CodeBadRequest, "参数错误")
+        return
+    }
+    if err := c.forumService.AdminSetPostHot(uint(id), req.Hot); err != nil {
+        utils.Error(ctx, utils.CodeInternalServerError, "更新热门状态失败: "+err.Error())
+        return
+    }
+    utils.SuccessWithMessage(ctx, "更新成功", nil)
+}
+
+// TogglePostLock 锁定/解锁帖子（仅管理员）
+// @Router /api/admin/forum/posts/{id}/lock [put]
+func (c *ForumController) TogglePostLock(ctx *gin.Context) {
+    idStr := ctx.Param("id")
+    id, err := strconv.ParseUint(idStr, 10, 32)
+    if err != nil {
+        utils.Error(ctx, utils.CodeBadRequest, "无效的帖子ID")
+        return
+    }
+    var req struct{ Locked bool `json:"locked"` }
+    if err := ctx.ShouldBindJSON(&req); err != nil {
+        utils.Error(ctx, utils.CodeBadRequest, "参数错误")
+        return
+    }
+    if err := c.forumService.AdminSetPostLock(uint(id), req.Locked); err != nil {
+        utils.Error(ctx, utils.CodeInternalServerError, "更新锁定状态失败: "+err.Error())
+        return
+    }
+    utils.SuccessWithMessage(ctx, "更新成功", nil)
+}
+
+// AdminDeletePost 管理员删除帖子
+// @Router /api/admin/forum/posts/{id} [delete]
+func (c *ForumController) AdminDeletePost(ctx *gin.Context) {
+    idStr := ctx.Param("id")
+    id, err := strconv.ParseUint(idStr, 10, 32)
+    if err != nil {
+        utils.Error(ctx, utils.CodeBadRequest, "无效的帖子ID")
+        return
+    }
+    if err := c.forumService.AdminDeletePost(uint(id)); err != nil {
+        if err.Error() == "帖子不存在" {
+            utils.Error(ctx, utils.CodeNotFound, "帖子不存在")
+        } else {
+            utils.Error(ctx, utils.CodeInternalServerError, "删除帖子失败: "+err.Error())
+        }
+        return
+    }
+    utils.SuccessWithMessage(ctx, "删除成功", nil)
 }
 
 // BatchDeletePosts 批量删除帖子

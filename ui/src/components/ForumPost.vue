@@ -15,6 +15,11 @@
 
       <!-- 帖子内容 -->
       <div class="flex-1 min-w-0">
+        <!-- 置顶/精华徽标 -->
+        <div class="flex items-center gap-2 mb-1">
+          <span v-if="post.is_top" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">置顶</span>
+          <span v-if="post.is_hot" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-700">精华</span>
+        </div>
         <!-- 帖子标题 -->
         <h3 class="text-lg font-semibold text-gray-900 hover:text-pink-600 transition-colors mb-2 line-clamp-2">
           {{ post.title }}
@@ -69,6 +74,8 @@ interface Post {
   views: number
   timeAgo: string
   topic: string
+  is_top?: boolean
+  is_hot?: boolean
 }
 
 defineProps<{

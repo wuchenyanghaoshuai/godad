@@ -8,34 +8,48 @@
       </div>
     </PageContainer>
 
-    <!-- 搜索和筛选 -->
+    <!-- 轻量筛选工具条（分类 + 排序 + 统计），与头部搜索统一 -->
     <PageContainer background="gray" padding="sm">
-      <div class="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100 sticky top-[var(--header-h)] z-20">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <!-- 搜索框（组件化） -->
-          <div class="sm:col-span-2 lg:col-span-2">
-            <ArticleSearchBar
-              v-model="searchQuery"
-              placeholder="输入关键词搜索文章..."
-              @submit="searchNow"
-              @clear="clearKeyword"
-            />
-          </div>
-          
-          <!-- 分类筛选（自定义下拉，限制高度，内部滚动） -->
+      <div class="flex items-center justify-between gap-3">
+        <!-- 左侧：已选条件（精简版） -->
+        <div class="flex items-center flex-wrap gap-2 text-sm text-gray-700">
+          <span v-if="searchQuery" class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+            关键词：{{ searchQuery }}
+            <button class="ml-1 hover:text-blue-900" @click="clearKeyword" title="清除关键词">×</button>
+          </span>
+          <template v-for="(tag, idx) in tagsList" :key="'sel-lite-' + tag + idx">
+            <span class="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+              #{{ tag }}
+              <button class="ml-1 hover:text-purple-900" @click="removeTag(idx)" title="移除标签">×</button>
+            </span>
+          </template>
+          <span v-if="selectedCategory" class="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-full">
+            分类：{{ getCategoryName(Number(selectedCategory)) }}
+            <button class="ml-1 hover:text-amber-900" @click="clearCategory" title="清除分类">×</button>
+          </span>
+          <span v-if="sortBy && sortBy !== 'created_at'" class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
+            排序：{{ sortLabel }}
+            <button class="ml-1 hover:text-gray-900" @click="resetSort" title="重置排序">×</button>
+          </span>
+          <button v-if="hasAnyFilter" @click="resetFilters" class="text-pink-600 hover:text-pink-700">清空筛选</button>
+        </div>
+
+        <!-- 右侧：分类 + 排序 + 统计 -->
+        <div class="flex items-center gap-3">
+          <!-- 分类下拉（精简款） -->
           <div class="relative" ref="categoryDropdownRef">
             <button
-              class="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg bg-white text-left text-sm sm:text-base flex items-center justify-between hover:bg-gray-50"
+              class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm flex items-center gap-2 hover:bg-gray-50"
               @click="openCategoryDropdown = !openCategoryDropdown"
               aria-haspopup="listbox"
               :aria-expanded="openCategoryDropdown ? 'true' : 'false'"
             >
-              <span class="truncate">{{ selectedCategoryName || '全部分类' }}</span>
-              <ChevronDownIcon class="h-5 w-5 text-gray-400" />
+              <span class="truncate max-w-[8rem]">{{ selectedCategoryName || '全部分类' }}</span>
+              <ChevronDownIcon class="h-4 w-4 text-gray-400" />
             </button>
             <div
               v-if="openCategoryDropdown"
-              class="absolute z-20 mt-2 w-full sm:w-72 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden"
+              class="absolute right-0 z-20 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden"
             >
               <div class="flex items-center gap-2 px-3 pt-3 pb-2 border-b border-gray-100">
                 <input
@@ -44,7 +58,7 @@
                   class="w-full bg-white text-sm outline-none placeholder:text-gray-400"
                 />
               </div>
-              <ul class="max-h-80 overflow-y-auto py-1" role="listbox">
+              <ul class="max-h-72 overflow-y-auto py-1" role="listbox">
                 <li>
                   <button
                     class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
@@ -62,50 +76,21 @@
               </ul>
             </div>
           </div>
-          
           <!-- 排序 -->
           <div class="relative">
             <select
               v-model="sortBy"
               @change="handleSortChange"
-              class="w-full px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 text-sm sm:text-base bg-white appearance-none cursor-pointer"
+              class="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white cursor-pointer"
             >
               <option value="created_at">最新发布</option>
               <option value="updated_at">最近更新</option>
               <option value="likes">点赞数</option>
             </select>
-            <ChevronDownIcon class="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
           </div>
-        </div>
-
-        <!-- 横向 Chips 已移除，改为自定义下拉 -->
-
-        <!-- 已选条件 + 结果统计 -->
-        <div class="mt-3 flex items-center justify-between flex-wrap gap-2">
-          <div class="flex items-center flex-wrap gap-2 text-sm">
-            <span v-if="searchQuery" class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-              关键词：{{ searchQuery }}
-              <button class="ml-1 hover:text-blue-900" @click="clearKeyword" title="清除关键词">×</button>
-            </span>
-            <template v-for="(tag, idx) in tagsList" :key="'sel-' + tag + idx">
-              <span class="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
-                #{{ tag }}
-                <button class="ml-1 hover:text-purple-900" @click="removeTag(idx)" title="移除标签">×</button>
-              </span>
-            </template>
-            <span v-if="selectedCategory" class="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-full">
-              分类：{{ getCategoryName(Number(selectedCategory)) }}
-              <button class="ml-1 hover:text-amber-900" @click="clearCategory" title="清除分类">×</button>
-            </span>
-            <span v-if="sortBy && sortBy !== 'created_at'" class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
-              排序：{{ sortLabel }}
-              <button class="ml-1 hover:text-gray-900" @click="resetSort" title="重置排序">×</button>
-            </span>
-          </div>
-          <div class="flex items-center gap-3 text-sm text-gray-500">
+          <div class="hidden sm:block text-sm text-gray-500">
             <span v-if="totalCount >= 0">共 {{ totalCount }} 篇</span>
-            <span v-if="searchTimeMs > 0">用时 {{ searchTimeMs }}ms</span>
-            <button v-if="hasAnyFilter" @click="resetFilters" class="text-pink-600 hover:text-pink-700">清空筛选</button>
+            <span v-if="searchTimeMs > 0"> · 用时 {{ searchTimeMs }}ms</span>
           </div>
         </div>
       </div>

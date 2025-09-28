@@ -149,10 +149,23 @@ const filteredPosts = computed(() => {
   if (!forumPosts.value || !Array.isArray(forumPosts.value)) {
     return []
   }
-  return forumPosts.value.filter(post => {
+  const filtered = forumPosts.value.filter(post => {
     const matchesTopic = selectedTopic.value === 'All' || post.topic === selectedTopic.value
     const matchesSearch = post.title.toLowerCase().includes(searchQuery.value.toLowerCase())
     return matchesTopic && matchesSearch
+  })
+
+  // 前端兜底排序：置顶优先、精华其次、再按创建时间倒序
+  return filtered.slice().sort((a: any, b: any) => {
+    const topA = a.is_top ? 1 : 0
+    const topB = b.is_top ? 1 : 0
+    if (topA !== topB) return topB - topA
+    const hotA = a.is_hot ? 1 : 0
+    const hotB = b.is_hot ? 1 : 0
+    if (hotA !== hotB) return hotB - hotA
+    const ta = new Date(a.created_at || a.createdAt || 0).getTime()
+    const tb = new Date(b.created_at || b.createdAt || 0).getTime()
+    return tb - ta
   })
 })
 

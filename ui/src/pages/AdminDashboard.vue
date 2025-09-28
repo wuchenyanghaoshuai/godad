@@ -4,8 +4,31 @@
     <nav class="bg-white shadow-sm border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
-          <div class="flex items-center">
+          <div class="flex items-center space-x-6">
             <h1 class="text-xl font-semibold text-gray-900">管理员后台</h1>
+            <nav class="flex space-x-4">
+              <router-link
+                to="/management-dashboard"
+                class="px-3 py-2 text-sm font-medium rounded-md"
+                :class="$route.path.startsWith('/management-dashboard') ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'"
+              >
+                后台管理
+              </router-link>
+              <router-link
+                to="/community-management"
+                class="px-3 py-2 text-sm font-medium rounded-md"
+                :class="$route.path.startsWith('/community-management') ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'"
+              >
+                社区管理
+              </router-link>
+              <router-link
+                to="/report-center"
+                class="px-3 py-2 text-sm font-medium rounded-md"
+                :class="$route.path.startsWith('/report-center') ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'"
+              >
+                举报中心
+              </router-link>
+            </nav>
           </div>
           <div class="flex items-center space-x-4">
             <span class="text-sm text-gray-600">欢迎，{{ authStore.user?.nickname }}</span>
@@ -103,7 +126,7 @@
               :key="tab.id"
               @click="activeTab = tab.id"
               :class="[
-                'whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm',
+                'whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm flex items-center',
                 activeTab === tab.id
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -894,6 +917,198 @@
               </div>
             </div>
           </div>
+
+          <!-- 社区帖子管理（已迁移到社区管理页面） -->
+          <div v-if="false">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-semibold text-gray-900">社区帖子管理</h2>
+              <div class="flex space-x-2">
+                <input
+                  v-model="postFilter.keyword"
+                  @input="searchForumPosts"
+                  type="text"
+                  placeholder="搜索帖子标题或内容..."
+                  class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                <select
+                  v-model="postFilter.topic"
+                  @change="loadForumPosts"
+                  class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">全部话题</option>
+                  <option value="Baby Care">婴儿护理</option>
+                  <option value="Feeding">喂养</option>
+                  <option value="Sleep">睡眠</option>
+                  <option value="Health">健康</option>
+                  <option value="Development">发育</option>
+                  <option value="Other">其他</option>
+                </select>
+                <select
+                  v-model="postFilter.status"
+                  @change="loadForumPosts"
+                  class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">全部状态</option>
+                  <option value="normal">普通</option>
+                  <option value="pinned">置顶</option>
+                  <option value="featured">精华</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 帖子列表 -->
+            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">帖子标题</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">作者</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">话题</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">回复数</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">浏览数</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">创建时间</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr v-for="post in forumPosts" :key="post.id" class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="flex items-center">
+                        <span v-if="post.is_top" class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded mr-2">置顶</span>
+                        <span v-if="post.is_hot" class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded mr-2">精华</span>
+                        <div class="text-sm font-medium text-gray-900">{{ post.title }}</div>
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ post.author?.nickname || post.author?.username || '匿名' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="px-2 py-1 text-xs bg-pink-100 text-pink-800 rounded">{{ getTopicLabel(post.topic) }}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ post.reply_count || 0 }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ post.view_count || 0 }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ formatDateTime(post.created_at) }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button class="text-blue-600 hover:text-blue-900 mr-2" @click="viewForumPost(post.id)">查看</button>
+                      <button
+                        class="text-yellow-600 hover:text-yellow-900 mr-2"
+                        @click="toggleForumTop(post)"
+                      >{{ post.is_top ? '取消置顶' : '置顶' }}</button>
+                      <button
+                        class="text-amber-600 hover:text-amber-900 mr-2"
+                        @click="toggleForumHot(post)"
+                      >{{ post.is_hot ? '取消精华' : '精华' }}</button>
+                      <button
+                        class="text-gray-600 hover:text-gray-900 mr-2"
+                        @click="toggleForumLock(post)"
+                      >{{ post.is_locked ? '解锁' : '锁定' }}</button>
+                      <button class="text-red-600 hover:text-red-900" @click="deleteForumPost(post)">删除</button>
+                    </td>
+                  </tr>
+                  <tr v-if="!forumPosts.length">
+                    <td colspan="7" class="px-6 py-8 text-center text-gray-500">暂无帖子</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="flex justify-between items-center mt-4">
+              <span class="text-sm text-gray-700">
+                显示 {{ forumPostPagination.offset + 1 }} 到 {{ Math.min(forumPostPagination.offset + forumPostPagination.limit, forumPostPagination.total) }} 条，共 {{ forumPostPagination.total }} 条
+              </span>
+              <div class="flex space-x-2">
+                <button
+                  @click="prevPage('forum')"
+                  :disabled="forumPostPagination.page === 1"
+                  class="px-3 py-1 border rounded-md text-sm disabled:opacity-50"
+                >
+                  上一页
+                </button>
+                <button
+                  @click="nextPage('forum')"
+                  :disabled="forumPostPagination.page >= Math.ceil(forumPostPagination.total / forumPostPagination.limit)"
+                  class="px-3 py-1 border rounded-md text-sm disabled:opacity-50"
+                >
+                  下一页
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 回复管理（已迁移到社区管理页面） -->
+          <div v-if="false">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-semibold text-gray-900">回复管理</h2>
+              <div class="flex space-x-2">
+                <input
+                  v-model="replyFilter.keyword"
+                  type="text"
+                  placeholder="搜索回复内容..."
+                  class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                <select
+                  v-model="replyFilter.postId"
+                  class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">全部帖子</option>
+                  <option value="1">如何更好地照顾新生儿？</option>
+                  <option value="2">Vue.js 3.0 新特性讨论</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 回复列表 -->
+            <div class="overflow-x-auto border border-gray-200 rounded-lg">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">回复内容</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">所属帖子</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">回复者</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">创建时间</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                      <div class="text-sm text-gray-900 max-w-xs truncate">
+                        我觉得新生儿的睡眠很重要，需要保证充足的睡眠时间...
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
+                        如何更好地照顾新生儿？
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">经验妈妈</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2024-01-15 10:30</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button class="text-blue-600 hover:text-blue-900 mr-2">查看</button>
+                      <button class="text-red-600 hover:text-red-900">删除</button>
+                    </td>
+                  </tr>
+                  <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                      <div class="text-sm text-gray-900 max-w-xs truncate">
+                        Vue 3的Composition API确实比Options API更灵活...
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <div class="text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
+                        Vue.js 3.0 新特性讨论
+                      </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Vue爱好者</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2024-01-14 15:20</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button class="text-blue-600 hover:text-blue-900 mr-2">查看</button>
+                      <button class="text-red-600 hover:text-red-900">删除</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1334,6 +1549,7 @@ const resourcePagination = reactive({
   offset: 0
 })
 
+
 // 系统通知历史
 const systemHistory = ref<any[]>([])
 const historyLoading = ref(false)
@@ -1357,6 +1573,7 @@ const loadSystemHistory = async (page = 1) => {
     historyLoading.value = false
   }
 }
+
 
 // 加载统计数据
 const loadStats = async () => {
@@ -1902,6 +2119,9 @@ const nextPage = (type) => {
     }
   }
 }
+
+// 当切换到社区帖子Tab时加载数据
+// 社区管理已迁移，不再监听 forum-posts
 
 // 工具函数
 const getArticleStatusText = (status) => {
