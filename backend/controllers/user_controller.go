@@ -1,14 +1,15 @@
 package controllers
 
 import (
-    "strconv"
+	"strconv"
 
-    "godad-backend/middleware"
-    "godad-backend/models"
-    "godad-backend/services"
-    "godad-backend/utils"
+	"godad-backend/container"
+	"godad-backend/middleware"
+	"godad-backend/models"
+	"godad-backend/services"
+	"godad-backend/utils"
 
-    "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
 )
 
 // UserController 用户控制器
@@ -17,11 +18,20 @@ type UserController struct {
 	articleService *services.ArticleService
 }
 
-// NewUserController 创建用户控制器实例
+// NewUserController 创建用户控制器实例（兼容旧版本）
 func NewUserController() *UserController {
 	return &UserController{
 		userService:    services.NewUserService(),
 		articleService: services.NewArticleService(),
+	}
+}
+
+// NewUserControllerWithDI 使用依赖注入创建用户控制器实例
+func NewUserControllerWithDI() *UserController {
+	c := container.GetGlobalContainer()
+	return &UserController{
+		userService:    c.GetUserService(),
+		articleService: c.GetArticleService(),
 	}
 }
 
@@ -36,16 +46,17 @@ func NewUserController() *UserController {
 // @Failure 400 {object} utils.Response "请求参数错误"
 // @Router /api/user/register [post]
 func (c *UserController) Register(ctx *gin.Context) {
+	eh := utils.NewErrorHandler()
+
 	var req models.UserRegisterRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.Error(ctx, utils.CodeBadRequest, "请求参数错误: "+err.Error())
+	if !eh.HandleJSONBind(ctx, &req) {
 		return
 	}
 
 	// 调用服务层注册用户
 	user, err := c.userService.Register(&req)
 	if err != nil {
-		utils.Error(ctx, utils.CodeBadRequest, err.Error())
+		eh.HandleServiceError(ctx, err)
 		return
 	}
 
@@ -65,40 +76,43 @@ func (c *UserController) Register(ctx *gin.Context) {
 // @Failure 401 {object} utils.Response "认证失败"
 // @Router /api/user/login [post]
 func (c *UserController) Login(ctx *gin.Context) {
+	eh := utils.NewErrorHandler()
+
 	var req models.UserLoginRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.Error(ctx, utils.CodeBadRequest, "请求参数错误: "+err.Error())
+	if !eh.HandleJSONBind(ctx, &req) {
 		return
 	}
 
 	// 调用服务层登录
 	user, err := c.userService.Login(&req)
 	if err != nil {
-		utils.Error(ctx, utils.CodeUnauthorized, err.Error())
+		eh.HandleServiceError(ctx, err)
 		return
 	}
 
-    // 生成JWT令牌（access + refresh）
-    token, err := middleware.GenerateToken(user)
-    if err != nil {
-        utils.Error(ctx, utils.CodeInternalError, "生成令牌失败")
-        return
-    }
-    refresh, err := middleware.GenerateRefreshToken(user)
-    if err != nil {
-        utils.Error(ctx, utils.CodeInternalError, "生成刷新令牌失败")
-        return
-    }
-    // 设置 httpOnly Cookie（开发环境 secure=false）
-    // 并返回用户信息（为兼容前端旧逻辑，保留 token 字段）
-    // 使用中间件的导出函数设置 Cookie
-    middleware.SetAuthCookies(ctx, token, refresh)
+	// 生成JWT令牌（access + refresh）
+	token, err := middleware.GenerateToken(user)
+	if err != nil {
+		utils.Error(ctx, utils.CodeInternalError, "生成令牌失败")
+		return
+	}
+	refresh, err := middleware.GenerateRefreshToken(user)
+	if err != nil {
+		utils.Error(ctx, utils.CodeInternalError, "生成刷新令牌失败")
+		return
+	}
+	csrfToken, err := middleware.SetAuthCookies(ctx, token, refresh)
+	if err != nil {
+		utils.Error(ctx, utils.CodeInternalError, "设置认证 Cookie 失败")
+		return
+	}
 
 	// 返回用户信息和令牌
-    utils.SuccessWithMessage(ctx, "登录成功", gin.H{
-        "user":  user.ToResponse(),
-        "token": token,
-    })
+	utils.SuccessWithMessage(ctx, "登录成功", gin.H{
+		"user":       user.ToResponse(),
+		"token":      token,
+		"csrf_token": csrfToken,
+	})
 }
 
 // GetProfile 获取当前用户信息
@@ -142,23 +156,23 @@ func (c *UserController) GetProfile(ctx *gin.Context) {
 // @Failure 401 {object} utils.Response "未授权"
 // @Router /api/user/profile [put]
 func (c *UserController) UpdateProfile(ctx *gin.Context) {
+	eh := utils.NewErrorHandler()
+
 	// 从中间件获取当前用户ID
-	userID, exists := middleware.GetCurrentUserID(ctx)
-	if !exists {
-		utils.Error(ctx, utils.CodeUnauthorized, "未授权")
+	userID, ok := eh.RequireAuth(ctx)
+	if !ok {
 		return
 	}
 
 	var req models.UserUpdateRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.Error(ctx, utils.CodeBadRequest, "请求参数错误: "+err.Error())
+	if !eh.HandleJSONBind(ctx, &req) {
 		return
 	}
 
 	// 更新用户信息
 	user, err := c.userService.UpdateUser(userID, &req)
 	if err != nil {
-		utils.Error(ctx, utils.CodeBadRequest, err.Error())
+		eh.HandleServiceError(ctx, err)
 		return
 	}
 
@@ -178,10 +192,11 @@ func (c *UserController) UpdateProfile(ctx *gin.Context) {
 // @Failure 401 {object} utils.Response "未授权"
 // @Router /api/user/change-password [post]
 func (c *UserController) ChangePassword(ctx *gin.Context) {
+	eh := utils.NewErrorHandler()
+
 	// 从中间件获取当前用户ID
-	userID, exists := middleware.GetCurrentUserID(ctx)
-	if !exists {
-		utils.Error(ctx, utils.CodeUnauthorized, "未授权")
+	userID, ok := eh.RequireAuth(ctx)
+	if !ok {
 		return
 	}
 
@@ -190,14 +205,13 @@ func (c *UserController) ChangePassword(ctx *gin.Context) {
 		NewPassword string `json:"new_password" binding:"required"`
 	}
 
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.Error(ctx, utils.CodeBadRequest, "请求参数错误: "+err.Error())
+	if !eh.HandleJSONBind(ctx, &req) {
 		return
 	}
 
 	// 修改密码
 	if err := c.userService.ChangePassword(userID, req.OldPassword, req.NewPassword); err != nil {
-		utils.Error(ctx, utils.CodeBadRequest, err.Error())
+		eh.HandleServiceError(ctx, err)
 		return
 	}
 
@@ -265,8 +279,21 @@ func (c *UserController) RefreshToken(ctx *gin.Context) {
 		utils.Error(ctx, utils.CodeInternalError, "生成令牌失败")
 		return
 	}
+	refresh, err := middleware.GenerateRefreshToken(user)
+	if err != nil {
+		utils.Error(ctx, utils.CodeInternalError, "生成刷新令牌失败")
+		return
+	}
+	csrfToken, err := middleware.SetAuthCookies(ctx, token, refresh)
+	if err != nil {
+		utils.Error(ctx, utils.CodeInternalError, "设置认证 Cookie 失败")
+		return
+	}
 
-	utils.SuccessWithMessage(ctx, "令牌刷新成功", gin.H{"token": token})
+	utils.SuccessWithMessage(ctx, "令牌刷新成功", gin.H{
+		"token":      token,
+		"csrf_token": csrfToken,
+	})
 }
 
 // GetUserByID 根据ID获取用户信息（公开信息）
@@ -382,29 +409,33 @@ func (c *UserController) GetUserList(ctx *gin.Context) {
 // SearchPublicUsers 公共用户搜索（仅返回安全字段）
 // GET /api/user/search?keyword=&page=&size=
 func (c *UserController) SearchPublicUsers(ctx *gin.Context) {
-    page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-    size, _ := strconv.Atoi(ctx.DefaultQuery("size", "10"))
-    keyword := ctx.Query("keyword")
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	size, _ := strconv.Atoi(ctx.DefaultQuery("size", "10"))
+	keyword := ctx.Query("keyword")
 
-    if page < 1 { page = 1 }
-    if size < 1 || size > 100 { size = 10 }
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 10
+	}
 
-    users, total, err := c.userService.GetUserList(page, size, keyword)
-    if err != nil {
-        utils.Error(ctx, utils.CodeInternalError, err.Error())
-        return
-    }
-    // 仅返回公开字段
-    var briefs []gin.H
-    for _, u := range users {
-        briefs = append(briefs, gin.H{
-            "id": u.ID,
-            "username": u.Username,
-            "nickname": u.Nickname,
-            "avatar": u.Avatar,
-        })
-    }
-    utils.SuccessPage(ctx, briefs, total, page, size)
+	users, total, err := c.userService.GetUserList(page, size, keyword)
+	if err != nil {
+		utils.Error(ctx, utils.CodeInternalError, err.Error())
+		return
+	}
+	// 仅返回公开字段
+	var briefs []gin.H
+	for _, u := range users {
+		briefs = append(briefs, gin.H{
+			"id":       u.ID,
+			"username": u.Username,
+			"nickname": u.Nickname,
+			"avatar":   u.Avatar,
+		})
+	}
+	utils.SuccessPage(ctx, briefs, total, page, size)
 }
 
 // Logout 用户登出
@@ -417,9 +448,9 @@ func (c *UserController) SearchPublicUsers(ctx *gin.Context) {
 // @Success 200 {object} utils.Response "登出成功"
 // @Router /api/user/logout [post]
 func (c *UserController) Logout(ctx *gin.Context) {
-    // 使用中间件的导出函数清除 Cookie
-    middleware.ClearAuthCookies(ctx)
-    utils.SuccessWithMessage(ctx, "登出成功", nil)
+	// 使用中间件的导出函数清除 Cookie
+	middleware.ClearAuthCookies(ctx)
+	utils.SuccessWithMessage(ctx, "登出成功", nil)
 }
 
 // GenerateRandomNickname 生成随机昵称

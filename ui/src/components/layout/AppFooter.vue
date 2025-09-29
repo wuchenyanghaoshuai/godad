@@ -6,30 +6,11 @@
         <div class="sm:col-span-2 md:col-span-1">
           <div class="flex items-center mb-3 sm:mb-4">
             <!-- Logo -->
-            <svg width="48" height="48" viewBox="0 0 120 120" class="mr-2 sm:mr-3 shadow-lg">
-              <rect x="6" y="6" width="108" height="108" rx="24" fill="url(#footerGradient)"/>
-              <!-- 完整尺寸的图标内容 -->
-              <g transform="translate(30, 30)">
-                <!-- 爸爸头部 -->
-                <circle cx="20" cy="15" r="8" fill="#ffffff" opacity="0.95"/>
-                <!-- 爸爸身体 -->
-                <rect x="15" y="23" width="10" height="20" rx="5" fill="#ffffff" opacity="0.95"/>
-                <!-- 孩子头部 -->
-                <circle cx="35" cy="20" r="5" fill="#ffffff" opacity="0.9"/>
-                <!-- 孩子身体 -->
-                <rect x="32" y="25" width="6" height="13" rx="3" fill="#ffffff" opacity="0.9"/>
-                <!-- 手拉手连接 -->
-                <path d="M25 28 Q30 26 32 28" stroke="#FCD34D" stroke-width="3" stroke-linecap="round" fill="none"/>
-                <!-- 温馨小星星 -->
-                <path d="M45 35 L47 37 L45 39 L43 37 Z" fill="#FFE082" opacity="0.7"/>
-              </g>
-              <defs>
-                <linearGradient id="footerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" style="stop-color:#FF8A65;stop-opacity:1" />
-                  <stop offset="100%" style="stop-color:#FF5722;stop-opacity:1" />
-                </linearGradient>
-              </defs>
-            </svg>
+            <img
+              src="@/assets/images/logo/GoDad_logo.png"
+              alt="GoDad Logo"
+              class="w-12 h-12 sm:w-14 sm:h-14 mr-2 sm:mr-3 rounded-lg shadow-lg"
+            />
             <span class="text-lg sm:text-xl font-bold">GoDad</span>
           </div>
           <p :class="[mutedTextClass, 'mb-3 sm:mb-6 text-sm sm:text-base leading-relaxed']">

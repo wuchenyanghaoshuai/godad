@@ -1,17 +1,17 @@
 <template>
-  <nav class="bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-50 border-b border-gray-100">
+  <nav class="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between items-center h-14 sm:h-16">
         <!-- Logo 和导航链接 -->
         <div class="flex items-center space-x-4 sm:space-x-8">
           <!-- Logo -->
-          <router-link to="/" class="flex items-center space-x-2 group">
-            <div class="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-400 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-              <span class="text-white font-bold text-sm">G</span>
-            </div>
-            <span class="hidden sm:block text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-500 bg-clip-text text-transparent">
-              GoDad
-            </span>
+          <router-link to="/" class="flex items-center group">
+            <img
+              src="@/assets/images/logo/GoDad_logo.png"
+              alt="GoDad Logo"
+              class="h-14 sm:h-16 w-auto transition-all duration-300 group-hover:scale-105"
+              style="background: white; border-radius: 8px; padding: 2px;"
+            />
           </router-link>
 
           <!-- 桌面端导航链接 -->
@@ -31,36 +31,7 @@
         </div>
 
         <!-- 中间区域：搜索框 -->
-        <div v-if="showSearch" class="hidden lg:flex flex-1 max-w-lg mx-8">
-          <div class="relative w-full">
-            <SearchIcon class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              v-model="searchQuery"
-              @keyup.enter="performSearch"
-              @focus="showSearchSuggestions = true"
-              @blur="hideSearchSuggestions"
-              type="text"
-              placeholder="搜索文章、用户..."
-              class="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all duration-200"
-            />
-
-            <!-- 搜索建议下拉框 -->
-            <div
-              v-if="showSearchSuggestions && searchSuggestions.length > 0"
-              class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
-            >
-              <div
-                v-for="suggestion in searchSuggestions"
-                :key="suggestion"
-                @mousedown="searchWithSuggestion(suggestion)"
-                class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-              >
-                <SearchIcon class="inline h-3 w-3 mr-2 text-gray-400" />
-                {{ suggestion }}
-              </div>
-            </div>
-          </div>
-        </div>
+        <SearchBox :show-search="showSearch" />
 
         <!-- 右侧区域 -->
         <div class="flex items-center space-x-2 sm:space-x-4">
@@ -98,111 +69,12 @@
               </router-link>
 
               <!-- 消息通知按钮 + 下拉菜单 -->
-              <div
-                v-if="showNotifications"
-                class="relative"
-                ref="notifMenuWrapper"
-                @mouseenter="openNotifMenuHover"
-                @mouseleave="closeNotifMenuHover"
-              >
-                <button
-                  class="relative p-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all duration-200"
-                  title="消息通知"
-                  @click="toggleNotifMenu"
-                  @mouseenter="cancelNotifMenuHide"
-                >
-                  <BellIcon class="h-5 w-5" />
-                  <!-- 未读通知红点 -->
-                  <span
-                    v-if="totalUnreadCount > 0"
-                    class="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full"
-                  >
-                    {{ totalUnreadCount > 99 ? '99+' : totalUnreadCount }}
-                  </span>
-                </button>
-
-                <!-- hover 桥接层，避免按钮与菜单之间空隙导致抖动 -->
-                <div
-                  v-if="showNotifMenu"
-                  class="absolute right-0 top-full w-56 h-3"
-                  @mouseenter="cancelNotifMenuHide"
-                ></div>
-
-                <!-- 下拉列表 -->
-                <div
-                  v-if="showNotifMenu"
-                  class="absolute right-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1"
-                  role="menu"
-                  @mouseenter="cancelNotifMenuHide"
-                  @mouseleave="closeNotifMenuHover"
-                >
-                  <!-- 回复我的（评论/回复） -->
-                  <button
-                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    role="menuitem"
-                    @click="goNotifications('comment')"
-                  >
-                    <MessageCircleIcon class="h-4 w-4 mr-2 text-gray-400" />
-                    <span>回复我的</span>
-                    <span v-if="unreadByType.comment > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.comment > 99 ? '99+' : unreadByType.comment }}</span>
-                  </button>
-
-                  <!-- @我的 -->
-                  <button
-                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    role="menuitem"
-                    @click="goNotifications('mention')"
-                  >
-                    <AtSignIcon class="h-4 w-4 mr-2 text-gray-400" />
-                    <span>@我的</span>
-                    <span v-if="unreadByType.mention > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.mention > 99 ? '99+' : unreadByType.mention }}</span>
-                  </button>
-
-                  <!-- 收到的赞 -->
-                  <button
-                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    role="menuitem"
-                    @click="goNotifications('like')"
-                  >
-                    <ThumbsUpIcon class="h-4 w-4 mr-2 text-gray-400" />
-                    <span>收到的赞</span>
-                    <span v-if="unreadByType.like > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.like > 99 ? '99+' : unreadByType.like }}</span>
-                  </button>
-
-                  <!-- 系统消息 -->
-                  <button
-                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    role="menuitem"
-                    @click="goNotifications('system')"
-                  >
-                    <AlertCircleIcon class="h-4 w-4 mr-2 text-gray-400" />
-                    <span>系统消息</span>
-                    <span v-if="unreadByType.system && unreadByType.system > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.system > 99 ? '99+' : unreadByType.system }}</span>
-                  </button>
-
-                  <!-- 我的消息（私信） -->
-                  <button
-                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    role="menuitem"
-                    @click="goNotifications('message')"
-                  >
-                    <MessageSquareIcon class="h-4 w-4 mr-2 text-gray-400" />
-                    <span>我的消息</span>
-                    <span v-if="unreadByType.message > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ unreadByType.message > 99 ? '99+' : unreadByType.message }}</span>
-                  </button>
-
-                  <!-- 其他通知（收藏、关注等） -->
-                  <button
-                    class="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    role="menuitem"
-                    @click="goNotifications('other')"
-                  >
-                    <AlertCircleIcon class="h-4 w-4 mr-2 text-gray-400" />
-                    <span>其他通知</span>
-                    <span v-if="otherUnreadCount > 0" class="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">{{ otherUnreadCount > 99 ? '99+' : otherUnreadCount }}</span>
-                  </button>
-                </div>
-              </div>
+              <NotificationDropdown
+                :show-notifications="showNotifications"
+                :total-unread-count="totalUnreadCount"
+                :unread-by-type="unreadByType"
+                @fetch-unread-by-type="fetchUnreadByType"
+              />
 
               <!-- 用户头像菜单 -->
               <div v-if="showUserMenu" class="relative">
@@ -214,7 +86,7 @@
                   <UserAvatar
                     :avatar="authStore.user?.avatar || ''"
                     :name="authStore.user?.nickname || authStore.user?.username || 'U'"
-                    :size="32"
+                    :size="36"
                     wrapper-class="border-2 border-pink-200 hover:border-pink-300 transition-colors"
                   />
                   <ChevronDownIcon class="hidden sm:block h-4 w-4 text-gray-400" />
@@ -320,19 +192,15 @@ import {
   LogOutIcon,
   ChevronDownIcon,
   PlusIcon,
-  SearchIcon,
-  BellIcon,
-  MessageCircleIcon,
-  AtSignIcon,
-  ThumbsUpIcon,
-  AlertCircleIcon,
-  MessageSquareIcon
+  SearchIcon
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { NotificationApi } from '@/api/notification'
 import { useNotificationSync } from '@/composables/useNotificationSync'
 import UserPointsDisplay from '../UserPointsDisplay.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
+import SearchBox from '@/components/SearchBox.vue'
+import NotificationDropdown from '@/components/NotificationDropdown.vue'
 
 // Props - 允许每个页面自定义配置
 interface NavItem {
@@ -379,12 +247,6 @@ const unreadNotificationsCount = ref(0)
 const unreadByType = ref<{ [k: string]: number }>({ message: 0, like: 0, comment: 0, follow: 0, bookmark: 0, system: 0, mention: 0, total_unread: 0 })
 let unreadByTypeFetchedAt = 0
 
-// 搜索相关
-const searchQuery = ref('')
-const showSearchSuggestions = ref(false)
-const searchSuggestions = ref([
-  '育儿知识', '健康饮食', '早教方法', '亲子关系', '学习指导'
-])
 
 // 方法
 const isActiveRoute = (path: string): boolean => {
@@ -456,28 +318,6 @@ const clearUnreadNotifications = async () => {
   }
 }
 
-// 搜索相关方法
-const performSearch = () => {
-  if (searchQuery.value.trim()) {
-    router.push({
-      path: '/search',
-      query: { q: searchQuery.value.trim() }
-    })
-    searchQuery.value = ''
-    showSearchSuggestions.value = false
-  }
-}
-
-const searchWithSuggestion = (suggestion: string) => {
-  searchQuery.value = suggestion
-  performSearch()
-}
-
-const hideSearchSuggestions = () => {
-  setTimeout(() => {
-    showSearchSuggestions.value = false
-  }, 200)
-}
 
 // 退出登录
 const handleLogout = async () => {

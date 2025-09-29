@@ -69,8 +69,8 @@ func AutoMigrate(db *gorm.DB) error {
 
 // ensureEnumColumns 确保枚举字段包含最新取值
 func ensureEnumColumns(db *gorm.DB) error {
-    // MySQL: 扩展 notifications.type 枚举，加入 'system'
-    db.Exec("ALTER TABLE notifications MODIFY COLUMN type ENUM('like','comment','bookmark','follow','message','system','mention') NOT NULL")
+    // MySQL: 扩展 notifications.type 枚举，加入 'system','mention','moderation'
+    db.Exec("ALTER TABLE notifications MODIFY COLUMN type ENUM('like','comment','bookmark','follow','message','system','mention','moderation') NOT NULL")
     // 新增标题列（如果不存在）
     db.Exec("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title VARCHAR(255) NULL AFTER type")
     // 新增 comment_id 列（如果不存在）

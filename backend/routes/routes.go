@@ -4,9 +4,11 @@ import (
 	"godad-backend/config"
 	"godad-backend/controllers"
 	"godad-backend/middleware"
+	"godad-backend/observability"
 	"godad-backend/services"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // SetupRoutes 设置所有路由
@@ -16,9 +18,16 @@ func SetupRoutes() *gin.Engine {
 
 	// 添加中间件
 	router.Use(middleware.LoggerMiddleware())
+	router.Use(middleware.MetricsMiddleware())
 	router.Use(middleware.RecoveryMiddleware())
 	router.Use(middleware.CORSMiddleware())
 	router.Use(middleware.SecurityMiddleware())
+	router.Use(middleware.CSRFMiddleware())
+	router.Use(middleware.GeneralRateLimit())
+
+	if traceMiddleware := observability.GinTraceMiddleware("godad-backend"); traceMiddleware != nil {
+		router.Use(traceMiddleware)
+	}
 
 	// 健康检查接口
 	router.GET("/health", func(c *gin.Context) {
@@ -28,6 +37,9 @@ func SetupRoutes() *gin.Engine {
 			"version": "1.0.0",
 		})
 	})
+
+	// Prometheus 指标
+	router.GET("/prometheus", gin.WrapH(promhttp.Handler()))
 
 	// API版本信息
 	router.GET("/api", func(c *gin.Context) {
@@ -54,14 +66,14 @@ func SetupRoutes() *gin.Engine {
 	})
 
 	// 设置各模块路由
-	SetupAuthRoutes(router)     // 认证路由
-	SetupUserRoutes(router)     // 用户路由
-	SetupArticleRoutes(router)  // 文章路由（包含分类路由）
-	SetupCommentRoutes(router)  // 评论路由
-	SetupUploadRoutes(router)   // 上传路由
-	SetupAdminRoutes(router)    // 管理员路由
-	SetupFollowRoutes(router)   // 关注路由
-	
+	SetupAuthRoutes(router)    // 认证路由
+	SetupUserRoutes(router)    // 用户路由
+	SetupArticleRoutes(router) // 文章路由（包含分类路由）
+	SetupCommentRoutes(router) // 评论路由
+	SetupUploadRoutes(router)  // 上传路由
+	SetupAdminRoutes(router)   // 管理员路由
+	SetupFollowRoutes(router)  // 关注路由
+
 	// 设置点赞路由
 	likeService := services.NewLikeService(config.GetDB())
 	likeController := controllers.NewLikeController(likeService)

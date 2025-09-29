@@ -3,7 +3,7 @@ import { API_CONFIG } from './config'
 import { normalizePageResponse } from './pagination'
 
 // 通知类型
-export type NotificationType = 'like' | 'comment' | 'bookmark' | 'follow' | 'message' | 'system' | 'mention'
+export type NotificationType = 'like' | 'comment' | 'bookmark' | 'follow' | 'message' | 'system' | 'mention' | 'moderation'
 
 // 通知接口
 export interface Notification {
@@ -130,7 +130,8 @@ export const notificationTypeMap: Record<NotificationType, string> = {
   follow: '关注',
   message: '私信',
   system: '系统',
-  mention: '@我的'
+  mention: '@我的',
+  moderation: '审核'
 }
 
 // 通知类型图标映射
@@ -141,7 +142,8 @@ export const notificationIconMap: Record<NotificationType, string> = {
   follow: '👤',
   message: '💌',
   system: '📢',
-  mention: '@'
+  mention: '@',
+  moderation: '📢'
 }
 
 // 格式化通知时间

@@ -133,6 +133,16 @@
                   class="px-3 py-2 border border-gray-300 rounded-md text-sm"
                 >
                 <select
+                  v-model="articleFilter.category_id"
+                  @change="loadArticles"
+                  class="px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">全部分类</option>
+                  <option v-for="category in allCategories" :key="category.id" :value="category.id">
+                    {{ category.name }}
+                  </option>
+                </select>
+                <select
                   v-model="articleFilter.status"
                   @change="loadArticles"
                   class="px-3 py-2 border border-gray-300 rounded-md text-sm"
@@ -301,7 +311,25 @@
 
             <!-- 历史列表 -->
             <div class="mt-8">
-              <h3 class="text-md font-semibold text-gray-900 mb-3">历史系统通知</h3>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-md font-semibold text-gray-900">历史系统通知</h3>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs text-gray-500">类型</label>
+                  <select v-model="historyType" @change="loadSystemHistory(1)" class="px-2 py-1 border rounded text-sm">
+                    <option value="system">全员公告</option>
+                    <option value="moderation">举报相关</option>
+                    <option value="all">全部</option>
+                  </select>
+                  <template v-if="historyType !== 'system'">
+                    <label class="text-xs text-gray-500 ml-2">子类型</label>
+                    <select v-model="historySubtype" @change="loadSystemHistory(1)" class="px-2 py-1 border rounded text-sm">
+                      <option value="">全部</option>
+                      <option value="reporter">举报处理结果（给举报人）</option>
+                      <option value="author">内容违规处理通知（给作者）</option>
+                    </select>
+                  </template>
+                </div>
+              </div>
               <div v-if="historyLoading" class="text-gray-500 text-sm">加载中…</div>
               <div v-else>
                 <table class="min-w-full divide-y divide-gray-200">
@@ -1419,7 +1447,8 @@ const tabs = [
 const articles = ref([])
 const articleFilter = reactive({
   keyword: '',
-  status: ''
+  status: '',
+  category_id: ''
 })
 
 // 系统通知
@@ -1467,6 +1496,7 @@ const userPagination = reactive({
 
 // 文章分类管理
 const categories = ref([])
+const allCategories = ref([]) // 用于下拉选择的所有分类
 const showCreateCategoryModal = ref(false)
 const showEditCategoryModal = ref(false)
 const categoryLoading = ref(false)
@@ -1541,6 +1571,8 @@ const historyLoading = ref(false)
 const historyPage = ref(1)
 const historySize = ref(10)
 const historyTotal = ref(0)
+const historyType = ref<'system' | 'moderation' | 'all'>('system')
+const historySubtype = ref<'' | 'reporter' | 'author'>('')
 const formatDateTime = (str: string | Date) => {
   const d = typeof str === 'string' ? new Date(str) : str
   return d.toLocaleString()
@@ -1548,7 +1580,11 @@ const formatDateTime = (str: string | Date) => {
 const loadSystemHistory = async (page = 1) => {
   try {
     historyLoading.value = true
-    const res = await AdminApi.getSystemNotificationHistory({ page, size: historySize.value })
+    const params: any = { page, size: historySize.value, type: historyType.value }
+    if (historyType.value !== 'system' && historySubtype.value) {
+      params.subtype = historySubtype.value
+    }
+    const res = await AdminApi.getSystemNotificationHistory(params)
     systemHistory.value = res?.data?.items || []
     historyTotal.value = res?.data?.total || 0
     historyPage.value = page
@@ -1589,7 +1625,8 @@ const loadArticles = async () => {
       page: articlePagination.page,
       size: articlePagination.limit,
       status: articleFilter.status,
-      keyword: articleFilter.keyword
+      keyword: articleFilter.keyword,
+      category_id: articleFilter.category_id
     }
     const response = await AdminApi.getArticlesPage(params)
     articles.value = response.data.items || []
@@ -1630,7 +1667,7 @@ const deleteArticle = async (articleId) => {
     loadArticles()
   } catch (error) {
     console.error('删除文章失败:', error)
-    toast.error('删除失败，请重试')
+    showToast('删除失败，请重试', 'error')
   }
 }
 
@@ -1670,6 +1707,17 @@ const toggleUserStatus = async (user) => {
   } catch (error) {
     console.error('切换用户状态失败:', error)
     showToast('操作失败，请重试', 'error')
+  }
+}
+
+// 加载所有分类数据用于下拉选择
+const loadAllCategories = async () => {
+  try {
+    const response = await CategoryApi.getCategoryList()
+    allCategories.value = response.data || []
+  } catch (error) {
+    console.error('AdminDashboard: 加载所有分类失败:', error)
+    allCategories.value = []
   }
 }
 
@@ -1740,7 +1788,7 @@ const submitCategory = async () => {
     loadCategories()
   } catch (error) {
     console.error('保存分类失败:', error)
-    toast.error('保存失败，请重试')
+    showToast('保存失败，请重试', 'error')
   }
 }
 
@@ -1790,7 +1838,7 @@ const deleteCategory = async (categoryId) => {
     loadCategories()
   } catch (error) {
     console.error('删除分类失败:', error)
-    toast.error('删除失败，请重试')
+    showToast('删除失败，请重试', 'error')
   }
 }
 
@@ -2174,6 +2222,7 @@ onMounted(() => {
   loadArticles()
   loadUsers()
   loadCategories()
+  loadAllCategories() // 加载所有分类用于下拉选择
   loadTopics()
   loadResources()
   loadSystemHistory()

@@ -22,13 +22,23 @@ type ArticleService struct {
 	likeService  *LikeService
 }
 
-// NewArticleService 创建文章服务实例
+// NewArticleService 创建文章服务实例（兼容旧版本）
 func NewArticleService() *ArticleService {
 	return &ArticleService{
 		db:           config.GetDB(),
 		cacheService: NewCacheService(),
 		pointsService: NewPointsService(config.GetDB()),
 		likeService:  NewLikeService(config.GetDB()),
+	}
+}
+
+// NewArticleServiceWithDI 使用依赖注入创建文章服务实例
+func NewArticleServiceWithDI(db *gorm.DB, cacheService *CacheService) *ArticleService {
+	return &ArticleService{
+		db:           db,
+		cacheService: cacheService,
+		pointsService: NewPointsService(db),
+		likeService:  NewLikeService(db),
 	}
 }
 
@@ -371,6 +381,52 @@ func (s *ArticleService) GetArticleList(req *models.ArticleListRequest) ([]*mode
 	}
 
 	return articles, total, nil
+}
+
+// GetArticleListAdmin 获取文章列表（管理员视角，默认不过滤状态）
+// 与 GetArticleList 的差异：当 req.Status < 0 时，不添加状态条件（显示全部状态）
+func (s *ArticleService) GetArticleListAdmin(req *models.ArticleListRequest) ([]*models.Article, int64, error) {
+    var articles []*models.Article
+    var total int64
+
+    query := s.db.Model(&models.Article{}).Preload("Author").Preload("Category")
+
+    // 状态过滤：仅当提供了合法状态(0/1/2)时才过滤；否则不过滤
+    if req.Status == 0 || req.Status == 1 || req.Status == 2 {
+        query = query.Where("status = ?", req.Status)
+    }
+
+    // 分类过滤
+    if req.CategoryID > 0 {
+        query = query.Where("category_id = ?", req.CategoryID)
+    }
+
+    // 作者过滤
+    if req.AuthorID > 0 {
+        query = query.Where("author_id = ?", req.AuthorID)
+    }
+
+    // 关键词搜索
+    if req.Keyword != "" {
+        query = query.Where("title LIKE ? OR content LIKE ? OR tags LIKE ?",
+            "%"+req.Keyword+"%", "%"+req.Keyword+"%", "%"+req.Keyword+"%")
+    }
+
+    // 获取总数
+    if err := query.Count(&total).Error; err != nil {
+        return nil, 0, fmt.Errorf("获取文章总数失败: %v", err)
+    }
+
+    // 排序：置顶优先，其次按创建时间倒序
+    query = query.Order("is_top DESC, created_at DESC")
+
+    // 分页查询
+    offset := (req.Page - 1) * req.Size
+    if err := query.Offset(offset).Limit(req.Size).Find(&articles).Error; err != nil {
+        return nil, 0, fmt.Errorf("获取文章列表失败: %v", err)
+    }
+
+    return articles, total, nil
 }
 
 // GetUserArticles 获取用户的文章列表

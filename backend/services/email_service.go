@@ -4,9 +4,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 
+	"godad-backend/utils"
 	"gopkg.in/gomail.v2"
 )
 
@@ -29,12 +28,12 @@ type EmailTemplate struct {
 // NewEmailService 创建邮件服务实例
 func NewEmailService() *EmailService {
 	return &EmailService{
-		host:     getEnvOrDefault("SMTP_HOST", "smtp.gmail.com"),
-		port:     getEnvIntOrDefault("SMTP_PORT", 587),
-		username: getEnvOrDefault("SMTP_USERNAME", ""),
-		password: getEnvOrDefault("SMTP_PASSWORD", ""),
-		from:     getEnvOrDefault("SMTP_FROM", ""),
-		fromName: getEnvOrDefault("SMTP_FROM_NAME", "GoDad育儿平台"),
+		host:     utils.GetEnv("SMTP_HOST", "smtp.gmail.com"),
+		port:     utils.GetEnvAsInt("SMTP_PORT", 587),
+		username: utils.GetEnv("SMTP_USERNAME", ""),
+		password: utils.GetEnv("SMTP_PASSWORD", ""),
+		from:     utils.GetEnv("SMTP_FROM", ""),
+		fromName: utils.GetEnv("SMTP_FROM_NAME", "GoDad育儿平台"),
 	}
 }
 
@@ -147,7 +146,7 @@ func (e *EmailService) getPasswordResetTemplate(resetURL string) EmailTemplate {
             padding: 20px;
         }
         .header { 
-            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            background: linear-gradient(135deg, #e76f51 0%%, #f4a261 100%%);
             color: white; 
             padding: 30px; 
             text-align: center; 
@@ -161,7 +160,7 @@ func (e *EmailService) getPasswordResetTemplate(resetURL string) EmailTemplate {
         }
         .button { 
             display: inline-block; 
-            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            background: linear-gradient(135deg, #e76f51 0%%, #f4a261 100%%);
             color: white; 
             text-decoration: none; 
             padding: 15px 30px; 
@@ -253,7 +252,7 @@ func (e *EmailService) getWelcomeTemplate(username string) EmailTemplate {
             padding: 20px;
         }
         .header { 
-            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            background: linear-gradient(135deg, #e76f51 0%%, #f4a261 100%%);
             color: white; 
             padding: 30px; 
             text-align: center; 
@@ -267,7 +266,7 @@ func (e *EmailService) getWelcomeTemplate(username string) EmailTemplate {
         }
         .button { 
             display: inline-block; 
-            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            background: linear-gradient(135deg, #e76f51 0%%, #f4a261 100%%);
             color: white; 
             text-decoration: none; 
             padding: 15px 30px; 
@@ -375,7 +374,7 @@ func (e *EmailService) getCommentNotificationTemplate(recipientName, actorName, 
             padding: 20px;
         }
         .header { 
-            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            background: linear-gradient(135deg, #e76f51 0%%, #f4a261 100%%);
             color: white; 
             padding: 30px; 
             text-align: center; 
@@ -389,7 +388,7 @@ func (e *EmailService) getCommentNotificationTemplate(recipientName, actorName, 
         }
         .button { 
             display: inline-block; 
-            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            background: linear-gradient(135deg, #e76f51 0%%, #f4a261 100%%);
             color: white; 
             text-decoration: none; 
             padding: 15px 30px; 
@@ -407,7 +406,7 @@ func (e *EmailService) getCommentNotificationTemplate(recipientName, actorName, 
         }
         .comment-box {
             background: #fff;
-            border-left: 4px solid #ec4899;
+            border-left: 4px solid #e76f51;
             padding: 15px;
             margin: 20px 0;
             border-radius: 5px;
@@ -471,7 +470,7 @@ func (e *EmailService) getReplyNotificationTemplate(recipientName, actorName, co
             padding: 20px;
         }
         .header { 
-            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            background: linear-gradient(135deg, #e76f51 0%%, #f4a261 100%%);
             color: white; 
             padding: 30px; 
             text-align: center; 
@@ -485,7 +484,7 @@ func (e *EmailService) getReplyNotificationTemplate(recipientName, actorName, co
         }
         .button { 
             display: inline-block; 
-            background: linear-gradient(135deg, #ec4899 0%%, #f97316 100%%); 
+            background: linear-gradient(135deg, #e76f51 0%%, #f4a261 100%%);
             color: white; 
             text-decoration: none; 
             padding: 15px 30px; 
@@ -503,7 +502,7 @@ func (e *EmailService) getReplyNotificationTemplate(recipientName, actorName, co
         }
         .comment-box {
             background: #fff;
-            border-left: 4px solid #ec4899;
+            border-left: 4px solid #e76f51;
             padding: 15px;
             margin: 20px 0;
             border-radius: 5px;
@@ -546,22 +545,6 @@ func (e *EmailService) getReplyNotificationTemplate(recipientName, actorName, co
 	}
 }
 
-// 辅助函数
-func getEnvOrDefault(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func getEnvIntOrDefault(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.Atoi(value); err == nil {
-			return intValue
-		}
-	}
-	return defaultValue
-}
 
 // IsConfigured 检查邮件服务是否已配置
 func (e *EmailService) IsConfigured() bool {

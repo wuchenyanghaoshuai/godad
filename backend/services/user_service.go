@@ -3,10 +3,10 @@ package services
 import (
     "errors"
     "fmt"
-    "hash/crc32"
+    
     "math/rand"
     "os"
-    "path/filepath"
+  
     "regexp"
     "strings"
     "time"
@@ -20,15 +20,24 @@ import (
 
 // UserService 用户服务
 type UserService struct {
-	db           *gorm.DB
+	*BaseService
 	cacheService *CacheService
 }
 
-// NewUserService 创建用户服务实例
+// NewUserService 创建用户服务实例（兼容旧版本）
 func NewUserService() *UserService {
+	db := config.GetDB()
 	return &UserService{
-		db:           config.GetDB(),
+		BaseService:  NewBaseService(db),
 		cacheService: NewCacheService(),
+	}
+}
+
+// NewUserServiceWithDI 使用依赖注入创建用户服务实例
+func NewUserServiceWithDI(db *gorm.DB, cacheService *CacheService) *UserService {
+	return &UserService{
+		BaseService:  NewBaseService(db),
+		cacheService: cacheService,
 	}
 }
 
@@ -41,12 +50,12 @@ func (s *UserService) Register(req *models.UserRegisterRequest) (*models.User, e
 
 	// 检查用户名是否已存在
 	var existUser models.User
-	if err := s.db.Where("username = ?", req.Username).First(&existUser).Error; err == nil {
+	if err := s.DB.Where("username = ?", req.Username).First(&existUser).Error; err == nil {
 		return nil, errors.New("用户名已存在")
 	}
 
 	// 检查邮箱是否已存在
-	if err := s.db.Where("email = ?", req.Email).First(&existUser).Error; err == nil {
+	if err := s.DB.Where("email = ?", req.Email).First(&existUser).Error; err == nil {
 		return nil, errors.New("邮箱已被注册")
 	}
 
@@ -74,7 +83,7 @@ func (s *UserService) Register(req *models.UserRegisterRequest) (*models.User, e
     }
 
 	// 保存到数据库
-	if err := s.db.Create(user).Error; err != nil {
+	if err := s.DB.Create(user).Error; err != nil {
 		return nil, fmt.Errorf("创建用户失败: %v", err)
 	}
 
@@ -90,7 +99,7 @@ func (s *UserService) Login(req *models.UserLoginRequest) (*models.User, error) 
 
 	// 查找用户（支持用户名或邮箱登录）
 	var user models.User
-	query := s.db.Where("status = ?", 1)
+	query := s.DB.Where("status = ?", 1)
 	if s.isEmail(req.Username) {
 		query = query.Where("email = ?", req.Username)
 	} else {
@@ -116,79 +125,119 @@ func (s *UserService) Login(req *models.UserLoginRequest) (*models.User, error) 
 }
 
 // computeDefaultAvatarURL 生成默认头像URL
-// - 不再依赖 OSS。默认指向前端 public 目录下的 /default-avatars/
-// - 优先使用环境变量 DEFAULT_AVATAR_KEYS（逗号分隔的文件名列表，例如：
-//     "父与女共读.jpg,父子搭积木.jpg,母女读书.jpg"）。
-// - 可自定义基础路径：DEFAULT_AVATAR_BASE_URL（可以是绝对URL或以 / 开头的路径）。
-//   未设置时，使用 cfg.Server.FrontendURL + "/default-avatars"。
+// 随机从 ui/assets/DefaultUserAvatar/ 目录中选择一张头像
 func (s *UserService) computeDefaultAvatarURL(username, nickname string) string {
     cfg := config.GetConfig()
 
-    // 1) 基础URL
+    // 基础URL路径
     base := strings.TrimSpace(os.Getenv("DEFAULT_AVATAR_BASE_URL"))
     if base == "" {
-        // 使用前端URL + 固定目录
         fe := strings.TrimRight(cfg.Server.FrontendURL, "/")
         if fe == "" {
-            // 后备：相对路径（不含域名）。前端渲染时仍可访问
-            base = "/default-avatars"
+            base = "/assets/DefaultUserAvatar"
         } else {
-            base = fe + "/default-avatars"
-        }
-    } else {
-        // 允许传入相对路径（/开头）；若是相对路径，则拼FrontEndURL
-        if strings.HasPrefix(base, "/") {
-            fe := strings.TrimRight(cfg.Server.FrontendURL, "/")
-            if fe != "" {
-                base = fe + base
-            }
+            base = fe + "/assets/DefaultUserAvatar"
         }
     }
     base = strings.TrimRight(base, "/")
 
-    // 2) 候选文件名列表
-    var names []string
-    if raw := os.Getenv("DEFAULT_AVATAR_KEYS"); strings.TrimSpace(raw) != "" {
-        parts := strings.Split(raw, ",")
-        for _, p := range parts {
-            n := strings.TrimSpace(p)
-            if n == "" { continue }
-            // 若包含路径，则只取文件名部分，确保与 base 目录拼接
-            n = filepath.Base(n)
-            names = append(names, n)
-        }
-    }
-    if len(names) == 0 {
-        // 默认使用前端提供的10张图片名（位于 ui/public/default-avatars/）
-        names = []string{
-            "父与女共读.jpg",
-            "父子搭积木.jpg",
-            "父子乐.jpg",
-            "父子跑步.jpg",
-            "父子踢足球.jpg",
-            "妈妈给女儿梳头.jpg",
-            "母女读书.jpg",
-            "母女同乐.jpg",
-            "母女做饼干.jpg",
-            "喂宝宝吃饭.jpg",
-        }
-    }
-    if len(names) == 0 {
-        return ""
+    // 可用的头像文件列表（从 ui/assets/DefaultUserAvatar/ 目录）- 全部88张头像
+    avatarFiles := []string{
+        "baby_cradle.jpg",
+        "baby_playing_with_blocks.jpg",
+        "dad_feeding_baby.jpg",
+        "dad_massaging_baby.jpg",
+        "dad_putting_baby_to_sleep.jpg",
+        "father_and_daughter_reading_together.jpg",
+        "father_comforting_baby.jpg",
+        "father_daughter_blowing_bubbles.jpg",
+        "father_daughter_flying_kite.jpg",
+        "father_daughter_interaction.jpg",
+        "father_daughter_love.jpg",
+        "father_daughter_on_swing.jpg",
+        "father_daughter_playing_scooter.jpg",
+        "father_daughter_reading_together.jpg",
+        "father_feeding_child.jpg",
+        "father_feeding_infant.jpg",
+        "father_son_baking.jpg",
+        "father_son_bathing.jpg",
+        "father_son_biking.jpg",
+        "father_son_bonding_time.jpg",
+        "father_son_building_blocks.jpg",
+        "father_son_building_sandcastle.jpg",
+        "father_son_camping_tent_1.jpg",
+        "father_son_camping_tent.jpg",
+        "father_son_camping.jpg",
+        "father_son_flying_kite.jpg",
+        "father_son_haircut.jpg",
+        "father_son_interaction.jpg",
+        "father_son_joy_1.jpg",
+        "father_son_joy.jpg",
+        "father_son_origami.jpg",
+        "father_son_paper_cutting.jpg",
+        "father_son_picnic.jpg",
+        "father_son_playing_frisbee.jpg",
+        "father_son_playing_rattle.jpg",
+        "father_son_playing_soccer.jpg",
+        "father_son_playing.jpg",
+        "father_son_running.jpg",
+        "father_son_walking_in_park.jpg",
+        "father_son_warm_moment.jpg",
+        "father_son_water_play.jpg",
+        "father_teaching_daughter_to_ride_bike.jpg",
+        "father_teaching_son_to_ride_bike.jpg",
+        "feeding_baby.jpg",
+        "girl_on_slide.jpg",
+        "grandparent_grandchild_feeding_strawberries.jpg",
+        "mom_bathing_baby.jpg",
+        "mom_combing_daughter_hair.jpg",
+        "mother_baby_bottle_feeding.jpg",
+        "mother_daughter_baking_1.jpg",
+        "mother_daughter_baking_tarts.jpg",
+        "mother_daughter_baking.jpg",
+        "mother_daughter_flying_kite.jpg",
+        "mother_daughter_having_fun.jpg",
+        "mother_daughter_knitting.jpg",
+        "mother_daughter_making_cookies_1.jpg",
+        "mother_daughter_making_cookies.jpg",
+        "mother_daughter_making_pizza.jpg",
+        "mother_daughter_making_popsicles.jpg",
+        "mother_daughter_making_salad.jpg",
+        "mother_daughter_origami.jpg",
+        "mother_daughter_picnic_1.jpg",
+        "mother_daughter_picnic.jpg",
+        "mother_daughter_planting_flowers.jpg",
+        "mother_daughter_reading_together_1.jpg",
+        "mother_daughter_reading_together.jpg",
+        "mother_daughter_reading.jpg",
+        "mother_son_choosing_fairy_tale_books.jpg",
+        "mother_son_cleaning_up_toys.jpg",
+        "mother_son_doing_puzzle.jpg",
+        "mother_son_hanging_laundry.jpg",
+        "mother_son_kneading_dough.jpg",
+        "mother_son_making_cake.jpg",
+        "mother_son_making_cookies.jpg",
+        "mother_son_making_crafts.jpg",
+        "mother_son_making_kite.jpg",
+        "mother_son_making_lantern.jpg",
+        "mother_son_making_paper_boats.jpg",
+        "mother_son_organizing_backpack.jpg",
+        "mother_son_painting.jpg",
+        "mother_son_planting_trees.jpg",
+        "mother_son_playing_guitar.jpg",
+        "mother_son_pottery.jpg",
+        "mother_son_puzzle.jpg",
+        "mother_son_reading_together.jpg",
+        "mother_son_watering_flowers_1.jpg",
+        "mother_son_watering_flowers.jpg",
+        "organizing_toys.jpg",
     }
 
-    // 3) 稳定选择（基于用户名/昵称哈希）
-    basis := strings.ToLower(strings.TrimSpace(username))
-    if basis == "" {
-        basis = strings.ToLower(strings.TrimSpace(nickname))
-    }
-    if basis == "" {
-        basis = fmt.Sprintf("%d", time.Now().UnixNano())
-    }
-    idx := int(crc32.ChecksumIEEE([]byte(basis))) % len(names)
-    name := names[idx]
+    // 使用时间作为随机种子，确保每次注册都是真正随机的
+    rand.Seed(time.Now().UnixNano())
+    selectedFile := avatarFiles[rand.Intn(len(avatarFiles))]
 
-    return fmt.Sprintf("%s/%s", base, name)
+    return fmt.Sprintf("%s/%s", base, selectedFile)
 }
 
 // ComputeDefaultAvatarURL 导出方法：供外部脚本调用
@@ -204,7 +253,7 @@ func (s *UserService) GetUserByID(id uint) (*models.User, error) {
 	}
 
 	var user models.User
-	if err := s.db.Where("id = ? AND status = ?", id, 1).First(&user).Error; err != nil {
+	if err := s.DB.Where("id = ? AND status = ?", id, 1).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("用户不存在")
 		}
@@ -224,7 +273,7 @@ func (s *UserService) GetUserByUsername(username string) (*models.User, error) {
 	}
 
 	var user models.User
-	if err := s.db.Where("username = ? AND status = ?", username, 1).First(&user).Error; err != nil {
+	if err := s.DB.Where("username = ? AND status = ?", username, 1).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("用户不存在")
 		}
@@ -255,7 +304,7 @@ func (s *UserService) UpdateUser(userID uint, req *models.UserUpdateRequest) (*m
 	// 检查手机号是否被其他用户使用
 	if req.Phone != "" && req.Phone != user.Phone {
 		var existUser models.User
-		if err := s.db.Where("phone = ? AND id != ?", req.Phone, userID).First(&existUser).Error; err == nil {
+		if err := s.DB.Where("phone = ? AND id != ?", req.Phone, userID).First(&existUser).Error; err == nil {
 			return nil, errors.New("手机号已被其他用户使用")
 		}
 	}
@@ -281,7 +330,7 @@ func (s *UserService) UpdateUser(userID uint, req *models.UserUpdateRequest) (*m
 
 	// 执行更新
 	if len(updateData) > 0 {
-		if err := s.db.Model(user).Updates(updateData).Error; err != nil {
+		if err := s.DB.Model(user).Updates(updateData).Error; err != nil {
 			return nil, fmt.Errorf("更新用户信息失败: %v", err)
 		}
 
@@ -315,7 +364,7 @@ func (s *UserService) ChangePassword(userID uint, oldPassword, newPassword strin
 	hashedPassword := s.hashPassword(newPassword)
 
 	// 更新密码
-	if err := s.db.Model(user).Update("password", hashedPassword).Error; err != nil {
+	if err := s.DB.Model(user).Update("password", hashedPassword).Error; err != nil {
 		return fmt.Errorf("修改密码失败: %v", err)
 	}
 
@@ -332,7 +381,7 @@ func (s *UserService) CheckNicknameExists(nickname string) (bool, error) {
 	}
 
 	var count int64
-	if err := s.db.Model(&models.User{}).Where("nickname = ? AND status = ?", nickname, 1).Count(&count).Error; err != nil {
+	if err := s.DB.Model(&models.User{}).Where("nickname = ? AND status = ?", nickname, 1).Count(&count).Error; err != nil {
 		return false, fmt.Errorf("查询昵称失败: %v", err)
 	}
 
@@ -344,7 +393,7 @@ func (s *UserService) GetUserList(page, size int, keyword string) ([]*models.Use
 	var users []*models.User
 	var total int64
 
-	query := s.db.Model(&models.User{}).Where("status = ?", 1)
+	query := s.DB.Model(&models.User{}).Where("status = ?", 1)
 
 	// 关键词搜索
 	if keyword != "" {
@@ -533,7 +582,7 @@ func (s *UserService) GenerateRandomNickname() (string, error) {
 // GetUserCount 获取用户总数
 func (s *UserService) GetUserCount() (int64, error) {
 	var count int64
-	err := s.db.Model(&models.User{}).Where("deleted_at IS NULL").Count(&count).Error
+	err := s.DB.Model(&models.User{}).Where("deleted_at IS NULL").Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("获取用户总数失败: %v", err)
 	}

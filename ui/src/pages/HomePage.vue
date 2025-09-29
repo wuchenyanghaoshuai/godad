@@ -184,8 +184,10 @@
               v-if="a.cover_image && !(a as any)._imageError"
               :src="a.cover_image"
               :alt="a.title"
+              loading="lazy"
               class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              @error="() => ((a as any)._imageError = true)"
+              @error="handleImageError(a)"
+              @load="handleImageLoad(a)"
             />
             <!-- 无封面或加载失败：采用与 /articles 同风格的占位配色 -->
             <div v-else class="w-full h-full bg-gradient-warm"></div>
@@ -235,11 +237,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { ArrowRightIcon, UsersIcon, HeartIcon, TrendingUpIcon } from 'lucide-vue-next'
 import { AppLayout, PageContainer } from '@/components/layout'
-import HotArticles from '@/components/HotArticles.vue'
 import { ArticleApi, type Article } from '@/api'
+
+// 异步加载热门文章组件
+const HotArticles = defineAsyncComponent({
+  loader: () => import('@/components/HotArticles.vue'),
+  loadingComponent: { template: '<div class="animate-pulse bg-gray-200 h-64 rounded-lg"></div>' },
+  errorComponent: { template: '<div class="text-center text-gray-500 py-8">加载失败</div>' },
+  delay: 200,
+  timeout: 3000
+})
 
 // 热门文章相关
 const hotArticlesRef = ref()
@@ -292,6 +302,16 @@ onMounted(async () => {
     }
   }
 })
+
+// 图片加载处理方法
+const handleImageError = (article: any) => {
+  article._imageError = true
+  console.warn(`Failed to load image for article: ${article.title}`)
+}
+
+const handleImageLoad = (article: any) => {
+  article._imageLoaded = true
+}
 
 // 统一PC摘要：两行显示，无摘要时从正文提取前90字
 const getHomePreviewSummary = (article: Article) => {

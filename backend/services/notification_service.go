@@ -5,6 +5,7 @@ import (
     "godad-backend/models"
     "log"
     "time"
+    "strings"
 
     "gorm.io/gorm"
 )
@@ -311,6 +312,9 @@ func (s *NotificationService) GetNotificationStatsByType(userID uint) (*models.N
             stats.Bookmark = r.Count
         case string(models.NotificationTypeSystem):
             stats.System = r.Count
+        case string(models.NotificationTypeModeration):
+            // 兼容前端：将 moderation 计入 system 一并显示
+            stats.System += r.Count
         case string(models.NotificationTypeMention):
             stats.Mention = r.Count
         default:
@@ -456,18 +460,48 @@ type SystemBroadcastSummary struct {
 }
 
 // ListSystemBroadcasts 列出系统广播历史（按 resource_id 分组）
-func (s *NotificationService) ListSystemBroadcasts(page, limit int) ([]SystemBroadcastSummary, int64, error) {
-    var total int64
-    // 总组数
-    err := s.db.Table("notifications").
-        Where("type = ? AND deleted_at IS NULL", models.NotificationTypeSystem).
-        Select("COUNT(DISTINCT resource_id) as cnt").
-        Count(&total).Error
-    if err != nil { return nil, 0, err }
+// scope: "system"(默认，仅全员公告) | "moderation"(审核/举报相关) | "all"(两者)
+func (s *NotificationService) ListSystemBroadcasts(page, limit int, scope string, subtype string) ([]SystemBroadcastSummary, int64, error) {
+    whereClause := "type = 'system' AND COALESCE(title,'') NOT IN ('举报处理结果','内容违规处理通知')"
+    switch strings.ToLower(strings.TrimSpace(scope)) {
+    case "moderation":
+        // 兼容历史：早期审核通知曾误标为 system，通过标题归并；并按子类筛选
+        sub := strings.ToLower(strings.TrimSpace(subtype))
+        switch sub {
+        case "reporter":
+            whereClause = "( (type = 'moderation' AND COALESCE(title,'') = '举报处理结果') OR (type = 'system' AND COALESCE(title,'') = '举报处理结果') )"
+        case "author":
+            whereClause = "( (type = 'moderation' AND COALESCE(title,'') = '内容违规处理通知') OR (type = 'system' AND COALESCE(title,'') = '内容违规处理通知') )"
+        default:
+            whereClause = "(type = 'moderation' OR (type = 'system' AND COALESCE(title,'') IN ('举报处理结果','内容违规处理通知')))"
+        }
+    case "all":
+        sub := strings.ToLower(strings.TrimSpace(subtype))
+        if sub == "reporter" {
+            whereClause = "( type = 'system' OR (type = 'moderation' AND COALESCE(title,'') = '举报处理结果') OR (type = 'system' AND COALESCE(title,'') = '举报处理结果') )"
+        } else if sub == "author" {
+            whereClause = "( type = 'system' OR (type = 'moderation' AND COALESCE(title,'') = '内容违规处理通知') OR (type = 'system' AND COALESCE(title,'') = '内容违规处理通知') )"
+        } else {
+            whereClause = "(type IN ('system','moderation'))"
+        }
+    default:
+        // 仅全员公告（排除审核相关标题的旧数据）
+        whereClause = "type = 'system' AND COALESCE(title,'') NOT IN ('举报处理结果','内容违规处理通知')"
+    }
 
+    // 统计分组总数（按 resource_id 去重）
+    var total int64
+    if err := s.db.Table("notifications").
+        Select("resource_id").
+        Where(whereClause+" AND deleted_at IS NULL").
+        Distinct("resource_id").
+        Count(&total).Error; err != nil {
+        return nil, 0, err
+    }
+
+    // 列表数据
     offset := (page - 1) * limit
     var list []SystemBroadcastSummary
-    // 选取 MAX(created_at)、任意标题/消息（通常相同）、总数与已读数
     q := `
         SELECT 
             resource_id AS broadcast_id,
@@ -477,7 +511,7 @@ func (s *NotificationService) ListSystemBroadcasts(page, limit int) ([]SystemBro
             COUNT(*) AS total,
             SUM(CASE WHEN is_read = 1 THEN 1 ELSE 0 END) AS read_count
         FROM notifications
-        WHERE type = 'system' AND deleted_at IS NULL
+        WHERE ` + whereClause + ` AND deleted_at IS NULL
         GROUP BY resource_id
         ORDER BY created_at DESC
         LIMIT ? OFFSET ?`

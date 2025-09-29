@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { AppLayout, PageContainer } from '@/components/layout'
-import heroImg from '@/assets/about/hero-dad-baby.svg'
+import heroImg from '@/assets/about/hero-dad-baby.jpg'
 import avatarLi from '@/assets/about/team-li.svg'
 import avatarWang from '@/assets/about/team-wang.svg'
 import avatarZhang from '@/assets/about/team-zhang.svg'

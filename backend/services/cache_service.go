@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -15,7 +16,24 @@ import (
 var (
 	rdb *redis.Client
 	ctx = context.Background()
+
+	// ErrCacheDisabled 表示缓存功能被禁用
+	ErrCacheDisabled = errors.New("cache is disabled")
 )
+
+func isCacheReady() bool {
+	return rdb != nil
+}
+
+// IsCacheEnabled 对外暴露缓存是否启用状态
+func IsCacheEnabled() bool {
+	return isCacheReady()
+}
+
+// GetRedisClient 返回底层 Redis 客户端实例（可能为 nil）
+func GetRedisClient() *redis.Client {
+	return rdb
+}
 
 type CacheService struct{}
 
@@ -24,21 +42,27 @@ func NewCacheService() *CacheService {
 }
 
 func InitRedis() error {
-	rdb = redis.NewClient(&redis.Options{
+	client := redis.NewClient(&redis.Options{
 		Addr:     "127.0.0.1:6379",
 		Password: "",
 		DB:       0,
 	})
 
-	_, err := rdb.Ping(ctx).Result()
-	if err != nil {
+	if _, err := client.Ping(ctx).Result(); err != nil {
+		_ = client.Close()
+		rdb = nil
 		return fmt.Errorf("Redis连接失败: %v", err)
 	}
 
+	rdb = client
 	return nil
 }
 
 func (c *CacheService) SetArticleList(key string, articles []models.Article, duration time.Duration) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	articlesJSON, err := json.Marshal(articles)
 	if err != nil {
 		return fmt.Errorf("文章列表序列化失败: %v", err)
@@ -53,6 +77,10 @@ func (c *CacheService) SetArticleList(key string, articles []models.Article, dur
 }
 
 func (c *CacheService) GetArticleList(key string) ([]models.Article, error) {
+	if !isCacheReady() {
+		return nil, ErrCacheDisabled
+	}
+
 	articlesJSON, err := rdb.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -71,6 +99,10 @@ func (c *CacheService) GetArticleList(key string) ([]models.Article, error) {
 }
 
 func (c *CacheService) SetArticle(articleID uint, article *models.Article, duration time.Duration) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	key := fmt.Sprintf("article:%d", articleID)
 	articleJSON, err := json.Marshal(article)
 	if err != nil {
@@ -86,6 +118,10 @@ func (c *CacheService) SetArticle(articleID uint, article *models.Article, durat
 }
 
 func (c *CacheService) GetArticle(articleID uint) (*models.Article, error) {
+	if !isCacheReady() {
+		return nil, ErrCacheDisabled
+	}
+
 	key := fmt.Sprintf("article:%d", articleID)
 	articleJSON, err := rdb.Get(ctx, key).Result()
 	if err != nil {
@@ -105,6 +141,10 @@ func (c *CacheService) GetArticle(articleID uint) (*models.Article, error) {
 }
 
 func (c *CacheService) SetUser(userID uint, user *models.User, duration time.Duration) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	key := fmt.Sprintf("user:%d", userID)
 	userJSON, err := json.Marshal(user)
 	if err != nil {
@@ -120,6 +160,10 @@ func (c *CacheService) SetUser(userID uint, user *models.User, duration time.Dur
 }
 
 func (c *CacheService) GetUser(userID uint) (*models.User, error) {
+	if !isCacheReady() {
+		return nil, ErrCacheDisabled
+	}
+
 	key := fmt.Sprintf("user:%d", userID)
 	userJSON, err := rdb.Get(ctx, key).Result()
 	if err != nil {
@@ -140,14 +184,18 @@ func (c *CacheService) GetUser(userID uint) (*models.User, error) {
 
 // DeleteUser 移除用户缓存
 func (c *CacheService) DeleteUser(userID uint) error {
-    if rdb == nil {
-        return nil
-    }
-    key := fmt.Sprintf("user:%d", userID)
-    return rdb.Del(ctx, key).Err()
+	if !isCacheReady() {
+		return nil
+	}
+	key := fmt.Sprintf("user:%d", userID)
+	return rdb.Del(ctx, key).Err()
 }
 
 func (c *CacheService) SetCategories(categories []models.Category, duration time.Duration) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	key := "categories"
 	categoriesJSON, err := json.Marshal(categories)
 	if err != nil {
@@ -163,6 +211,10 @@ func (c *CacheService) SetCategories(categories []models.Category, duration time
 }
 
 func (c *CacheService) GetCategories() ([]models.Category, error) {
+	if !isCacheReady() {
+		return nil, ErrCacheDisabled
+	}
+
 	key := "categories"
 	categoriesJSON, err := rdb.Get(ctx, key).Result()
 	if err != nil {
@@ -182,6 +234,10 @@ func (c *CacheService) GetCategories() ([]models.Category, error) {
 }
 
 func (c *CacheService) SetSearchResults(keyword string, articles []models.Article, duration time.Duration) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	key := fmt.Sprintf("search:%s", keyword)
 	articlesJSON, err := json.Marshal(articles)
 	if err != nil {
@@ -197,6 +253,10 @@ func (c *CacheService) SetSearchResults(keyword string, articles []models.Articl
 }
 
 func (c *CacheService) GetSearchResults(keyword string) ([]models.Article, error) {
+	if !isCacheReady() {
+		return nil, ErrCacheDisabled
+	}
+
 	key := fmt.Sprintf("search:%s", keyword)
 	articlesJSON, err := rdb.Get(ctx, key).Result()
 	if err != nil {
@@ -216,6 +276,10 @@ func (c *CacheService) GetSearchResults(keyword string) ([]models.Article, error
 }
 
 func (c *CacheService) IncreaseViewCount(articleID uint) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	key := fmt.Sprintf("article:views:%d", articleID)
 	err := rdb.Incr(ctx, key).Err()
 	if err != nil {
@@ -227,6 +291,10 @@ func (c *CacheService) IncreaseViewCount(articleID uint) error {
 }
 
 func (c *CacheService) GetViewCount(articleID uint) (int64, error) {
+	if !isCacheReady() {
+		return 0, ErrCacheDisabled
+	}
+
 	key := fmt.Sprintf("article:views:%d", articleID)
 	count, err := rdb.Get(ctx, key).Result()
 	if err != nil {
@@ -245,6 +313,10 @@ func (c *CacheService) GetViewCount(articleID uint) (int64, error) {
 }
 
 func (c *CacheService) SetHotKeywords(keywords []string, duration time.Duration) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	key := "hot:keywords"
 	keywordsJSON, err := json.Marshal(keywords)
 	if err != nil {
@@ -260,6 +332,10 @@ func (c *CacheService) SetHotKeywords(keywords []string, duration time.Duration)
 }
 
 func (c *CacheService) GetHotKeywords() ([]string, error) {
+	if !isCacheReady() {
+		return nil, ErrCacheDisabled
+	}
+
 	key := "hot:keywords"
 	keywordsJSON, err := rdb.Get(ctx, key).Result()
 	if err != nil {
@@ -279,6 +355,10 @@ func (c *CacheService) GetHotKeywords() ([]string, error) {
 }
 
 func (c *CacheService) RecordSearchKeyword(keyword string) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	key := "search:keyword:count"
 	err := rdb.ZIncrBy(ctx, key, 1, keyword).Err()
 	if err != nil {
@@ -292,6 +372,10 @@ func (c *CacheService) RecordSearchKeyword(keyword string) error {
 }
 
 func (c *CacheService) GetTopSearchKeywords(limit int64) ([]string, error) {
+	if !isCacheReady() {
+		return nil, ErrCacheDisabled
+	}
+
 	key := "search:keyword:count"
 	keywords, err := rdb.ZRevRange(ctx, key, 0, limit-1).Result()
 	if err != nil {
@@ -302,6 +386,10 @@ func (c *CacheService) GetTopSearchKeywords(limit int64) ([]string, error) {
 }
 
 func (c *CacheService) Delete(key string) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	err := rdb.Del(ctx, key).Err()
 	if err != nil {
 		return fmt.Errorf("删除缓存失败: %v", err)
@@ -310,6 +398,10 @@ func (c *CacheService) Delete(key string) error {
 }
 
 func (c *CacheService) DeletePattern(pattern string) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	keys, err := rdb.Keys(ctx, pattern).Result()
 	if err != nil {
 		return fmt.Errorf("查找匹配键失败: %v", err)
@@ -326,6 +418,10 @@ func (c *CacheService) DeletePattern(pattern string) error {
 }
 
 func (c *CacheService) FlushAll() error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	err := rdb.FlushAll(ctx).Err()
 	if err != nil {
 		return fmt.Errorf("清空缓存失败: %v", err)
@@ -334,6 +430,10 @@ func (c *CacheService) FlushAll() error {
 }
 
 func (c *CacheService) SetWithExpire(key string, value interface{}, duration time.Duration) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	valueJSON, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("序列化失败: %v", err)
@@ -348,6 +448,10 @@ func (c *CacheService) SetWithExpire(key string, value interface{}, duration tim
 }
 
 func (c *CacheService) Get(key string, dest interface{}) error {
+	if !isCacheReady() {
+		return ErrCacheDisabled
+	}
+
 	valueJSON, err := rdb.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {

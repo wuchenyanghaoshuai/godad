@@ -56,7 +56,9 @@ func (c *AdminNotificationController) ListSystemNotifications(ctx *gin.Context) 
     if v := ctx.Query("page"); v != "" { if p, err := strconv.Atoi(v); err == nil && p > 0 { page = p } }
     if v := ctx.Query("size"); v != "" { if s, err := strconv.Atoi(v); err == nil && s > 0 && s <= 100 { size = s } }
 
-    list, total, err := c.notificationService.ListSystemBroadcasts(page, size)
+    scope := ctx.Query("type")     // system|moderation|all
+    subtype := ctx.Query("subtype") // reporter|author|""
+    list, total, err := c.notificationService.ListSystemBroadcasts(page, size, scope, subtype)
     if err != nil {
         ctx.JSON(http.StatusInternalServerError, gin.H{"error": "获取历史广播失败"})
         return

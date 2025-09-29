@@ -85,7 +85,8 @@ func (c *ReportController) AdminList(ctx *gin.Context) {
     articleTitles := map[uint]string{}
     if len(articleIDs) > 0 {
         var articles []models.Article
-        if err := config.GetDB().Select("id, title").Where("id IN ?", articleIDs).Find(&articles).Error; err == nil {
+        // 使用 Unscoped 包含软删除的文章，便于在举报中心显示已删除/下架文章的标题
+        if err := config.GetDB().Unscoped().Select("id, title").Where("id IN ?", articleIDs).Find(&articles).Error; err == nil {
             for _, a := range articles {
                 articleTitles[a.ID] = a.Title
             }
@@ -96,7 +97,8 @@ func (c *ReportController) AdminList(ctx *gin.Context) {
     postTitles := map[uint]string{}
     if len(postIDs) > 0 {
         var posts []models.ForumPost
-        if err := config.GetDB().Select("id, title").Where("id IN ?", postIDs).Find(&posts).Error; err == nil {
+        // 使用 Unscoped 包含软删除的帖子，便于在举报中心显示已删除/锁定帖子的标题
+        if err := config.GetDB().Unscoped().Select("id, title").Where("id IN ?", postIDs).Find(&posts).Error; err == nil {
             for _, p := range posts {
                 postTitles[p.ID] = p.Title
             }
@@ -242,7 +244,7 @@ func (c *ReportController) AdminUpdateStatus(ctx *gin.Context) {
         n := &models.Notification{
             ReceiverID: r.ReporterID,
             ActorID:    adminID,
-            Type:       models.NotificationTypeSystem,
+            Type:       models.NotificationTypeModeration,
             Title:      "举报处理结果",
             ResourceID: r.TargetID,
             Message:    msg,
@@ -271,7 +273,7 @@ func (c *ReportController) AdminUpdateStatus(ctx *gin.Context) {
             n2 := &models.Notification{
                 ReceiverID: targetAuthorID,
                 ActorID:    adminID,
-                Type:       models.NotificationTypeSystem,
+                Type:       models.NotificationTypeModeration,
                 Title:      "内容违规处理通知",
                 ResourceID: r.TargetID,
                 Message:    authorMsg,

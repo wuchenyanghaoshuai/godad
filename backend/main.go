@@ -12,6 +12,7 @@ import (
 
 	"godad-backend/config"
 	"godad-backend/models"
+	"godad-backend/observability"
 	"godad-backend/routes"
 	"godad-backend/services"
 
@@ -30,11 +31,20 @@ func main() {
 	// 加载配置
 	cfg := config.LoadConfig()
 
-	// 打印数据库连接信息用于调试
-	log.Printf("数据库连接信息: Host=%s, Port=%d, User=%s, DBName=%s", 
-		cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.DBName)
-	log.Printf("DSN: %s", cfg.Database.DSN)
-	
+	// 初始化 OpenTelemetry
+	shutdownTracing := observability.InitTracing(context.Background(), cfg)
+	defer func() {
+		if err := shutdownTracing(context.Background()); err != nil {
+			log.Printf("关闭 tracing 失败: %v", err)
+		}
+	}()
+
+	// 打印数据库连接信息（仅开发环境）
+	if cfg.Server.Environment == "development" {
+		log.Printf("数据库连接信息: Host=%s, Port=%d, User=%s, DBName=%s",
+			cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.DBName)
+	}
+
 	// 初始化数据库
 	if err := config.InitDatabase(cfg); err != nil {
 		log.Fatalf("数据库初始化失败: %v", err)
@@ -44,7 +54,7 @@ func main() {
 	// 初始化Redis缓存
 	if err := services.InitRedis(); err != nil {
 		log.Printf("警告: Redis缓存初始化失败: %v", err)
-		log.Println("将在无缓存模式下运行")
+		log.Println("缓存功能已禁用，相关特性将退化运行")
 	} else {
 		log.Println("Redis缓存初始化成功")
 	}
@@ -57,11 +67,18 @@ func main() {
 		}
 		log.Println("数据库迁移完成")
 	} else {
-		log.Println("生产环境：跳过自动迁移，请确保数据库结构是最新的")
+		log.Printf("跳过数据库自动迁移（环境=%s, AutoMigrate=%v）", cfg.Server.Environment, cfg.Database.AutoMigrate)
 	}
 
-	// 设置Gin模式为开发模式
-	gin.SetMode(gin.DebugMode)
+	// 根据环境设置Gin运行模式
+	switch cfg.Server.Environment {
+	case "production":
+		gin.SetMode(gin.ReleaseMode)
+	case "testing":
+		gin.SetMode(gin.TestMode)
+	default:
+		gin.SetMode(gin.DebugMode)
+	}
 
 	// 设置路由
 	router := routes.SetupRoutes()
@@ -81,7 +98,7 @@ func main() {
 		log.Printf("服务地址: http://127.0.0.1:%d", cfg.Server.Port)
 		log.Printf("API文档: http://127.0.0.1:%d/api", cfg.Server.Port)
 		log.Printf("健康检查: http://127.0.0.1:%d/health", cfg.Server.Port)
-		
+
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("服务器启动失败: %v", err)
 		}

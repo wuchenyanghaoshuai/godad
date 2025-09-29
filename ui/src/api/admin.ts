@@ -6,6 +6,7 @@ export interface AdminArticleListParams {
   size?: number
   status?: string | number
   keyword?: string
+  category_id?: string | number
 }
 
 export interface AdminUserListParams {
@@ -53,7 +54,7 @@ export const AdminApi = {
   },
 
   // 系统通知历史
-  async getSystemNotificationHistory(params: { page?: number, size?: number } = {}) {
+  async getSystemNotificationHistory(params: { page?: number, size?: number, type?: 'system' | 'moderation' | 'all', subtype?: 'reporter' | 'author' } = {}) {
     return http.get(`/admin/notifications/system/history`, params)
   }
   ,

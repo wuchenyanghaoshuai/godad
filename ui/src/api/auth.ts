@@ -40,7 +40,7 @@ export class AuthApi {
 
   // 忘记密码
   static async forgotPassword(email: string): Promise<ApiResponse<null>> {
-    return http.post<null>(API_CONFIG.ENDPOINTS.AUTH.FORGOT_PASSWORD, { email })
+    return http.post<null>(API_CONFIG.ENDPOINTS.AUTH.FORGOT_PASSWORD, { email_or_username: email })
   }
 
   // 重置密码

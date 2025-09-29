@@ -14,7 +14,8 @@ const (
     NotificationTypeBookmark NotificationType = "bookmark" // 收藏
     NotificationTypeFollow   NotificationType = "follow"   // 关注
     NotificationTypeMessage  NotificationType = "message"  // 私信
-    NotificationTypeSystem   NotificationType = "system"   // 系统公告/广播
+    NotificationTypeSystem   NotificationType = "system"   // 系统公告/广播（全员广播）
+    NotificationTypeModeration NotificationType = "moderation" // 管理动作通知（违规处理、举报结果等）
     NotificationTypeMention  NotificationType = "mention"  // 提及/@我
 )
 
@@ -22,7 +23,7 @@ type Notification struct {
     ID         uint             `gorm:"primaryKey" json:"id"`
     ReceiverID uint             `gorm:"not null;index" json:"receiver_id"` // 接收者ID
     ActorID    uint             `gorm:"not null;index" json:"actor_id"`    // 行为发起者ID
-    Type       NotificationType `gorm:"not null;type:enum('like','comment','bookmark','follow','message','system','mention')" json:"type"`
+    Type       NotificationType `gorm:"not null;type:enum('like','comment','bookmark','follow','message','system','mention','moderation')" json:"type"`
     Title      string           `gorm:"type:varchar(255)" json:"title,omitempty"` // 标题（系统通知等）
     ResourceID uint             `gorm:"column:resource_id" json:"resource_id"` // 资源ID（文章ID、会话ID等）
     CommentID  uint             `json:"comment_id,omitempty"`  // 扩展资源ID（用于@提及精确到评论）

@@ -131,33 +131,45 @@ func (ac *AdminController) GetStats(c *gin.Context) {
 
 // GetArticles 获取文章列表（管理员）
 func (ac *AdminController) GetArticles(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
-	status := c.Query("status")
-	keyword := c.Query("keyword")
+    page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+    size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
+    status := c.Query("status")
+    keyword := c.Query("keyword")
+    categoryIDStr := c.Query("category_id")
 
-	// 构建请求
-	req := &models.ArticleListRequest{
-		Page:    page,
-		Size:    size,
-		Keyword: keyword,
-	}
+    // 构建请求
+    req := &models.ArticleListRequest{
+        Page:    page,
+        Size:    size,
+        Keyword: keyword,
+    }
 
-	// 解析状态
-	if status != "" {
-		if statusInt, err := strconv.Atoi(status); err == nil {
-			req.Status = int8(statusInt)
-		}
-	}
+    // 分类过滤
+    if categoryIDStr != "" {
+        if cid, err := strconv.Atoi(categoryIDStr); err == nil && cid > 0 {
+            req.CategoryID = uint(cid)
+        }
+    }
 
-	articles, total, err := ac.articleService.GetArticleList(req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code":  500,
-			"error": "获取文章列表失败",
-		})
-		return
-	}
+    // 解析状态；管理员：若未提供状态，则不过滤状态（显示全部）
+    if status != "" {
+        if statusInt, err := strconv.Atoi(status); err == nil {
+            req.Status = int8(statusInt)
+        }
+    } else {
+        // 使用负数作为“不过滤状态”的标记，仅供管理员专用逻辑使用
+        req.Status = -1
+    }
+
+    // 管理端列表：支持全部状态
+    articles, total, err := ac.articleService.GetArticleListAdmin(req)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{
+            "code":  500,
+            "error": "获取文章列表失败",
+        })
+        return
+    }
 
 	c.JSON(http.StatusOK, gin.H{
 		"code": 200,
@@ -165,7 +177,7 @@ func (ac *AdminController) GetArticles(c *gin.Context) {
 			"articles": articles,
 			"total":    total,
 		},
-	})
+    })
 }
 
 // UpdateArticleStatus 更新文章状态

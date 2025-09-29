@@ -77,6 +77,26 @@
                 <span v-if="tab.count > 0" class="ml-1 text-xs text-gray-400">{{ tab.count }}</span>
               </button>
             </div>
+
+            <!-- 类型快速筛选（仅针对通知流） -->
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <span class="text-gray-400">只看：</span>
+              <button
+                @click="setTypeFilter('')"
+                class="px-2.5 py-1 rounded-full border transition-colors"
+                :class="!categoryFilter ? 'bg-gray-100 border-gray-300 text-gray-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'"
+              >全部通知</button>
+              <button
+                @click="setTypeFilter('system')"
+                class="px-2.5 py-1 rounded-full border transition-colors"
+                :class="categoryFilter === 'system' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'"
+              >系统公告</button>
+              <button
+                @click="setTypeFilter('moderation')"
+                class="px-2.5 py-1 rounded-full border transition-colors"
+                :class="categoryFilter === 'moderation' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'"
+              >审核通知</button>
+            </div>
           </div>
 
           <!-- 所有消息列表 -->
@@ -458,9 +478,20 @@ const tabs = computed(() => [
 ])
 
 // 计算属性 - 所有通知，按时间倒序
+// 规范化类型：把历史上误归为 system 的审核通知(通过标题识别)归并为 moderation
+const normalizeType = (n: Notification): Notification['type'] => {
+  const title = (n.title || '').trim()
+  if (n.type === 'system' && (title === '举报处理结果' || title === '内容违规处理通知')) {
+    return 'moderation'
+  }
+  return n.type
+}
+
 const allNotifications = computed(() => {
-  if (!notifications.value) return []
-  const filtered = notifications.value.filter(n => ['like', 'comment', 'message', 'follow', 'bookmark', 'system', 'mention'].includes(n.type))
+  if (!notifications.value) return [] as any[]
+  const list = notifications.value.map(n => ({ ...n, type: normalizeType(n) })) as any[]
+  const allowed = ['like', 'comment', 'message', 'follow', 'bookmark', 'system', 'mention', 'moderation']
+  const filtered = list.filter(n => allowed.includes(n.type))
   return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 })
 
@@ -492,13 +523,28 @@ const groupMessageNotifications = (list: Notification[]) => {
 // 分类过滤（来自路由的 category 参数）
 const categoryFilter = ref<string>('')
 
+// 设置类型筛选（同步到路由，触发现有 watch 生效）
+const setTypeFilter = (t: string) => {
+  const q: Record<string, any> = { ...route.query }
+  if (t) {
+    q.category = t
+    if (activeTab.value !== 'message' && activeTab.value !== 'unread') {
+      q.tab = 'notify'
+    }
+  } else {
+    delete q.category
+    // 不强制切换 tab
+  }
+  router.replace({ query: q })
+}
+
 // 当前展示的数据源
 const displayNotifications = computed(() => {
   const list = allNotifications.value
   const { grouped, others } = groupMessageNotifications(list)
   const filterOthersByCategory = (items: Notification[]) => {
     if (!categoryFilter.value) return items
-    const allowed = ['like', 'comment', 'follow', 'bookmark', 'system', 'mention']
+    const allowed = ['like', 'comment', 'follow', 'bookmark', 'system', 'mention', 'moderation']
     if (!allowed.includes(categoryFilter.value)) return items
     return items.filter(n => n.type === (categoryFilter.value as any))
   }
@@ -570,6 +616,8 @@ const handleNotificationClick = async (notification: Notification) => {
     try {
       await NotificationApi.markAsRead([notification.id])
       notification.is_read = true
+      const orig = notifications.value.find(n => n.id === notification.id)
+      if (orig) orig.is_read = true
       unreadNotificationsCount.value = Math.max(0, unreadNotificationsCount.value - 1)
       unreadMessagesCount.value = Math.max(0, unreadMessagesCount.value - 1)
       triggerRefresh()
@@ -604,6 +652,8 @@ const markOneAsRead = async (notification: Notification) => {
     if (notification.is_read) return
     await NotificationApi.markAsRead([notification.id])
     notification.is_read = true
+    const orig = notifications.value.find(n => n.id === notification.id)
+    if (orig) orig.is_read = true
     unreadNotificationsCount.value = Math.max(0, unreadNotificationsCount.value - 1)
     unreadMessagesCount.value = Math.max(0, unreadMessagesCount.value - 1)
     triggerRefresh()
@@ -641,7 +691,10 @@ const goToMention = () => {
 // 左侧列表：标题与摘要
 const getNotificationTitle = (n: Notification): string => {
   if (n.type === 'system') {
-    return n.title && n.title.trim() ? n.title.trim() : '系统通知'
+    return n.title && n.title.trim() ? n.title.trim() : '系统公告'
+  }
+  if (n.type === 'moderation') {
+    return n.title && n.title.trim() ? n.title.trim() : '审核通知'
   }
   if (n.type === 'message') {
     const name = n.actor_nickname || n.actor_username || '私信'
@@ -1062,7 +1115,7 @@ const selectedForAppeal = ref<Notification | null>(null)
 
 // 是否可申诉：系统通知 + 有资源ID + 消息包含"申诉"
 const canAppeal = (n: Notification) => {
-  return n.type === 'system' && !!n.resource_id && n.message?.includes('申诉')
+  return (n.type === 'system' || n.type === 'moderation') && !!n.resource_id && n.message?.includes('申诉')
 }
 
 // 打开申诉弹窗
